@@ -1,46 +1,55 @@
 from funciones import validador_numero as validador
-<<<<<<< HEAD
-<<<<<<< HEAD
-from funciones import suma as suma
-=======
-from funciones import resta
->>>>>>> 809be7698b6b17cba74d8a224f15d51fcb5b3baa
-=======
+from funciones.suma import suma 
+from funciones.resta import resta
 from funciones.division import division
+from funciones.multiplicacion import multiplicacion
 
 
->>>>>>> 05d15310958c654f805225c680cd6172286b1328
+while True:
+    print("Por favor, ingrese la operacion: ")
+    print("- Suma: +")
+    print("- Resta: -")
+    print("- Multiplicacion: *")
+    print("- Division: /")
 
-print("Por favor, ingrese la operacion: ")
-print("- Suma: +")
-print("- Resta: -")
-print("- Multiplicacion: *")
-print("- Division: /")
+    operador = input("Ingrese la operacion: ")
 
-operador = input("Ingrese la operacion: ")
-operando_1 = input("Ingrese el primer operando: ")
-operando_2 = input("Ingrese el segundo operando: ")
+    while operador not in ["+", "-", "*", "/"]:
+        print("Operador inválido: " + operador)
+        print("Por favor, ingrese la operacion: ")
+        print("- Suma: +")
+        print("- Resta: -")
+        print("- Multiplicacion: *")
+        print("- Division: /")
+        operador = input("Ingrese la operacion: ")
 
-if validador.operando_es_invalido(operando_1):
-    print("El operando 1 es inválido: " + operando_1)
-    exit(1)
 
-if validador.operando_es_invalido(operando_2):
-    print("El operando 2 es inválido: " + operando_2)
-    exit(1)
+    operando_1 = input("Ingrese el primer operando: ")
 
-operando_1 = int(operando_1)
-operando_2 = int(operando_2)
+    while validador.operando_es_invalido(operando_1):
+        print("El operando 1 es inválido: " + operando_1)
+        operando_1 = input("Ingrese el primer operando: ")
 
-#if operador == "+":
-    #resultado = suma(operando_1, operando_2)
-#elif operador == "-":
-    #resultado = resta(operando_1, operando_2)
-#elif operador == "*":
-    #resultado = multiplicacion(operando_1, operando_2)
-elif operador == "/":
-    resultado = division(operando_1, operando_2)
-#else:
-    #print("Operador desconocido")
 
-#print("El resultado de la operacion es: " + str(resultado))
+    operando_2 = input("Ingrese el segundo operando: ")
+
+    while validador.operando_es_invalido(operando_2):
+        print("El operando 2 es inválido: " + operando_2)
+        operando_2 = input("Ingrese el segundo operando: ")
+
+
+    operando_1 = int(operando_1)
+    operando_2 = int(operando_2)
+
+    if operador == "+":
+        resultado = suma(operando_1, operando_2)
+    elif operador == "-":
+        resultado = resta(operando_1, operando_2)
+    elif operador == "*":
+        resultado = multiplicacion(operando_1, operando_2)
+    elif operador == "/":
+        resultado = division(operando_1, operando_2)
+    else:
+        print("Operador desconocido")
+
+    print("El resultado de la operacion es: " + str(resultado))
