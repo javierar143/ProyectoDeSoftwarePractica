@@ -1,4 +1,4 @@
-def suma (a, b):
+def resta (a, b):
     """
     Esta funcion toma dos numeros como entrada y devuelve su resta
 
