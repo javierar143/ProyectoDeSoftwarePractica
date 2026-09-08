@@ -1,5 +1,9 @@
 from funciones import validador_numero as validador
+<<<<<<< HEAD
 from funciones import suma as suma
+=======
+from funciones import resta
+>>>>>>> 809be7698b6b17cba74d8a224f15d51fcb5b3baa
 
 print("Por favor, ingrese la operacion: ")
 print("- Suma: +")
