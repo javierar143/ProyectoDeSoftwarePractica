@@ -7,6 +7,6 @@ def suma (a, b):
     b (int): El segundo numero.
 
     Retorna:
-    int o float: La resta de a y b
+    int: La resta de a y b
     """
     return a - b
