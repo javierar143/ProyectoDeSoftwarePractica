@@ -1,4 +1,5 @@
 from funciones import validador_numero as validador
+from funciones import suma as suma
 
 print("Por favor, ingrese la operacion: ")
 print("- Suma: +")
