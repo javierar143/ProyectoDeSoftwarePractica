@@ -1,4 +1,7 @@
 from funciones import validador_numero as validador
+from funciones.division import division
+
+
 
 print("Por favor, ingrese la operacion: ")
 print("- Suma: +")
@@ -27,8 +30,8 @@ operando_2 = int(operando_2)
     #resultado = resta(operando_1, operando_2)
 #elif operador == "*":
     #resultado = multiplicacion(operando_1, operando_2)
-#elif operador == "/":
-    #resultado = division(operando_1, operando_2)
+elif operador == "/":
+    resultado = division(operando_1, operando_2)
 #else:
     #print("Operador desconocido")
 
