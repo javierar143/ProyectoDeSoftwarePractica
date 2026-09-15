@@ -1,8 +1,8 @@
-from funciones import validador_numero as validador
-from funciones.suma import suma 
-from funciones.resta import resta
-from funciones.division import division
-from funciones.multiplicacion import multiplicacion
+from calculadora.funciones import validador_numero as validador
+from calculadora.funciones.suma import suma
+from calculadora.funciones.resta import resta
+from calculadora.funciones.division import division
+from calculadora.funciones.multiplicacion import multiplicacion
 
 
 while True:
