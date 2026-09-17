@@ -90,8 +90,48 @@ textarea:focus {
 	color: var(--muted-color);
 }
 
+header {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 20px;
+}
+
+header h1 {
+    font-size: 32px;
+}
+
+nav {
+    background-color: var(--surface-color);
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 30px;
+}
+
+main h1 {
+    margin-bottom: 15px;
+    color: var(--primary-dark);
+}
+
+main p {
+    margin-bottom: 10px;
+}
+
+footer {
+    background-color: var(--text-color);
+    color: white;
+    padding: 20px;
+    text-align: center;
+    margin-top: 30px;
+}
+
 @media (max-width: 600px) {
 	.container {
 		padding: 16px;
 	}
 }
+

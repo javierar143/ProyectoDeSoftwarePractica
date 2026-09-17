@@ -1,6 +1,6 @@
 from flask import Flask
 from flask import render_template
-from src.web.handlers import error
+from admin.src.web.handlers import error
 
 def create_app(env_name="development", test_config=None, static_folder="../../static"):
     app = Flask(__name__, static_folder=static_folder)
