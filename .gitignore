@@ -4,3 +4,7 @@
 =======
 .DS_Store
 >>>>>>> d16fb0b1fd0ef3f72410759eb6ccc07386abf6b5
+
+.venv/
+__pycache__/
+*.pyc
