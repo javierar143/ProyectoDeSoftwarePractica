@@ -2,31 +2,37 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8" />
-    <title>{% block title %}Mi Aplicación[% endblock %]</title> 
-    <meta name="viewport" content="width=device-width, initial-scale=1.8">
+    <title>{% block title %}Mi Aplicación{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     {% block head %}
-        <link rel="stylesheet" href="L url.for('static', filename='styles.css'>
+        <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     {% endblock %}
 </head>
 
 <body>
     <header>
-        {% block header %} 
+        {% block header %}
         <h1>Mi Aplicación</h1>
         {% endblock %}
     </header>
+
     <nav>
         {% block nav %}
-        <!-- Menú de navegación -→>
+        <!-- Menú de navegación -->
         {% endblock %}
     </nav>
+
     <main>
         {% block content %}
-        <!-- Contenido principal --> 
+        <!-- Contenido principal -->
         {% endblock %}
-    </main> 
+    </main>
+
     <footer>
-        {% block footer %} &copy; {{ current-year }} Mi Aplicación {%endblock%)
+        {% block footer %}
+        &copy; Mi Aplicación
+        {% endblock %}
     </footer>
 </body>
 </html>
