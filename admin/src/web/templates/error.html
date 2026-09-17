@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+
+{% block title %}Error {{error.code}} | Mi Aplicación {% endblock %}
+
+{% block content %}
+    <div class="error-container"></div>
+        <h1>Error {{ error.code }}</h1>
+        <h2>{{ error.message }}</h2>
+        <p>{{ error.description }}</p>
+        <a href="{{ url_for('home') }}" class="error-btn">Volver al inicio
+    </div>
+{% endblock %}
+{% block head %}
+    {{ super() }}
+{% endblock %}
