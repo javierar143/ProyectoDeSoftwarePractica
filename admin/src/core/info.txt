@@ -1,0 +1,2 @@
+Aca se va a almacenar toda la informacion que pertenezca a la logica del negocio a desarrollar
+No tiene que ver con el desarrollo web eso iria en la carpeta ../web 
