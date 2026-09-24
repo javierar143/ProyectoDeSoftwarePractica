@@ -1,12 +1,17 @@
 from flask import Flask
 from flask import render_template
 from src.web.handlers import error
+from .config import config
 
-def create_app(env_name="development", test_config=None, static_folder="../../static"):
+
+
+def create_app(env="development", test_config=None, static_folder="../../static"):
     app = Flask(__name__, static_folder=static_folder)
 
     if test_config is not None:
         app.config.update(test_config)
+
+    app.config.from_object(config[env])
 
     @app.route("/")
     def home():
