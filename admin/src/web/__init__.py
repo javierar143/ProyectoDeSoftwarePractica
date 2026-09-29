@@ -1,7 +1,10 @@
 from flask import Flask
 from flask import render_template
+
+from src.core import database
 from src.web.handlers import error
 from .config import config
+
 
 
 
@@ -13,6 +16,8 @@ def create_app(env="development", test_config=None, static_folder="../../static"
 
     app.config.from_object(config[env]) #sirve para poner la configuracion de la app dependiendo del entorno en el que se encuentre
 
+    database.init_app(app)
+
     @app.route("/")
     def home():
         return render_template("home.html") #Sirve para mostrar la pagina de inicio de la aplicacion renderizando el html de home
@@ -21,4 +26,10 @@ def create_app(env="development", test_config=None, static_folder="../../static"
     app.register_error_handler(401, error.unauthorized)
     app.register_error_handler(500, error.internal_server_error)
 
+    @app.cli.command("reset-db")
+    def reset_db():
+        database.reset_db()
+        print("Base de datos reseteada correctamente")
+
     return app
+
