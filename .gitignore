@@ -1,10 +1,183 @@
+# ============================================================
+# IDEs
+# ============================================================
+
+# IntelliJ IDEA / PyCharm / JetBrains
 .idea/
-<<<<<<< HEAD
+*.iml
+*.iws
+*.ipr
+out/
 
-=======
-.DS_Store
->>>>>>> d16fb0b1fd0ef3f72410759eb6ccc07386abf6b5
+# Visual Studio Code
+.vscode/
 
-.venv/
+# Eclipse
+.classpath
+.project
+.settings/
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# ============================================================
+# Python
+# ============================================================
+
+# Bytecode / cache
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+
+# Compiled extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+MANIFEST
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Python version managers
+.python-version
+
+# ============================================================
+# Poetry
+# ============================================================
+
+# Poetry virtual environments are normally outside the project,
+# but ignore this in case Poetry is configured locally to create
+# them inside the project.
+.venv/
+
+# ============================================================
+# Environment variables / secrets
+# ============================================================
+
+.env
+.env.*
+!.envrc
+
+# ============================================================
+# Testing
+# ============================================================
+
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# ============================================================
+# Type checkers / linters
+# ============================================================
+
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+
+# ============================================================
+# Flask
+# ============================================================
+
+instance/
+.webassets-cache/
+
+# ============================================================
+# Jupyter
+# ============================================================
+
+.ipynb_checkpoints/
+
+# ============================================================
+# Operating systems
+# ============================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# macOS metadata
+.Spotlight-V100
+.Trashes
+.fseventsd
+.DocumentRevisions-V100
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+
+# Windows temporary files
+*.stackdump
+
+# Windows installer / shell leftovers
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+
+# ============================================================
+# Logs / temporary files
+# ============================================================
+
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+*.bak
+*.orig
+*.rej
+
+# Vim
+[._]*.s[a-v][a-z]
+
+# ============================================================
+# Local databases / generated database files
+# ============================================================
+
+*.sqlite
+*.sqlite3
+*.db
+
+# ============================================================
+# Coverage / reports generated locally
+# ============================================================
+
+coverage.xml
+*.cover
+*.py,cover
+
+# ============================================================
+# OS / editor temporary files
+# ============================================================
+
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries/
+.idea/**/shelf/
