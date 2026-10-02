@@ -1,15 +1,12 @@
 from flask import Flask
 from flask import render_template
-
+from .config import config
 from src.core import database
 from src.web.handlers import error
-from .config import config
-
-
 
 
 def create_app(env="development", test_config=None, static_folder="../../static"): 
-    app = Flask(__name__, static_folder=static_folder)
+    app = Flask(__name__, static_folder=static_folder)    
 
     if test_config is not None:
         app.config.update(test_config)
