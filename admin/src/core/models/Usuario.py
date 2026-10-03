@@ -12,6 +12,7 @@ class Usuario(BaseModel):
     id_user: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str]
     alias: Mapped[str]
+    password_hash: Mapped[str]
     isSystemAdmin: Mapped[bool]
     isActive: Mapped[bool]
     updated_at: Mapped[datetime]
