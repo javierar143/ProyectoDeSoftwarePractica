@@ -10,8 +10,13 @@ from src.core.database import db
 from src.core.models.Usuario import Usuario
 from src.core.security.password import hash_password
 
+
 from src.core.models.Rol import Rol
 from src.core.models.PersonalTemporal import PersonalTemporal #cuando este hecho Personal reemplazar esto
+
+from src.core.repositories.usuario import create, get_by_email
+
+
 from datetime import datetime
 
 
@@ -42,5 +47,10 @@ def test_create_user(app):
         idPersonal=personal.idPersonal,
     )
 
-    db.session.add(usuario)
-    db.session.commit()
+    usuario_creado = create(usuario)
+
+    usuario_buscado = get_by_email("test@example.com")
+
+    assert usuario_creado.email == "test@example.com"
+    assert usuario_buscado is not None
+    assert usuario_buscado.email == "test@example.com"

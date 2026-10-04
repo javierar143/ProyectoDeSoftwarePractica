@@ -181,3 +181,6 @@ coverage.xml
 .idea/**/usage.statistics.xml
 .idea/**/dictionaries/
 .idea/**/shelf/
+
+
+flask_session/
