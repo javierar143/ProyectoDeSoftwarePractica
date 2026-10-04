@@ -6,7 +6,7 @@ import pytest
 
 from src.web import create_app
 
-from src.core.database import db
+from src.core.database import db, reset_db
 from src.core.models.Usuario import Usuario
 from src.core.security.password import hash_password
 
@@ -22,9 +22,14 @@ from datetime import datetime
 
 @pytest.fixture
 def app():
+    """Crea la aplicación Flask y prepara una base limpia para las pruebas."""
     app = create_app()
-    app.app_context().push()
-    return app
+
+    with app.app_context():
+        reset_db()
+        yield app
+
+    return None
 
 def test_create_user(app):
     rol = Rol(idRol=1, nombre="Administrador")

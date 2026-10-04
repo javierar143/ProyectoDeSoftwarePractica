@@ -5,7 +5,7 @@ from src.core import database
 from src.web.handlers import error
 from flask_session import Session
 from src.web.controllers.auth import auth_bp
-from src.web.controllers.auth.api_auth import api_auth
+from src.web.controllers.auth.api_auth import api_auth_controller
 
 
 def create_app(env="development", test_config=None, static_folder="../../static"): 
@@ -34,7 +34,7 @@ def create_app(env="development", test_config=None, static_folder="../../static"
         print("Base de datos reseteada correctamente")
 
     app.register_blueprint(auth_bp)
-    app.register_blueprint(api_auth)
+    app.register_blueprint(api_auth_controller)
 
     return app
 
