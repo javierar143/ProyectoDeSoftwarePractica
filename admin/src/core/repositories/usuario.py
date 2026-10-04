@@ -1,3 +1,5 @@
+"""Repositorio para la persistencia y consulta de usuarios."""
+
 from sqlalchemy import select
 
 from src.core.database import db
