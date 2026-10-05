@@ -22,7 +22,7 @@
                 </thead>
 
                 <tbody>
-                    {% for usuario in usuarios %}
+                    {% for usuario, rol_nombre in usuarios %}
                         <tr>
                             <td>{{ usuario.id_user }}</td>
                             <td>{{ usuario.alias }}</td>
@@ -34,7 +34,7 @@
                                     Inactivo
                                 {% endif %}
                             </td>
-                            <td>{{ usuario.idRol }}</td>
+                            <td>{{ rol_nombre }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

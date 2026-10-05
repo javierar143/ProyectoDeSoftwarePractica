@@ -4,6 +4,7 @@ from sqlalchemy import select
 
 from src.core.database import db
 from src.core.models.Usuario import Usuario
+from src.core.models.Rol import Rol
 
 
 def get_by_email(email: str) -> Usuario | None:
@@ -44,3 +45,12 @@ def update(usuario: Usuario) -> Usuario:
                           # Después de modificar sus atributos, commit() persiste esos cambios.
 
     return usuario
+
+def get_all_with_role() -> list[tuple[Usuario, str]]:
+    """Obtiene todos los usuarios junto con el nombre de su rol."""
+    statement = (
+        select(Usuario, Rol.nombre)
+        .join(Rol, Usuario.idRol == Rol.idRol)
+    )
+    resultados = db.session.execute(statement).all()
+    return resultados

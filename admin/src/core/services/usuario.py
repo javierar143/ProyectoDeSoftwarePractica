@@ -88,3 +88,9 @@ def set_active(user_id: int, is_active: bool) -> Usuario | None:
         usuario_actualizado = usuario.update(usuario_actual)
 
     return usuario_actualizado
+
+def get_all_with_role() -> list[tuple[Usuario, str]]:
+    """Obtiene todos los usuarios junto con el nombre de su rol."""
+    usuarios = usuario.get_all_with_role()
+
+    return usuarios

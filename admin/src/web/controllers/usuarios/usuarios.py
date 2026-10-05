@@ -27,7 +27,7 @@ def index():
     if not usuario_actual.isSystemAdmin:
         abort(403)
 
-    usuarios = usuario.get_all()
+    usuarios = usuario.get_all_with_role()
 
     return render_template(
         "usuarios/index.html",
