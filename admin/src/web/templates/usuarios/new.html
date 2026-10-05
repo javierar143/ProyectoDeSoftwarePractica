@@ -1,0 +1,69 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<main>
+    <h1>Alta de usuario</h1>
+
+    <form method="post" action="{{ url_for('usuarios.new') }}">
+        <fieldset>
+            <legend>Datos del usuario</legend>
+
+            <div>
+                <label for="email">Email</label>
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    required
+                    autocomplete="email"
+                >
+            </div>
+
+            <div>
+                <label for="alias">Alias</label>
+                <input
+                    type="text"
+                    id="alias"
+                    name="alias"
+                    required
+                    autocomplete="username"
+                >
+            </div>
+
+            <div>
+                <label for="password">Contraseña</label>
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    required
+                    autocomplete="new-password"
+                >
+            </div>
+
+            <div>
+                <label for="rol_nombre">Rol</label>
+                <input
+                    type="text"
+                    id="rol_nombre"
+                    name="rol_nombre"
+                    required
+                >
+            </div>
+
+            <div>
+                <label for="personal_id">Personal</label>
+                <input
+                    type="number"
+                    id="personal_id"
+                    name="personal_id"
+                    min="1"
+                    required
+                >
+            </div>
+        </fieldset>
+
+        <button type="submit">Crear usuario</button>
+    </form>
+</main>
+{% endblock %}

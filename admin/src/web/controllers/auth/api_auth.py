@@ -2,7 +2,7 @@
 
 from flask import Blueprint, jsonify, request
 
-from src.core.services import api_auth
+from src.core.services.auth import api_auth
 
 
 api_auth_controller = Blueprint(

@@ -14,7 +14,7 @@ from src.core.security.password import hash_password
 from src.core.models.Rol import Rol
 from src.core.models.PersonalTemporal import PersonalTemporal #cuando este hecho Personal reemplazar esto
 
-from src.core.repositories.usuario import create, get_by_email
+from src.core.repositories.usuarios.usuario import create, get_by_email
 
 
 from datetime import datetime
