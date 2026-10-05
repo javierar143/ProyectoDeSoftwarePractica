@@ -10,5 +10,5 @@ def get_by_name(nombre: str) -> Rol | None:
     """Obtiene un rol a partir de su nombre."""
     statement = select(Rol).where(Rol.nombre == nombre)
     rol = db.session.execute(statement).scalar_one_or_none()
-
+    
     return rol

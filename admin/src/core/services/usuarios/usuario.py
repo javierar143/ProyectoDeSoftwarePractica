@@ -4,6 +4,7 @@ from datetime import datetime
 
 from src.core.models.Usuario import Usuario
 from src.core.repositories.usuarios import usuario
+from src.core.repositories.usuarios import rol
 
 
 def get_all() -> list[Usuario]:
@@ -25,14 +26,16 @@ def create(
     alias: str,
     password_hash: str,
     is_system_admin: bool,
-    rol_id: int,
+    rol_nombre: str,
     personal_id: int,
 ) -> Usuario | None:
-    """Crea un usuario validando que su email sea único."""
+    """Crea un usuario validando email único y existencia del rol."""
     usuario_existente = usuario.get_by_email(email)
+    rol_encontrado = rol.get_by_name(rol_nombre)
+
     nuevo_usuario = None
 
-    if usuario_existente is None:
+    if usuario_existente is None and rol_encontrado is not None:
         ahora = datetime.now()
         nuevo_usuario = Usuario(
             email=email,
@@ -42,7 +45,7 @@ def create(
             isActive=True,
             updated_at=ahora,
             inserted_at=ahora,
-            idRol=rol_id,
+            idRol=rol_encontrado.idRol,
             idPersonal=personal_id,
         )
         usuario.create(nuevo_usuario)

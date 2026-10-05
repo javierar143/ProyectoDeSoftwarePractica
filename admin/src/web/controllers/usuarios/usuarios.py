@@ -53,7 +53,7 @@ def new():
         email = request.form.get("email", "")
         alias = request.form.get("alias", "")
         password = request.form.get("password", "")
-        rol_id = request.form.get("rol_id", "")
+        rol_nombre = request.form.get("rol_nombre", "")
         personal_id = request.form.get("personal_id", "")
 
         if not validate_user_data(
@@ -72,7 +72,7 @@ def new():
             alias=alias,
             password_hash=password_hash,
             is_system_admin=False,
-            rol_id=int(rol_id),
+            rol_nombre=rol_nombre,
             personal_id=int(personal_id),
         )
 

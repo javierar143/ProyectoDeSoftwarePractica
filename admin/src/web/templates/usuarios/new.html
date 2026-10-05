@@ -42,13 +42,24 @@
             </div>
 
             <div>
-                <label for="rol_nombre">Rol</label>
                 <input
-                    type="text"
-                    id="rol_nombre"
-                    name="rol_nombre"
-                    required
+                    type="checkbox"
+                    id="is_system_admin"
+                    name="is_system_admin"
                 >
+                <label for="is_system_admin">Administrador del sistema</label>
+            </div>
+
+            <div>
+                <label for="rol_nombre">Rol</label>
+                <select id="rol_nombre" name="rol_nombre" required>
+                    <option value="">Seleccione un rol</option>                    
+                    <option value="Jefe de Servicio">Jefe de Servicio</option>
+                    <option value="Servicio de Alimentación">
+                        Servicio de Alimentación
+                    </option>
+                    <option value="Sector Comedor">Sector Comedor</option>
+                </select>
             </div>
 
             <div>
