@@ -4,9 +4,10 @@ from datetime import datetime, timedelta, timezone
 
 from src.core.models.ApiToken import ApiToken
 from src.core.models.Usuario import Usuario
-from src.core.repositories import api_token, usuario
+from src.core.repositories.auth import api_token
+from src.core.repositories.usuarios import usuario
 from src.core.security.password import verify_password
-from src.core.services.api_token import generate_token, hash_token
+from src.core.services.auth.api_token import generate_token, hash_token
 
 
 def login(email: str, password: str) -> str | None:

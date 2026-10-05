@@ -3,7 +3,7 @@
 from datetime import datetime
 
 from src.core.models.Usuario import Usuario
-from src.core.repositories import usuario
+from src.core.repositories.usuarios import usuario
 
 
 def get_all() -> list[Usuario]:

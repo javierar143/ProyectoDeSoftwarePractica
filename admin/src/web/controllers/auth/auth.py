@@ -6,8 +6,8 @@ from src.core.security.session import (
     clear_session,
     set_authenticated_user,
 )
-from src.core.services.auth import authenticate
-from src.web.validators.auth import validate_login
+from src.core.services.auth.auth import authenticate
+from src.web.validators.auth.auth import validate_login
 
 from . import auth_bp
 

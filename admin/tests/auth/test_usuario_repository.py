@@ -11,7 +11,7 @@ from src.core.models.Usuario import Usuario
 from src.core.models.Rol import Rol
 from src.core.models.PersonalTemporal import PersonalTemporal
 from src.core.security.password import hash_password
-from src.core.repositories.usuario import get_by_email, get_by_id, create
+from src.core.repositories.usuarios.usuario import get_by_email, get_by_id, create
 
 
 @pytest.fixture(scope="module")
