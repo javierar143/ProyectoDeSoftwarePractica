@@ -15,7 +15,7 @@ from . import auth_bp
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     """Muestra el formulario de login y procesa su autenticación."""
-    response = render_template("login.html")
+    response = render_template("auth/login.html")
 
     if request.method == "POST":
         email = request.form.get("email", "")
