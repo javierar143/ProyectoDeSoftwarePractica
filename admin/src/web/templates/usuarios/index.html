@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<main>
+    <h1>Administración de usuarios</h1>
+
+    <section aria-labelledby="usuarios-title">
+        <h2 id="usuarios-title">Usuarios registrados</h2>
+
+        {% if usuarios %}
+            <table>
+                <caption>Listado de usuarios del sistema</caption>
+
+                <thead>
+                    <tr>
+                        <th scope="col">ID</th>
+                        <th scope="col">Alias</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col">Rol</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for usuario in usuarios %}
+                        <tr>
+                            <td>{{ usuario.id_user }}</td>
+                            <td>{{ usuario.alias }}</td>
+                            <td>{{ usuario.email }}</td>
+                            <td>
+                                {% if usuario.isActive %}
+                                    Activo
+                                {% else %}
+                                    Inactivo
+                                {% endif %}
+                            </td>
+                            <td>{{ usuario.idRol }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No hay usuarios registrados.</p>
+        {% endif %}
+    </section>
+</main>
+{% endblock %}
