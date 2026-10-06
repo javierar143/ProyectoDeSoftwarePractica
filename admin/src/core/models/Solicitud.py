@@ -17,5 +17,3 @@ class Solicitud(BaseModel):
     inserted_at: Mapped[datetime]
     updated_at: Mapped[datetime]
     idUserEvaluador: Mapped[int] = mapped_column(ForeignKey("Usuario.id_user"))
-
-    # Relaciones
