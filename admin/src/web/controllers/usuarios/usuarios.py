@@ -1,13 +1,12 @@
 """Controlador web para la administración de usuarios."""
 
-from flask import Blueprint, abort, render_template, request
+from flask import Blueprint, abort, redirect, render_template, request, url_for
 
 from src.core.security.session import (
     get_authenticated_user_id,
     require_authentication,
 )
-from src.core.services.usuarios import usuario
-from src.core.security.password import hash_password
+from src.core.services.usuarios import personal, usuario
 from src.web.validators.usuarios.usuarios import validate_user_data
 
 
@@ -18,9 +17,8 @@ usuarios_controller = Blueprint(
 )
 
 
-@usuarios_controller.get("/")
-def index():
-    """Muestra el listado de usuarios al administrador."""
+def _require_admin() -> None:
+    """Verifica que el usuario autenticado tenga permisos de administrador."""
     require_authentication()
 
     user_id = get_authenticated_user_id()
@@ -28,6 +26,62 @@ def index():
 
     if not usuario_actual.isSystemAdmin:
         abort(403)
+
+    return None
+
+
+def _get_persona_by_dni() -> tuple[str, dict | None]:
+    """Obtiene el DNI recibido y busca el personal correspondiente."""
+    dni = request.args.get("dni", "").strip()
+    persona_encontrada = None
+
+    if dni:
+        persona_encontrada = personal.get_by_dni(dni)
+
+    return dni, persona_encontrada
+
+
+def _create_user() -> None:
+    """Valida los datos del formulario y solicita la creación del usuario."""
+    email = request.form.get("email", "")
+    alias = request.form.get("alias", "")
+    password = request.form.get("password", "")
+    rol_nombre = request.form.get("rol_nombre", "")
+    personal_id = request.form.get("personal_id", "")
+    is_system_admin = request.form.get("is_system_admin") == "on"
+
+    datos_validos = validate_user_data(
+        email,
+        alias,
+        password,
+        rol_nombre,
+        personal_id,
+    )
+
+    if not datos_validos:
+        abort(400, description="VALIDATOR")
+        
+
+    nuevo_usuario = usuario.create(
+        email=email,
+        alias=alias,
+        password=password,
+        is_system_admin=is_system_admin,
+        rol_nombre=rol_nombre,
+        personal_id=int(personal_id),
+    )
+
+    if nuevo_usuario is None:
+        abort(400, description="SERVICE")
+        
+
+    return None
+
+
+@usuarios_controller.get("/")
+def index():
+    """Muestra el listado de usuarios al administrador."""
+    _require_admin()
 
     usuarios = usuario.get_all_with_role()
 
@@ -36,49 +90,22 @@ def index():
         usuarios=usuarios,
     )
 
+
 @usuarios_controller.route("/nuevo", methods=["GET", "POST"])
 def new():
     """Muestra y procesa el formulario de alta de usuarios."""
-    require_authentication()
+    _require_admin()
 
-    user_id = get_authenticated_user_id()
-    usuario_actual = usuario.get_by_id(user_id)
+    dni, persona_encontrada = _get_persona_by_dni()
 
-    if not usuario_actual.isSystemAdmin:
-        abort(403)
-
-    response = render_template("usuarios/new.html")
+    response = render_template(
+        "usuarios/new.html",
+        persona_encontrada=persona_encontrada,
+        dni=dni,
+    )
 
     if request.method == "POST":
-        email = request.form.get("email", "")
-        alias = request.form.get("alias", "")
-        password = request.form.get("password", "")
-        rol_nombre = request.form.get("rol_nombre", "")
-        personal_id = request.form.get("personal_id", "")
-
-        if not validate_user_data(
-            email,
-            alias,
-            password,
-            rol_id,
-            personal_id,
-        ):
-            abort(400)
-
-        password_hash = hash_password(password)
-
-        nuevo_usuario = usuario.create(
-            email=email,
-            alias=alias,
-            password_hash=password_hash,
-            is_system_admin=False,
-            rol_nombre=rol_nombre,
-            personal_id=int(personal_id),
-        )
-
-        if nuevo_usuario is None:
-            abort(400)
-
-        response = render_template("usuarios/new.html")
+        _create_user()
+        response = redirect(url_for("usuarios.index"))
 
     return response

@@ -25,7 +25,7 @@ def create_app(
     app.config.from_object(config[env])
 
     Session(app)
-    database.init_app(app)
+    database.init_app(app) 
 
     @app.route("/")
     def home():

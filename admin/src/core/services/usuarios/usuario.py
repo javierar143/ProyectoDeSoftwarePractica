@@ -5,6 +5,7 @@ from datetime import datetime
 from src.core.models.Usuario import Usuario
 from src.core.repositories.usuarios import usuario
 from src.core.repositories.usuarios import rol
+from src.core.security.password import hash_password
 
 
 def get_all() -> list[Usuario]:
@@ -24,7 +25,7 @@ def get_by_id(user_id: int) -> Usuario | None:
 def create(
     email: str,
     alias: str,
-    password_hash: str,
+    password: str,
     is_system_admin: bool,
     rol_nombre: str,
     personal_id: int,
@@ -32,11 +33,13 @@ def create(
     """Crea un usuario validando email único y existencia del rol."""
     usuario_existente = usuario.get_by_email(email)
     rol_encontrado = rol.get_by_name(rol_nombre)
-
+    
     nuevo_usuario = None
 
     if usuario_existente is None and rol_encontrado is not None:
         ahora = datetime.now()
+        password_hash = hash_password(password)
+
         nuevo_usuario = Usuario(
             email=email,
             alias=alias,
@@ -48,6 +51,7 @@ def create(
             idRol=rol_encontrado.idRol,
             idPersonal=personal_id,
         )
+
         usuario.create(nuevo_usuario)
 
     return nuevo_usuario
@@ -91,6 +95,7 @@ def set_active(user_id: int, is_active: bool) -> Usuario | None:
         usuario_actualizado = usuario.update(usuario_actual)
 
     return usuario_actualizado
+    
 
 def get_all_with_role() -> list[tuple[Usuario, str]]:
     """Obtiene todos los usuarios junto con el nombre de su rol."""

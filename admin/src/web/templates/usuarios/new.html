@@ -4,77 +4,119 @@
 <main>
     <h1>Alta de usuario</h1>
 
-    <form method="post" action="{{ url_for('usuarios.new') }}">
-        <fieldset>
-            <legend>Datos del usuario</legend>
+    <section>
+        <h2>Buscar personal</h2>
 
+        <form method="get" action="{{ url_for('usuarios.new') }}">
             <div>
-                <label for="email">Email</label>
-                <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    required
-                    autocomplete="email"
-                >
-            </div>
-
-            <div>
-                <label for="alias">Alias</label>
+                <label for="dni">DNI</label>
                 <input
                     type="text"
-                    id="alias"
-                    name="alias"
+                    id="dni"
+                    name="dni"
+                    value="{{ dni }}"
                     required
-                    autocomplete="username"
+                    inputmode="numeric"
                 >
             </div>
 
-            <div>
-                <label for="password">Contraseña</label>
-                <input
-                    type="password"
-                    id="password"
-                    name="password"
-                    required
-                    autocomplete="new-password"
-                >
-            </div>
+            <button type="submit">Buscar personal</button>
+        </form>
 
-            <div>
-                <input
-                    type="checkbox"
-                    id="is_system_admin"
-                    name="is_system_admin"
-                >
-                <label for="is_system_admin">Administrador del sistema</label>
-            </div>
+        {% if dni and not persona_encontrada %}
+            <p> No se encontró personal con el DNI ingresado.</p>
+        {% endif %}
+    </section>
 
-            <div>
-                <label for="rol_nombre">Rol</label>
-                <select id="rol_nombre" name="rol_nombre" required>
-                    <option value="">Seleccione un rol</option>                    
-                    <option value="Jefe de Servicio">Jefe de Servicio</option>
-                    <option value="Servicio de Alimentación">
-                        Servicio de Alimentación
-                    </option>
-                    <option value="Sector Comedor">Sector Comedor</option>
-                </select>
-            </div>
+    {% if persona_encontrada %}
+        <section>
+            <h2>Personal seleccionado</h2>
 
-            <div>
-                <label for="personal_id">Personal</label>
-                <input
-                    type="number"
-                    id="personal_id"
-                    name="personal_id"
-                    min="1"
-                    required
-                >
-            </div>
-        </fieldset>
+            <p>
+                <strong>Nombre:</strong>
+                {{ persona_encontrada.nombre }}
+                {{ persona_encontrada.apellido }}
+            </p>
 
-        <button type="submit">Crear usuario</button>
-    </form>
+            <p>
+                <strong>DNI:</strong>
+                {{ persona_encontrada.dni }}
+            </p>
+        </section>
+
+        <form method="post" action="{{ url_for('usuarios.new') }}">
+            <input
+                type="hidden"
+                name="personal_id"
+                value="{{ persona_encontrada.idPersonal }}"
+            >
+
+            <fieldset>
+                <legend>Datos del usuario</legend>
+
+                <div>
+                    <label for="email">Email</label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        required
+                        autocomplete="email"
+                    >
+                </div>
+
+                <div>
+                    <label for="alias">Alias</label>
+                    <input
+                        type="text"
+                        id="alias"
+                        name="alias"
+                        required
+                        autocomplete="username"
+                    >
+                </div>
+
+                <div>
+                    <label for="password">Contraseña</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        required
+                        autocomplete="new-password"
+                    >
+                </div>
+
+                <div>
+                    <input
+                        type="checkbox"
+                        id="is_system_admin"
+                        name="is_system_admin"
+                    >
+                    <label for="is_system_admin">
+                        Administrador del sistema
+                    </label>
+                </div>
+
+                <div>
+                    <label for="rol_nombre">Rol</label>
+                    <select id="rol_nombre" name="rol_nombre" required>
+                        <option value="">Seleccione un rol</option>
+                        <option value="Jefe de Servicio">
+                            Jefe de Servicio
+                        </option>
+                        <option value="Servicio de Alimentación">
+                            Servicio de Alimentación
+                        </option>
+                        <option value="Sector Comedor">
+                            Sector Comedor
+                        </option>
+                    </select>
+                </div>
+            </fieldset>
+
+            <button type="submit">Crear usuario</button>
+        </form>
+    {% endif %}
 </main>
 {% endblock %}

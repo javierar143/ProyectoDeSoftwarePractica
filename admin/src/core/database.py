@@ -18,6 +18,12 @@ def reset_db():
     BaseModel.metadata.drop_all(db.engine)
     BaseModel.metadata.create_all(db.engine)
 
+    #lo siguiente es temporal hasta q se cree la tabla personal
+    from src.core.seeds.personal_temporal import load_personal_temporal
+
+    load_personal_temporal()
+    #hasta aca borrar!!!!!!!!!!
+
 
 
 
