@@ -9,7 +9,9 @@ import pytest
 
 from src.web import create_app
 from src.core.database import db, reset_db
-from src.core.models.PersonalTemporal import PersonalTemporal
+from src.core.models.Personal import Personal
+from src.core.models.TipoPersonal import TipoPersonal
+from src.core.models.TipoMenu import TipoMenu
 from src.core.models.Rol import Rol
 from src.core.models.Usuario import Usuario
 from src.core.security.password import hash_password
@@ -34,9 +36,19 @@ def usuario(app):
         nombre="Administrador",
     )
 
-    personal = PersonalTemporal(
+    tipo_p = TipoPersonal(idTipoPersonal=1, nombre="Fijo")
+    tipo_m = TipoMenu(idTipoMenu=1, nombre="General")
+    personal = Personal(
         idPersonal=1,
-    )
+        dni="12345678",
+        nombre="Test",
+        apellido="Usuario",
+        isActive=True,
+        idTipoPersonal=1,
+        idTipoMenu=1,
+        inserted_at=datetime.now(),
+        updated_at=datetime.now(),
+    )          
 
     usuario = Usuario(
         id_user=1,
@@ -52,6 +64,9 @@ def usuario(app):
     )
 
     db.session.add(rol)
+    db.session.add(tipo_p)
+    db.session.add(tipo_m)
+    db.session.flush()
     db.session.add(personal)
     db.session.flush()
 
