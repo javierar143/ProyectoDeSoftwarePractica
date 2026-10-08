@@ -67,7 +67,6 @@ def nuevo():
             valores=request.form,
         ), 400
 
-    # Llamamos al servicio
     persona_creada = service_personal.create(
         dni=dni,
         nombre=nombre,
