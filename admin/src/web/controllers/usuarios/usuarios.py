@@ -31,8 +31,8 @@ def _require_admin() -> None:
 
 
 def _get_persona_by_dni() -> tuple[str, dict | None]:
-    """Obtiene el DNI recibido y busca el personal correspondiente."""
-    dni = request.args.get("dni", "").strip()
+    """Obtiene el DNI del formulario y busca el personal correspondiente."""
+    dni = request.form.get("dni", "").strip()
     persona_encontrada = None
 
     if dni:
@@ -59,6 +59,7 @@ def _create_user() -> None:
     )
 
     if not datos_validos:
+        
         abort(400, description="VALIDATOR")
         
 
@@ -72,6 +73,7 @@ def _create_user() -> None:
     )
 
     if nuevo_usuario is None:
+        
         abort(400, description="SERVICE")
         
 
@@ -96,16 +98,28 @@ def new():
     """Muestra y procesa el formulario de alta de usuarios."""
     _require_admin()
 
-    dni, persona_encontrada = _get_persona_by_dni()
+    dni = ""
+    persona_encontrada = None
+    mostrar_existente = False
 
-    response = render_template(
+    if request.method == "POST":
+        accion = request.form.get("accion", "")
+
+        if accion == "buscar_personal":
+            dni, persona_encontrada = _get_persona_by_dni()
+            mostrar_existente = True
+
+        elif accion == "crear_usuario":
+            _create_user()
+            return redirect(url_for("usuarios.index"))      
+
+        else:
+           
+            abort(400, description=f"Acción no válida: {accion!r}")
+
+    return render_template(
         "usuarios/new.html",
         persona_encontrada=persona_encontrada,
         dni=dni,
+        mostrar_existente=mostrar_existente,
     )
-
-    if request.method == "POST":
-        _create_user()
-        response = redirect(url_for("usuarios.index"))
-
-    return response

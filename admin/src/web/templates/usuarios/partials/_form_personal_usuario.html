@@ -1,0 +1,152 @@
+{#
+    Parcial de plantilla para el alta conjunta de Personal y Usuario.
+
+    Actualmente, el formulario es solo visual y sus campos están
+    deshabilitados. La implementación del procesamiento queda pendiente.
+
+    Cuando esté disponible el módulo de Personal, se deberá integrar
+    su servicio para crear la persona y asociarla al usuario nuevo.
+#}
+
+<h2>Personal nuevo</h2>
+
+<form method="post" action="{{ url_for('usuarios.new') }}">
+    {#
+        PENDIENTE: INTEGRACIÓN CON EL MÓDULO DE PERSONAL DE GIANE.
+
+        Reemplazar estos campos por los que defina el módulo de Personal,
+        reutilizando sus validaciones y servicios, sin duplicar lógica.
+
+        El backend deberá crear primero el registro de Personal y obtener
+        su identificador para asociarlo al Usuario.
+    #}
+    <fieldset>
+        <legend>Datos personales</legend>
+
+        <div>
+            <label for="nombre-personal">Nombre</label>
+            <input
+                type="text"
+                id="nombre-personal"
+                name="nombre_personal"
+                required
+                disabled
+            >
+        </div>
+
+        <div>
+            <label for="apellido-personal">Apellido</label>
+            <input
+                type="text"
+                id="apellido-personal"
+                name="apellido_personal"
+                required
+                disabled
+            >
+        </div>
+
+        <div>
+            <label for="dni-personal">DNI</label>
+            <input
+                type="text"
+                id="dni-personal"
+                name="dni_personal"
+                required
+                inputmode="numeric"
+                disabled
+            >
+        </div>
+    </fieldset>
+
+    {#
+        DATOS DEL USUARIO.
+
+        Estos campos corresponden al módulo de Usuarios.
+        Al implementar el alta conjunta, se deberán reutilizar
+        sus validaciones y servicios existentes.
+    #}
+    <fieldset>
+        <legend>Datos del usuario</legend>
+
+        <div>
+            <label for="email-nuevo">Email</label>
+            <input
+                type="email"
+                id="email-nuevo"
+                name="email"
+                required
+                autocomplete="email"
+                disabled
+            >
+        </div>
+
+        <div>
+            <label for="alias-nuevo">Alias</label>
+            <input
+                type="text"
+                id="alias-nuevo"
+                name="alias"
+                required
+                autocomplete="username"
+                disabled
+            >
+        </div>
+
+        <div>
+            <label for="password-nuevo">Contraseña</label>
+            <input
+                type="password"
+                id="password-nuevo"
+                name="password"
+                required
+                autocomplete="new-password"
+                disabled
+            >
+        </div>
+
+        <div>
+            <input
+                type="checkbox"
+                id="admin-nuevo"
+                name="is_system_admin"
+                disabled
+            >
+            <label for="admin-nuevo">
+                Administrador del sistema
+            </label>
+        </div>
+
+        <div>
+            <label for="rol-nuevo">Rol</label>
+            <select
+                id="rol-nuevo"
+                name="rol_nombre"
+                required
+                disabled
+            >
+                <option value="">Seleccione un rol</option>
+                <option value="Jefe de Servicio">
+                    Jefe de Servicio
+                </option>
+                <option value="Servicio de Alimentación">
+                    Servicio de Alimentación
+                </option>
+                <option value="Sector Comedor">
+                    Sector Comedor
+                </option>
+            </select>
+        </div>
+    </fieldset>
+
+    {#
+        PENDIENTE: habilitar el envío cuando el backend esté implementado.
+
+        El controlador deberá coordinar los servicios de Personal y
+        Usuarios. La operación debe evitar que quede una persona creada
+        sin su usuario si falla alguna parte del proceso; evaluar una
+        transacción de base de datos para mantener la atomicidad.
+    #}
+    <button type="submit" disabled>
+        Crear Personal y Usuario
+    </button>
+</form>
