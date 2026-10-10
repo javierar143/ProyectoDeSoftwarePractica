@@ -39,10 +39,10 @@
                         <td style="border: 1px solid #ccc; padding: 0.5rem;">{{ p.dni }}</td>
                         <td style="border: 1px solid #ccc; padding: 0.5rem;">{{ p.apellido }}, {{ p.nombre }}</td>
                         <td style="border: 1px solid #ccc; padding: 0.5rem;">
-                            {{ p.tipo_personal.nombre if p.tipo_personal else (p.tipoPersonal.nombre if p.tipoPersonal else p.idTipoPersonal) }}
+                            {{ p.tipo_personal.nombre if p.tipo_personal else p.idTipoPersonal }}
                         </td>
                         <td style="border: 1px solid #ccc; padding: 0.5rem;">
-                            {{ p.tipo_menu.nombre if p.tipo_menu else (p.tipoMenu.nombre if p.tipoMenu else p.idTipoMenu) }}
+                            {{ p.tipo_menu.nombre if p.tipo_menu else p.idTipoMenu }}
                         </td>
                         <td style="border: 1px solid #ccc; padding: 0.5rem;">
                             {% if p.isActive %}
