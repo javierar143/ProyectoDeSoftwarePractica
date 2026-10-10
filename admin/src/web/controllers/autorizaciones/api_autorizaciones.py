@@ -15,7 +15,7 @@ def listar_pendientes():
         resultado = [
             {
                 "idSolicitud": s.idSolicitud,
-                "estadoAutorizacion": s.estadoAutorizacion,
+                "estadoAutorizacion": s.estadoAutorizacion.name if s.estadoAutorizacion else None,
             }
             for s in solicitudes
         ]
@@ -42,7 +42,7 @@ def actualizar_autorizacion(id_solicitud):
         return jsonify({
             "mensaje": "Autorización actualizada correctamente",
             "idSolicitud": solicitud_actualizada.idSolicitud,
-            "estadoAutorizacion": solicitud_actualizada.estadoAutorizacion
+            "estadoAutorizacion": solicitud_actualizada.estadoAutorizacion.name # <-- ¡Agregamos .name!
         }), 200
 
     except ValueError as e:

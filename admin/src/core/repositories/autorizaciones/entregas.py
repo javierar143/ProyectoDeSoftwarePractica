@@ -1,6 +1,7 @@
 from sqlalchemy import select
 from src.core.models.Entrega import Entrega
 from src.core.database import db
+from datetime import datetime
 
 def verificar_entrega_existente(id_solicitud):
     """Verifica si una solicitud ya fue entregada para evitar entregas duplicadas"""
@@ -12,7 +13,8 @@ def registrar_entrega(id_user, id_solicitud, id_personal):
     nueva_entrega = Entrega(
         idUser=id_user,
         idSolicitud=id_solicitud,
-        idPersonal=id_personal
+        idPersonal=id_personal,
+        fecha_hora=datetime.now()
     )
     db.session.add(nueva_entrega)
     db.session.commit()
