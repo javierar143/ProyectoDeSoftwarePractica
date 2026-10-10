@@ -2,7 +2,7 @@ from src.core.repositories.autorizaciones import solicitudes as solicitudes
 from src.core.repositories.autorizaciones import entregas as entregas
 from src.core.models.enums import EstadoAutorizacion
 
-# Solicitudes
+# <------ Solicitudes ------>
 def obtener_solicitudes_pendientes():
     """Obtiene las solicitudes confirmadas listas para revisar"""
 
@@ -24,7 +24,7 @@ def actualizar_autorizacion(idSolicitud, nuevo_estado_texto, id_evaluador):
         
     return solicitudes.actualizar_estado_autorizacion(idSolicitud, estado_enum, id_evaluador)
 
-# Entregas
+# <------ Entregas ------>
 def registrar_entrega_comedor(id_user, id_solicitud, id_personal):
     """Evita entregas duplicadas para una misma solicitud"""
     

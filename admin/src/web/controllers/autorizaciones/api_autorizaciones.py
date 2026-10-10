@@ -10,6 +10,7 @@ api_autorizaciones_controller = Blueprint(
 @api_autorizaciones_controller.route("/pending", methods=["GET"])
 def listar_pendientes():
     """Obtiene las solicitudes confirmadas pendientes de autorizacion"""
+
     try:
         solicitudes = autorizaciones_service.obtener_solicitudes_pendientes()
         resultado = [
@@ -28,6 +29,7 @@ def listar_pendientes():
 @api_autorizaciones_controller.route("/<int:id_solicitud>", methods=["PUT"])
 def actualizar_autorizacion(id_solicitud):
     """Actualiza la autorizacion de una solicitud"""
+
     data = request.get_json() or {}
     nuevo_estado = data.get("estado")
     id_evaluador = data.get("id_evaluador")
@@ -52,6 +54,7 @@ def actualizar_autorizacion(id_solicitud):
 @api_autorizaciones_controller.route("/deliveries", methods=["POST"])
 def registrar_entrega():
     """Registra la entrega física en el comedor"""
+    
     data = request.get_json() or {}
     id_user = data.get("id_user")
     id_solicitud = data.get("id_solicitud")

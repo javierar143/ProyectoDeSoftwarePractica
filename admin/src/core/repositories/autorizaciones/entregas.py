@@ -5,11 +5,13 @@ from datetime import datetime
 
 def verificar_entrega_existente(id_solicitud):
     """Verifica si una solicitud ya fue entregada para evitar entregas duplicadas"""
+
     statement = select(Entrega).where(Entrega.idSolicitud == id_solicitud)
     return db.session.scalars(statement).first() is not None
 
 def registrar_entrega(id_user, id_solicitud, id_personal):
     """Registra de manera física la entrega de la vianda"""
+    
     nueva_entrega = Entrega(
         idUser=id_user,
         idSolicitud=id_solicitud,

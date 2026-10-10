@@ -10,13 +10,13 @@ def get_solicitudes_pendientes():
     return db.session.scalars(statement).all()
 
 def get_solicitudes_aprobadas():
-    """Obtiene todas las solicitudes aprobadas/autorizadas."""
+    """Obtiene todas las solicitudes aprobadas/autorizadas"""
 
     statement = select(Solicitud).where(Solicitud.estadoAutorizacion == EstadoAutorizacion.AUTORIZADA)
     return db.session.scalars(statement).all()
 
 def actualizar_estado_autorizacion(idSolicitud, estado_enum, id_evaluador):
-    """Actualiza el estado de autorización usando el Enum."""
+    """Actualiza el estado de autorizacion"""
     solicitud = db.session.get(Solicitud, idSolicitud)
 
     if solicitud:
