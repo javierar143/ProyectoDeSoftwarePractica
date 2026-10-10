@@ -129,6 +129,10 @@ def editar(id: int):
         errores.append("El nombre es obligatorio.")
     if not apellido:
         errores.append("El apellido es obligatorio.")
+    if not id_tipo_personal:
+        errores.append("Debe seleccionar un tipo de personal.")
+    if not id_tipo_menu:
+        errores.append("Debe seleccionar un tipo de menú.")
 
     tipos_personal = service_personal.get_tipos_personal()
     tipos_menu = service_personal.get_tipos_menu()
@@ -173,6 +177,17 @@ def desactivar(id: int):
     exito = service_personal.set_active(id_personal=id, is_active=False)
     if exito:
         flash("Se desactivó al personal correctamente.", "info")
+    else:
+        flash("No se encontró el registro.", "danger")
+
+    return redirect(url_for("personal.index"), code=303)
+
+@personal_bp.post("/<int:id>/activar")
+def activar(id: int):
+    """Reactivación de personal inactivo."""
+    exito = service_personal.set_active(id_personal=id, is_active=True)
+    if exito:
+        flash("Se activó al personal correctamente.", "success")
     else:
         flash("No se encontró el registro.", "danger")
 
