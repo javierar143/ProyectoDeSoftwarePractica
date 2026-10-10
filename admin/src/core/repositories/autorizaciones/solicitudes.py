@@ -12,7 +12,7 @@ def get_solicitudes_pendientes():
 def get_solicitudes_aprobadas():
     """Obtiene todas las solicitudes aprobadas/autorizadas."""
 
-    statement = select(Solicitud).where(Solicitud.estadoAutorizacion == EstadoAutorizacion.PENDIENTE)
+    statement = select(Solicitud).where(Solicitud.estadoAutorizacion == EstadoAutorizacion.AUTORIZADA)
     return db.session.scalars(statement).all()
 
 def actualizar_estado_autorizacion(idSolicitud, estado_enum, id_evaluador):
