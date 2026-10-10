@@ -1,6 +1,6 @@
 """Controladores web relacionados con la autenticación."""
 
-from flask import abort, render_template, request
+from flask import abort, redirect, render_template, request, url_for
 
 from src.core.security.session import (
     clear_session,
@@ -30,13 +30,15 @@ def login():
             abort(401)
 
         set_authenticated_user(usuario.id_user)
+        response = redirect(url_for("home"))
 
     return response
 
 
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
-    """Cierra la sesión del usuario autenticado."""
+    """Cierra la sesión del usuario y redirige al login."""
     clear_session()
+    response = redirect(url_for("auth.login"))
 
-    return "", 200
+    return response

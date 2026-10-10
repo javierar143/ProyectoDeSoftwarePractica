@@ -17,11 +17,24 @@
         {% endblock %}
     </header>
 
-    <nav aria-label="Navegación principal">
-        {% block nav %}
-        <!-- Menú de navegación -->
-        <a href="{{ url_for('auth.login') }}">Iniciar sesión</a>
-        {% endblock %}
+   <nav aria-label="Navegación principal">
+    {% block nav %}
+        {% if usuario_actual %}
+            <span>Usuario: {{ usuario_actual.alias }}</span>
+
+            {% if usuario_actual.isSystemAdmin %}
+                <a href="{{ url_for('usuarios.index') }}">
+                    Administrar usuarios
+                </a>
+            {% endif %}
+
+            <form method="post" action="{{ url_for('auth.logout') }}">
+                <button type="submit">Cerrar sesión</button>
+            </form>
+        {% else %}
+            <a href="{{ url_for('auth.login') }}">Iniciar sesión</a>
+        {% endif %}
+    {% endblock %}
     </nav>
 
     <main>

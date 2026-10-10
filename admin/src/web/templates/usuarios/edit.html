@@ -1,0 +1,52 @@
+
+{% extends "layout.html" %}
+
+{% block content %}
+<section aria-labelledby="editar-usuario-title">
+    <h1 id="editar-usuario-title">Editar usuario</h1>
+
+    <form method="post" action="{{ url_for('usuarios.edit') }}">
+        <input type="hidden" name="accion" value="guardar">
+        <input type="hidden" name="user_id" value="{{ usuario.id_user }}">
+
+        <div>
+            <label for="email">Email:</label>
+            <input
+                type="email"
+                id="email"
+                name="email"
+                value="{{ usuario.email }}"
+                required
+            >
+        </div>
+
+        <div>
+            <label for="alias">Alias:</label>
+            <input
+                type="text"
+                id="alias"
+                name="alias"
+                value="{{ usuario.alias }}"
+                required
+            >
+        </div>
+
+        <div>
+            <label for="rol_id">Rol:</label>
+            <select id="rol_id" name="rol_id" required>
+                {% for rol in roles %}
+                    <option
+                        value="{{ rol.idRol }}"
+                        {% if rol.idRol == usuario.idRol %}selected{% endif %}
+                    >
+                        {{ rol.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button type="submit">Guardar cambios</button>
+        <a href="{{ url_for('usuarios.index') }}">Cancelar</a>
+    </form>
+</section>
+{% endblock %}

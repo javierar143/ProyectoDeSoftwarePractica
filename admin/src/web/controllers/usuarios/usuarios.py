@@ -6,7 +6,7 @@ from src.core.security.session import (
     get_authenticated_user_id,
     require_authentication,
 )
-from src.core.services.usuarios import personal, usuario
+from src.core.services.usuarios import personal, rol, usuario
 from src.web.validators.usuarios.usuarios import validate_user_data
 
 
@@ -123,3 +123,60 @@ def new():
         dni=dni,
         mostrar_existente=mostrar_existente,
     )
+
+    
+
+@usuarios_controller.route("/editar", methods=["POST"])
+def edit():
+    """Muestra el formulario de edición o guarda sus cambios."""
+    _require_admin()
+    accion = request.form.get("accion", "")
+    usuario_actual = None
+    response = None
+
+    if accion == "seleccionar":
+        user_id = request.form.get("user_id", "")
+        if not user_id.isdigit():
+            abort(400)
+
+        usuario_actual = usuario.get_by_id(int(user_id))
+        if usuario_actual is None:
+            abort(404)
+
+        roles = rol.get_all()
+        response = render_template(
+            "usuarios/edit.html",
+            usuario=usuario_actual,
+            roles=roles,
+        )
+
+    elif accion == "guardar":
+        user_id = request.form.get("user_id", "")
+        email = request.form.get("email", "").strip()
+        alias = request.form.get("alias", "").strip()
+        rol_id_texto = request.form.get("rol_id", "")
+
+        if (
+            not user_id.isdigit()
+            or not email
+            or not alias
+            or not rol_id_texto.isdigit()
+        ):
+            abort(400)
+
+        usuario_actualizado = usuario.update(
+            user_id=int(user_id),
+            email=email,
+            alias=alias,
+            rol_id=int(rol_id_texto),
+        )
+
+        if usuario_actualizado is None:
+            abort(400, description="No se pudo actualizar el usuario")
+
+        response = redirect(url_for("usuarios.index"))
+
+    else:
+        abort(400, description="Acción no válida")
+
+    return response

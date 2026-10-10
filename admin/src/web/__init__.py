@@ -4,11 +4,15 @@ from flask import Flask, render_template
 from flask_session import Session
 
 from .config import config
-from src.core import database
+
 from src.web.controllers.auth import auth_bp
 from src.web.controllers.auth.api_auth import api_auth_controller
 from src.web.controllers.usuarios.usuarios import usuarios_controller
 from src.web.handlers import error
+
+from src.core import database
+from src.core.services.usuarios import usuario
+from src.core.security.session import get_authenticated_user_id
 
 
 def create_app(
@@ -26,6 +30,14 @@ def create_app(
 
     Session(app)
     database.init_app(app) 
+
+    @app.context_processor
+    def inject_authenticated_user():
+        """Expone el usuario autenticado a las plantillas."""
+        user_id = get_authenticated_user_id()
+        usuario_actual = usuario.get_by_id(user_id) if user_id is not None else None
+
+        return {"usuario_actual": usuario_actual}
 
     @app.route("/")
     def home():

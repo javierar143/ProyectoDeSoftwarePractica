@@ -12,3 +12,10 @@ def get_by_name(nombre: str) -> Rol | None:
     rol = db.session.execute(statement).scalar_one_or_none()
     
     return rol
+
+def get_all() -> list[Rol]:
+    """Obtiene todos los roles registrados."""
+    statement = select(Rol)
+    roles = db.session.execute(statement).scalars().all()
+
+    return roles
