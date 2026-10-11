@@ -7,7 +7,7 @@ from .config import config
 
 from src.web.controllers.auth import auth_bp
 from src.web.controllers.auth.api_auth import api_auth_controller
-from src.web.controllers.usuarios.usuarios import usuarios_controller
+from src.web.controllers.usuarios import usuarios_controller
 from src.web.handlers import error
 
 from src.core import database

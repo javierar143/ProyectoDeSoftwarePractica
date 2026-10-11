@@ -1,14 +1,30 @@
 {% extends "layout.html" %}
 
+{% block module_styles %}
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/usuarios.css') }}"
+    >
+{% endblock %}
+
 {% block content %}
 <main>
     <h1>Administración de usuarios</h1>
 
     <section aria-labelledby="usuarios-title">
-        <h2 id="usuarios-title">Usuarios registrados</h2>
+        <div class="usuarios-toolbar">
+            <h2 id="usuarios-title">Usuarios registrados</h2>
+
+            <a
+                class="btn btn-primary"
+                href="{{ url_for('usuarios.alta_usuarios.new') }}"
+            >
+                + Crear usuario
+            </a>
+        </div>
 
         {% if usuarios %}
-            <table>
+            <table class="tabla-usuarios">
                 <caption>Listado de usuarios del sistema</caption>
 
                 <thead>
@@ -18,6 +34,7 @@
                         <th scope="col">Email</th>
                         <th scope="col">Estado</th>
                         <th scope="col">Rol</th>
+                        <th scope="col">Acciones</th>
                     </tr>
                 </thead>
 
@@ -35,6 +52,13 @@
                                 {% endif %}
                             </td>
                             <td>{{ rol_nombre }}</td>
+                            <td>
+                                <form method="post" action="{{ url_for('usuarios.edicion_usuarios.edit') }}">
+                                    <input type="hidden" name="accion" value="seleccionar">
+                                    <input type="hidden" name="user_id" value="{{ usuario.id_user }}">
+                                    <button type="submit">Editar</button>
+                                </form>
+                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>

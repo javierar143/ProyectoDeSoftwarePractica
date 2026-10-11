@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     {% block head %}
-        <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+        {% block module_styles %}{% endblock %}
     {% endblock %}
 </head>
 
@@ -23,7 +24,7 @@
             <span>Usuario: {{ usuario_actual.alias }}</span>
 
             {% if usuario_actual.isSystemAdmin %}
-                <a href="{{ url_for('usuarios.index') }}">
+                <a href="{{ url_for('usuarios.listado_usuarios.index') }}">
                     Administrar usuarios
                 </a>
             {% endif %}

@@ -22,7 +22,7 @@
         
         <h2>Personal existente</h2>
 
-        <form method="post" action="{{ url_for('usuarios.new') }}">
+        <form method="post" action="{{ url_for('usuarios.alta_usuarios.new') }}">
             <input type="hidden" name="accion" value="buscar_personal">
             <div>
                 <label for="dni">DNI</label>
@@ -60,7 +60,7 @@
                 </p>
             </section>
 
-            <form method="post" action="{{ url_for('usuarios.new') }}">
+            <form method="post" action="{{ url_for('usuarios.alta_usuarios.new') }}">
                 <input type="hidden" name="accion" value="crear_usuario">
                 <input
                     type="hidden"

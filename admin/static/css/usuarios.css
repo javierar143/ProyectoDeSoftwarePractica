@@ -1,0 +1,26 @@
+/**
+ * Estilos de la administración de usuarios.
+ */
+
+/* Acciones sobre el listado */
+.usuarios-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.usuarios-toolbar h2 {
+    margin: 0;
+}
+
+/* Tabla de usuarios */
+.tabla-usuarios th,
+.tabla-usuarios td {
+    padding: 0.75rem 1rem;
+}
+
+.tabla-usuarios tbody tr {
+    border-bottom: 1px solid #333;
+}
