@@ -55,7 +55,7 @@
                 <select id="idTipoPersonal" name="idTipoPersonal" required>
                     <option value="" disabled {{ 'selected' if not persona and not valores }}>Seleccionar tipo...</option>
                     {% for tp in tipos_personal %}
-                        {% set seleccionado = (valores and valores.idTipoPersonal == tp.idTipoPersonal|string) or (persona and persona.idTipoPersonal == tp.idTipoPersonal) %}
+                        {% set seleccionado = (valores.idTipoPersonal == tp.idTipoPersonal|string) if valores else (persona and persona.idTipoPersonal == tp.idTipoPersonal) %}
                         <option value="{{ tp.idTipoPersonal }}" {{ 'selected' if seleccionado }}>
                             {{ tp.nombre }}
                         </option>
@@ -68,7 +68,7 @@
                 <select id="idTipoMenu" name="idTipoMenu" required>
                     <option value="" disabled {{ 'selected' if not persona and not valores }}>Seleccionar menú...</option>
                     {% for tm in tipos_menu %}
-                        {% set seleccionado = (valores and valores.idTipoMenu == tm.idTipoMenu|string) or (persona and persona.idTipoMenu == tm.idTipoMenu) %}
+                        {% set seleccionado = (valores.idTipoMenu == tm.idTipoMenu|string) if valores else (persona and persona.idTipoMenu == tm.idTipoMenu) %}
                         <option value="{{ tm.idTipoMenu }}" {{ 'selected' if seleccionado }}>
                             {{ tm.nombre }}
                         </option>

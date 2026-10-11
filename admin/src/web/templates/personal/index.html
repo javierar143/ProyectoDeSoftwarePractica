@@ -59,6 +59,12 @@
                                         Desactivar
                                     </button>
                                 </form>
+                            {% else %}
+                                <form action="{{ url_for('personal.activar', id=p.idPersonal) }}" method="POST" style="display: inline;" onsubmit="return confirm('¿Confirmar la reactivación?');">
+                                    <button type="submit" style="background: none; border: none; color: #16a34a; cursor: pointer; text-decoration: underline;">
+                                        Activar
+                                    </button>
+                                </form>
                             {% endif %}
                         </td>
                     </tr>
