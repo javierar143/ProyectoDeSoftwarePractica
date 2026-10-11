@@ -1,149 +1,38 @@
+
 {% extends "layout.html" %}
 
 {% block content %}
 <main>
     <h1>Alta de usuarios</h1>
 
-    <section>
+    <section aria-label="Tipo de alta">
         <button type="button" id="btn-existente">
             Alta de Usuario
         </button>
 
         <button type="button" id="btn-nuevo">
-             Alta de Personal y Usuario
+            Alta de Personal y Usuario
         </button>
     </section>
+
+    {% if error %}
+        <div class="alert alert-danger" role="alert">
+            {{ error }}
+        </div>
+    {% endif %}
 
     <section
         id="panel-existente"
         data-mostrar-inicial="{{ 'true' if mostrar_existente else 'false' }}"
-        hidden
+        {% if not mostrar_existente %}hidden{% endif %}
     >
-        
-        <h2>Personal existente</h2>
-
-        <form method="post" action="{{ url_for('usuarios.alta_usuarios.new') }}">
-            <input type="hidden" name="accion" value="buscar_personal">
-            <div>
-                <label for="dni">DNI</label>
-                <input
-                    
-                    type="text"
-                    id="dni"
-                    name="dni"
-                    value="{{ dni }}"
-                    required
-                    inputmode="numeric"
-                >
-            </div>
-
-            <button type="submit">Buscar DNI</button>
-        </form>
-
-        {% if dni and not persona_encontrada %}
-            <p>No se encontró personal con el DNI ingresado.</p>
-        {% endif %}
-
-        {% if persona_encontrada %}
-            <section>
-                <h3>Personal seleccionado</h3>
-
-                <p>
-                    <strong>Nombre:</strong>
-                    {{ persona_encontrada.nombre }}
-                    {{ persona_encontrada.apellido }}
-                </p>
-
-                <p>
-                    <strong>DNI:</strong>
-                    {{ persona_encontrada.dni }}
-                </p>
-            </section>
-
-            <form method="post" action="{{ url_for('usuarios.alta_usuarios.new') }}">
-                <input type="hidden" name="accion" value="crear_usuario">
-                <input
-                    type="hidden"
-                    name="personal_id"
-                    value="{{ persona_encontrada.idPersonal }}"
-                >
-
-                <fieldset>
-                    <legend>Datos del usuario</legend>
-
-                    <div>
-                        <label for="email-existente">Email</label>
-                        <input
-                            type="email"
-                            id="email-existente"
-                            name="email"
-                            required
-                            autocomplete="email"
-                        >
-                    </div>
-
-                    <div>
-                        <label for="alias-existente">Alias</label>
-                        <input
-                            type="text"
-                            id="alias-existente"
-                            name="alias"
-                            required
-                            autocomplete="username"
-                        >
-                    </div>
-
-                    <div>
-                        <label for="password-existente">Contraseña</label>
-                        <input
-                            type="password"
-                            id="password-existente"
-                            name="password"
-                            required
-                            autocomplete="new-password"
-                        >
-                    </div>
-
-                    <div>
-                        <input
-                            type="checkbox"
-                            id="admin-existente"
-                            name="is_system_admin"
-                        >
-                        <label for="admin-existente">
-                            Administrador del sistema
-                        </label>
-                    </div>
-
-                    <div>
-                        <label for="rol-existente">Rol</label>
-                        <select
-                            id="rol-existente"
-                            name="rol_nombre"
-                            required
-                        >
-                            <option value="">Seleccione un rol</option>
-                            <option value="Jefe de Servicio">
-                                Jefe de Servicio
-                            </option>
-                            <option value="Servicio de Alimentación">
-                                Servicio de Alimentación
-                            </option>
-                            <option value="Sector Comedor">
-                                Sector Comedor
-                            </option>
-                        </select>
-                    </div>
-                </fieldset>
-
-                <button type="submit">Crear usuario</button>
-            </form>
-        {% endif %}
+        {% include "usuarios/partials/_form_usuario_existente.html" %}
     </section>
 
     <section id="panel-nuevo" hidden>
         {% include "usuarios/partials/_form_personal_usuario.html" %}
     </section>
 </main>
+
 <script src="{{ url_for('static', filename='js/usuarios/nuevo.js') }}"></script>
 {% endblock %}

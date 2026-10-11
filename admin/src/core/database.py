@@ -24,6 +24,12 @@ def reset_db():
     load_personal_temporal()
     #hasta aca borrar!!!!!!!!!!
 
+    #seed de permisos
+    from src.core.seeds.permisos import load_permisos
+
+    load_permisos()
+    #fin de seed de permisos
+
 
 
 

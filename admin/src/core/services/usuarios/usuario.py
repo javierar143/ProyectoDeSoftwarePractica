@@ -22,6 +22,7 @@ def get_by_id(user_id: int) -> Usuario | None:
     return usuario_encontrado
 
 
+
 def create(
     email: str,
     alias: str,
@@ -29,32 +30,37 @@ def create(
     is_system_admin: bool,
     rol_nombre: str,
     personal_id: int,
-) -> Usuario | None:
-    """Crea un usuario validando email único y existencia del rol."""
+) -> Usuario:
+    """Crea un usuario y comunica los errores de validación."""
     usuario_existente = usuario.get_by_email(email)
+
+    if usuario_existente is not None:
+        raise ValueError("El email ya está registrado.")
+
     rol_encontrado = rol.get_by_name(rol_nombre)
-    
-    nuevo_usuario = None
 
-    if usuario_existente is None and rol_encontrado is not None:
-        ahora = datetime.now()
-        password_hash = hash_password(password)
+    if rol_encontrado is None:
+        raise ValueError("El rol seleccionado no existe.")
 
-        nuevo_usuario = Usuario(
-            email=email,
-            alias=alias,
-            password_hash=password_hash,
-            isSystemAdmin=is_system_admin,
-            isActive=True,
-            updated_at=ahora,
-            inserted_at=ahora,
-            idRol=rol_encontrado.idRol,
-            idPersonal=personal_id,
-        )
+    ahora = datetime.now()
+    password_hash = hash_password(password)
 
-        usuario.create(nuevo_usuario)
+    nuevo_usuario = Usuario(
+        email=email,
+        alias=alias,
+        password_hash=password_hash,
+        isSystemAdmin=is_system_admin,
+        isActive=True,
+        updated_at=ahora,
+        inserted_at=ahora,
+        idRol=rol_encontrado.idRol,
+        idPersonal=personal_id,
+    )
+
+    usuario.create(nuevo_usuario)
 
     return nuevo_usuario
+
 
 
 def update(
@@ -63,38 +69,60 @@ def update(
     alias: str,
     rol_id: int,
 ) -> Usuario | None:
-    """Modifica los datos administrables de un usuario."""
+    """Modifica los datos administrables de un usuario si son válidos."""
     usuario_actual = usuario.get_by_id(user_id)
+    email_existente = usuario.get_by_email(email)
+    rol_encontrado = rol.get_by_id(rol_id)
     usuario_actualizado = None
 
-    if usuario_actual is not None:
-        email_existente = usuario.get_by_email(email)
+    email_disponible = (
+        email_existente is None
+        or email_existente.id_user == user_id
+    )
 
-        if (
-            email_existente is None
-            or email_existente.id_user == user_id
-        ):
-            usuario_actual.email = email
-            usuario_actual.alias = alias
-            usuario_actual.idRol = rol_id
-            usuario_actual.updated_at = datetime.now()
-
-            usuario_actualizado = usuario.update(usuario_actual)
-
-    return usuario_actualizado
-
-
-def set_active(user_id: int, is_active: bool) -> Usuario | None:
-    """Activa o desactiva lógicamente una cuenta de usuario."""
-    usuario_actual = usuario.get_by_id(user_id)
-    usuario_actualizado = None
-
-    if usuario_actual is not None:
-        usuario_actual.isActive = is_active
+    if (
+        usuario_actual is not None
+        and email_disponible
+        and rol_encontrado is not None
+    ):
+        usuario_actual.email = email
+        usuario_actual.alias = alias
+        usuario_actual.idRol = rol_encontrado.idRol
         usuario_actual.updated_at = datetime.now()
+
         usuario_actualizado = usuario.update(usuario_actual)
 
     return usuario_actualizado
+
+
+
+def set_active(user_id: int, is_active: bool) -> Usuario | None:
+    """Activa o bloquea una cuenta, respetando las restricciones de seguridad."""
+    usuario_actual = usuario.get_by_id(user_id)
+
+    if usuario_actual is None:
+        return None
+
+    rol_actual = rol.get_by_id(usuario_actual.idRol)
+
+    es_administrador = (
+        usuario_actual.isSystemAdmin
+        or (
+            rol_actual is not None
+            and rol_actual.nombre == "Administrador"
+        )
+    )
+
+    if es_administrador and not is_active:
+        raise ValueError(
+            "No se puede bloquear una cuenta de administrador."
+        )
+
+    usuario_actual.isActive = is_active
+    usuario_actual.updated_at = datetime.now()
+
+    return usuario.update(usuario_actual)
+
     
 
 def get_all_with_role() -> list[tuple[Usuario, str]]:

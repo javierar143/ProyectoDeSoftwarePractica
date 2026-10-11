@@ -1,27 +1,34 @@
+
 {#
-    Parcial de plantilla para el alta conjunta de Personal y Usuario.
+    Formulario para el alta conjunta de Personal y Usuario.
 
-    Actualmente, el formulario es solo visual y sus campos están
-    deshabilitados. La implementación del procesamiento queda pendiente.
-
-    Cuando esté disponible el módulo de Personal, se deberá integrar
-    su servicio para crear la persona y asociarla al usuario nuevo.
+    PENDIENTE DE INTEGRACIÓN:
+    - Incorporar los campos definitivos del módulo de Personal.
+    - Reutilizar las validaciones y el servicio de creación de Personal.
+    - Coordinar ambas altas dentro de una única transacción.
+    - Revertir ambas operaciones si alguna falla.
 #}
 
-<h2>Personal nuevo</h2>
+<h2>Alta de Personal y Usuario</h2>
 
-<form method="post" action="{{ url_for('usuarios.alta_usuarios.new') }}">
-    {#
-        PENDIENTE: INTEGRACIÓN CON EL MÓDULO DE PERSONAL DE GIANE.
+<form
+    method="post"
+    action="{{ url_for('usuarios.alta_usuarios.new') }}"
+>
+    <input
+        type="hidden"
+        name="accion"
+        value="crear_personal_usuario"
+    >
 
-        Reemplazar estos campos por los que defina el módulo de Personal,
-        reutilizando sus validaciones y servicios, sin duplicar lógica.
-
-        El backend deberá crear primero el registro de Personal y obtener
-        su identificador para asociarlo al Usuario.
-    #}
     <fieldset>
         <legend>Datos personales</legend>
+
+        {#
+            Estos campos son provisionales.
+            Reemplazarlos o adaptarlos al formulario real de Personal
+            cuando esté disponible su implementación.
+        #}
 
         <div>
             <label for="nombre-personal">Nombre</label>
@@ -29,7 +36,7 @@
                 type="text"
                 id="nombre-personal"
                 name="nombre_personal"
-                required
+                autocomplete="given-name"
                 disabled
             >
         </div>
@@ -40,7 +47,7 @@
                 type="text"
                 id="apellido-personal"
                 name="apellido_personal"
-                required
+                autocomplete="family-name"
                 disabled
             >
         </div>
@@ -51,20 +58,12 @@
                 type="text"
                 id="dni-personal"
                 name="dni_personal"
-                required
                 inputmode="numeric"
                 disabled
             >
         </div>
     </fieldset>
 
-    {#
-        DATOS DEL USUARIO.
-
-        Estos campos corresponden al módulo de Usuarios.
-        Al implementar el alta conjunta, se deberán reutilizar
-        sus validaciones y servicios existentes.
-    #}
     <fieldset>
         <legend>Datos del usuario</legend>
 
@@ -74,7 +73,6 @@
                 type="email"
                 id="email-nuevo"
                 name="email"
-                required
                 autocomplete="email"
                 disabled
             >
@@ -86,7 +84,6 @@
                 type="text"
                 id="alias-nuevo"
                 name="alias"
-                required
                 autocomplete="username"
                 disabled
             >
@@ -98,7 +95,6 @@
                 type="password"
                 id="password-nuevo"
                 name="password"
-                required
                 autocomplete="new-password"
                 disabled
             >
@@ -121,31 +117,18 @@
             <select
                 id="rol-nuevo"
                 name="rol_nombre"
-                required
                 disabled
             >
                 <option value="">Seleccione un rol</option>
-                <option value="Jefe de Servicio">
-                    Jefe de Servicio
-                </option>
+                <option value="Jefe de Servicio">Jefe de Servicio</option>
                 <option value="Servicio de Alimentación">
                     Servicio de Alimentación
                 </option>
-                <option value="Sector Comedor">
-                    Sector Comedor
-                </option>
+                <option value="Sector Comedor">Sector Comedor</option>
             </select>
         </div>
     </fieldset>
 
-    {#
-        PENDIENTE: habilitar el envío cuando el backend esté implementado.
-
-        El controlador deberá coordinar los servicios de Personal y
-        Usuarios. La operación debe evitar que quede una persona creada
-        sin su usuario si falla alguna parte del proceso; evaluar una
-        transacción de base de datos para mantener la atomicidad.
-    #}
     <button type="submit" disabled>
         Crear Personal y Usuario
     </button>

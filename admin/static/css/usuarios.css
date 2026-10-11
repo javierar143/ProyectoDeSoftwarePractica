@@ -24,3 +24,16 @@
 .tabla-usuarios tbody tr {
     border-bottom: 1px solid #333;
 }
+
+/* Identifica visualmente a los administradores en el listado. */
+.badge-admin {
+    display: inline-block;
+    margin-left: 0.4rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.3rem;
+    background-color: #e8edf5;
+    color: #24466b;
+    font-size: 0.75rem;
+    font-weight: 600;
+    vertical-align: middle;
+}

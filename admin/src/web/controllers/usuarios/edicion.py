@@ -3,10 +3,7 @@
 
 from flask import Blueprint, abort, redirect, render_template, request, session, url_for
 
-from src.core.security.session import (
-    get_authenticated_user_id,
-    require_authentication,
-)
+from src.core.security.permissions import require_permission
 from src.core.services.usuarios import rol, usuario
 
 
@@ -17,16 +14,8 @@ edicion_controller = Blueprint(
 )
 
 def _require_admin() -> None:
-    """Verifica que el usuario autenticado tenga permisos de administrador."""
-    require_authentication()
-
-    user_id = get_authenticated_user_id()
-    usuario_actual = usuario.get_by_id(user_id)
-
-    if usuario_actual is None or not usuario_actual.isSystemAdmin:
-        abort(403)
-
-    return None
+    """Exige permiso para consultar y gestionar usuarios."""
+    require_permission("user_index")
 
 
 def _select_user_for_editing() -> None:

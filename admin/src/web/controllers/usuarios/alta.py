@@ -1,118 +1,158 @@
 
-"""Controlador web para el alta de usuarios."""
+"""Controlador para el alta de usuarios."""
 
 from flask import Blueprint, abort, redirect, render_template, request, url_for
 
-from src.core.security.session import (
-    get_authenticated_user_id,
-    require_authentication,
-)
+from src.core.security.permissions import require_permission
+
 from src.core.services.usuarios import personal, usuario
 from src.web.validators.usuarios.usuarios import validate_user_data
 
 
-alta_controller = Blueprint(
-    "alta_usuarios",
-    __name__,
-)
+alta_controller = Blueprint("alta_usuarios", __name__)
 
 
 def _require_admin() -> None:
-    """Verifica que el usuario autenticado tenga permisos de administrador."""
-    require_authentication()
-
-    user_id = get_authenticated_user_id()
-    usuario_actual = usuario.get_by_id(user_id)
-
-    if usuario_actual is None or not usuario_actual.isSystemAdmin:
-        abort(403)
-
-    return None
+    """Exige permiso para dar de alta usuarios."""
+    require_permission("user_new")
 
 
-def _get_persona_by_dni() -> tuple[str, dict | None]:
-    """Obtiene el DNI del formulario y busca el personal correspondiente."""
+def _get_form_data() -> dict[str, str]:
+    """Recupera los datos del formulario de usuario."""
+    form_data = {
+        "email": request.form.get("email", "").strip(),
+        "alias": request.form.get("alias", "").strip(),
+        "rol_nombre": request.form.get("rol_nombre", ""),
+        "personal_id": request.form.get("personal_id", ""),
+        "is_system_admin": request.form.get("is_system_admin", ""),
+    }
+
+    return form_data
+
+
+def _get_personal(dni: str):
+    """Busca un registro de Personal mediante su DNI."""
+    persona = personal.get_by_dni(dni) if dni else None
+
+    return persona
+
+
+def _render_form(
+    dni: str = "",
+    persona_encontrada=None,
+    mostrar_existente: bool = False,
+    error: str | None = None,
+    form_data: dict[str, str] | None = None,
+):
+    """Renderiza la pantalla de alta con los datos disponibles."""
+    response = render_template(
+        "usuarios/new.html",
+        dni=dni,
+        persona_encontrada=persona_encontrada,
+        mostrar_existente=mostrar_existente,
+        error=error,
+        form_data=form_data or {},
+    )
+
+    return response
+
+
+def _search_personal():
+    """Procesa la búsqueda de Personal por DNI."""
     dni = request.form.get("dni", "").strip()
-    persona_encontrada = None
+    persona = _get_personal(dni)
 
-    if dni:
-        persona_encontrada = personal.get_by_dni(dni)
+    response = _render_form(
+        dni=dni,
+        persona_encontrada=persona,
+        mostrar_existente=True,
+    )
 
-    return dni, persona_encontrada
+    return response
 
 
-def _create_user() -> None:
-    """Valida los datos del formulario y solicita la creación del usuario."""
-    email = request.form.get("email", "")
-    alias = request.form.get("alias", "")
+def _validate_and_create_user(form_data: dict[str, str]) -> str | None:
+    """Valida los datos y crea un usuario asociado a Personal existente."""
     password = request.form.get("password", "")
-    rol_nombre = request.form.get("rol_nombre", "")
-    personal_id = request.form.get("personal_id", "")
-    is_system_admin = request.form.get("is_system_admin") == "on"
+    error = None
 
     datos_validos = validate_user_data(
-        email,
-        alias,
+        form_data["email"],
+        form_data["alias"],
         password,
-        rol_nombre,
-        personal_id,
+        form_data["rol_nombre"],
+        form_data["personal_id"],
     )
 
     if not datos_validos:
-        abort(400, description="Datos de usuario inválidos")
+        error = "Completá correctamente todos los campos obligatorios."
+    else:
+        try:
+            usuario.create(
+                email=form_data["email"],
+                alias=form_data["alias"],
+                password=password,
+                is_system_admin=form_data["is_system_admin"] == "on",
+                rol_nombre=form_data["rol_nombre"],
+                personal_id=int(form_data["personal_id"]),
+            )
+        except ValueError as excepcion:
+            error = str(excepcion)
 
-    nuevo_usuario = usuario.create(
-        email=email,
-        alias=alias,
-        password=password,
-        is_system_admin=is_system_admin,
-        rol_nombre=rol_nombre,
-        personal_id=int(personal_id),
-    )
+    return error
 
-    if nuevo_usuario is None:
-        abort(400, description="No se pudo crear el usuario")
 
-    return None
+def _create_user():
+    """Procesa el alta de un usuario para Personal existente."""
+    dni = request.form.get("dni", "").strip()
+    persona = _get_personal(dni)
+    form_data = _get_form_data()
+    error = None
+
+    if persona is None:
+        error = "No se encontró el Personal asociado al usuario."
+    else:
+        error = _validate_and_create_user(form_data)
+
+    if error is None:
+        response = redirect(url_for("usuarios.listado_usuarios.index"))
+    else:
+        response = _render_form(
+            dni=dni,
+            persona_encontrada=persona,
+            mostrar_existente=True,
+            error=error,
+            form_data=form_data,
+        )
+
+    return response
+
+
+def _handle_post():
+    """Deriva la petición POST a la acción correspondiente."""
+    acciones = {
+        "buscar_personal": _search_personal,
+        "crear_usuario": _create_user,
+    }
+    accion = request.form.get("accion", "")
+    manejador = acciones.get(accion)
+
+    if manejador is None:
+        abort(400, description="Acción no válida")
+
+    response = manejador()
+
+    return response
 
 
 @alta_controller.route("/nuevo", methods=["GET", "POST"])
 def new():
-    """Muestra y procesa el formulario de alta de usuarios."""
+    """Coordina la pantalla de alta de usuarios."""
     _require_admin()
 
-    dni = ""
-    persona_encontrada = None
-    mostrar_existente = False
-    response = None
-
-    if request.method == "POST":
-        accion = request.form.get("accion", "")
-
-        if accion == "buscar_personal":
-            dni, persona_encontrada = _get_persona_by_dni()
-            mostrar_existente = True
-
-        elif accion == "crear_usuario":
-            _create_user()
-            response = redirect(url_for("usuarios.listado_usuarios.index"))
-
-        else:
-            abort(400, description="Acción no válida")
+    if request.method == "GET":
+        response = _render_form()
     else:
-        response = render_template(
-            "usuarios/new.html",
-            persona_encontrada=persona_encontrada,
-            dni=dni,
-            mostrar_existente=mostrar_existente,
-        )
-
-    if request.method == "POST" and accion == "buscar_personal":
-        response = render_template(
-            "usuarios/new.html",
-            persona_encontrada=persona_encontrada,
-            dni=dni,
-            mostrar_existente=mostrar_existente,
-        )
+        response = _handle_post()
 
     return response

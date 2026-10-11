@@ -1,7 +1,8 @@
+
 /**
  * Inicializa los controles del formulario de alta de usuarios.
- * Gestiona la visibilidad y habilitación de los paneles
- * de alta de usuario existente y de personal nuevo.
+ * Gestiona la visibilidad de los paneles y conserva deshabilitados
+ * los controles que todavía no están implementados.
  */
 document.addEventListener("DOMContentLoaded", function () {
     const botonExistente = document.getElementById("btn-existente");
@@ -10,8 +11,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const panelNuevo = document.getElementById("panel-nuevo");
 
     /**
-     * Muestra el panel activo y deshabilita los campos
-     * del panel inactivo para evitar el envío de sus datos.
+     * Muestra el panel activo y oculta el otro.
+     *
+     * No modifica el estado disabled de los controles: cada formulario
+     * define qué campos están disponibles según su implementación.
      *
      * @param {HTMLElement} panelActivo - Panel que se mostrará.
      * @param {HTMLElement} panelInactivo - Panel que se ocultará.
@@ -19,18 +22,6 @@ document.addEventListener("DOMContentLoaded", function () {
     function mostrarPanel(panelActivo, panelInactivo) {
         panelActivo.hidden = false;
         panelInactivo.hidden = true;
-
-        panelActivo
-            .querySelectorAll("input, select, textarea, button")
-            .forEach(function (campo) {
-                campo.disabled = false;
-            });
-
-        panelInactivo
-            .querySelectorAll("input, select, textarea, button")
-            .forEach(function (campo) {
-                campo.disabled = true;
-            });
     }
 
     botonExistente.addEventListener("click", function () {

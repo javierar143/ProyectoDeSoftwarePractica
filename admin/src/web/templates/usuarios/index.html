@@ -32,7 +32,7 @@
                         <th scope="col">ID</th>
                         <th scope="col">Alias</th>
                         <th scope="col">Email</th>
-                        <th scope="col">Estado</th>
+                        <th scope="col">Activo</th>
                         <th scope="col">Rol</th>
                         <th scope="col">Acciones</th>
                     </tr>
@@ -42,13 +42,18 @@
                     {% for usuario, rol_nombre in usuarios %}
                         <tr>
                             <td>{{ usuario.id_user }}</td>
-                            <td>{{ usuario.alias }}</td>
+                            <td>
+                                {{ usuario.alias }}
+                                {% if usuario.isSystemAdmin %}
+                                    <span class="badge-admin">Admin</span>
+                                {% endif %}
+                            </td>
                             <td>{{ usuario.email }}</td>
                             <td>
                                 {% if usuario.isActive %}
-                                    Activo
+                                    Sí
                                 {% else %}
-                                    Inactivo
+                                    No
                                 {% endif %}
                             </td>
                             <td>{{ rol_nombre }}</td>
@@ -58,6 +63,38 @@
                                     <input type="hidden" name="user_id" value="{{ usuario.id_user }}">
                                     <button type="submit">Editar</button>
                                 </form>
+                                                                
+                               
+                                {% if not usuario.isSystemAdmin and rol_nombre != "Administrador" %}
+                                    {% if usuario.isActive %}
+                                        <form
+                                            method="post"
+                                            action="{{ url_for('usuarios.listado_usuarios.desactivar') }}"
+                                            onsubmit="return confirm('¿Confirmás el bloqueo de este usuario?');"
+                                        >
+                                            <input
+                                                type="hidden"
+                                                name="user_id"
+                                                value="{{ usuario.id_user }}"
+                                            >
+                                            <button type="submit">Bloquear</button>
+                                        </form>
+                                    {% else %}
+                                        <form
+                                            method="post"
+                                            action="{{ url_for('usuarios.listado_usuarios.activar') }}"
+                                            onsubmit="return confirm('¿Confirmás el desbloqueo de este usuario?');"
+                                        >
+                                            <input
+                                                type="hidden"
+                                                name="user_id"
+                                                value="{{ usuario.id_user }}"
+                                            >
+                                            <button type="submit">Desbloquear</button>
+                                        </form>
+                                    {% endif %}
+                                {% endif %}
+
                             </td>
                         </tr>
                     {% endfor %}

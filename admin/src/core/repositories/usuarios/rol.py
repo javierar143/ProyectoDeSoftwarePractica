@@ -13,6 +13,13 @@ def get_by_name(nombre: str) -> Rol | None:
     
     return rol
 
+def get_by_id(rol_id: int) -> Rol | None:
+    """Obtiene un rol a partir de su identificador."""
+    statement = select(Rol).where(Rol.idRol == rol_id)
+    rol_encontrado = db.session.execute(statement).scalar_one_or_none()
+
+    return rol_encontrado
+
 def get_all() -> list[Rol]:
     """Obtiene todos los roles registrados."""
     statement = select(Rol)
