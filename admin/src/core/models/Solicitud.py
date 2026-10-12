@@ -2,7 +2,7 @@
 
 from datetime import date, datetime
 
-from sqlalchemy import Enum, ForeignKey
+from sqlalchemy import Enum, ForeignKey, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core.database import BaseModel
@@ -32,3 +32,25 @@ class Solicitud(BaseModel):
     idUserEvaluador: Mapped[int | None] = mapped_column(ForeignKey("Usuario.id_user"))
     inserted_at: Mapped[datetime] = mapped_column(default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(default=datetime.now, onupdate=datetime.now)
+
+    @classmethod
+    def existe_duplicado(cls, session, id_personal, id_sector, fecha, id_tipo_comida):
+        """
+        Delega al modelo la verificación de unicidad cruzando Solicitud con Pedido.
+        Devuelve True si la persona ya tiene esa comida en ese sector para esa fecha.
+        """
+        from src.core.models.Pedido import Pedido
+
+        stmt = (
+            select(cls)
+            .join(Pedido, cls.idPedido == Pedido.idPedido)
+            .where(
+                cls.idPersonal == id_personal,
+                cls.fecha_vianda == fecha,
+                cls.idTipoComida == id_tipo_comida,
+                Pedido.idSector == id_sector
+            )
+        )
+
+        resultado = session.execute(stmt).scalars().first()
+        return resultado is not None
