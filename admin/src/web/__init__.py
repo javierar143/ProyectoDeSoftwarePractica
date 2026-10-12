@@ -11,7 +11,8 @@ from src.web.controllers.usuarios.usuarios import usuarios_controller
 from src.web.controllers.personal.personal import personal_bp
 from src.web.controllers.autorizaciones.api_autorizaciones import api_autorizaciones_controller
 from src.web.handlers import error
-from .controllers.cupos.api_cupos import bp_cupos
+from src.web.controllers.cupos.api_cupos import bp_cupos
+from src.web.controllers.pedidos.api_pedidos import bp_pedidos
 
 
 def create_app(
@@ -68,5 +69,5 @@ def create_app(
     # CUPOS Y PEDIDOS
     # =========================
     app.register_blueprint(bp_cupos)
-
+    app.register_blueprint(bp_pedidos)
     return app
