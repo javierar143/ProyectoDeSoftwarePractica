@@ -10,6 +10,7 @@ from src.web.controllers.auth.api_auth import api_auth_controller
 from src.web.controllers.usuarios.usuarios import usuarios_controller
 from src.web.controllers.personal.personal import personal_bp
 from src.web.controllers.autorizaciones.api_autorizaciones import api_autorizaciones_controller
+from src.web.controllers.configuracion.config import config_controller
 from src.web.handlers import error
 
 
@@ -62,6 +63,7 @@ def create_app(
     # =========================
     # OPERACIÓN/AUTORIZACIONES
     # =========================
+    app.register_blueprint(config_controller)
     app.register_blueprint(api_autorizaciones_controller)
 
     return app

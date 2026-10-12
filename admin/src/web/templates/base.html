@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<!-- BORRAR/MERGEAR CUANDO SANTI HAGA BASE.HTML -->
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Mi Aplicación{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+
+    <header>
+        <h1>Mi Aplicación</h1>
+    </header>
+    <nav>
+        <a href="#">Ajustes del Sistema</a>
+    </nav>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>© Mi Aplicación</p>
+    </footer>
+
+</body>
+</html>
