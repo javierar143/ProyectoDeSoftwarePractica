@@ -1,18 +1,13 @@
-"""Repositorio temporal para la consulta de personal."""
 
-from src.core.seeds.personal_temporal import PERSONAL_TEMPORAL
+"""Repositorio de consultas de personal."""
+
+from sqlalchemy import select
+
+from src.core.database import db
+from src.core.models.Personal import Personal
 
 
-def get_by_dni(dni: str) -> dict | None:
-    """Obtiene una persona temporal a partir de su DNI."""
-    persona_encontrada = None
-
-    # TODO: reemplazar esta consulta temporal por la consulta
-    # al modelo Personal cuando el módulo esté disponible.
-
-    for persona in PERSONAL_TEMPORAL:
-        if persona["dni"] == dni:
-            persona_encontrada = persona
-            break
-
-    return persona_encontrada
+def get_by_dni(dni: str) -> Personal | None:
+    """Obtiene una persona por DNI, o None si no existe."""
+    statement = select(Personal).where(Personal.dni == dni)
+    return db.session.execute(statement).scalar_one_or_none()
