@@ -1,0 +1,194 @@
+"""Controlador para la gestión de Personal."""
+
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+)
+from src.core.services.personal import personal as service_personal
+
+personal_bp = Blueprint("personal", __name__, url_prefix="/personal")
+
+
+@personal_bp.get("")
+def index():
+    """Listado general de personal."""
+    lista_personal = service_personal.get_all()
+    return render_template("personal/index.html", personal=lista_personal)
+
+
+@personal_bp.get("/nuevo")
+def nuevo_form():
+    """Muestra el formulario vacío para cargar un nuevo empleado."""
+    tipos_personal = service_personal.get_tipos_personal()
+    tipos_menu = service_personal.get_tipos_menu()
+    return render_template(
+        "personal/form.html",
+        persona=None,
+        tipos_personal=tipos_personal,
+        tipos_menu=tipos_menu,
+    )
+
+
+@personal_bp.post("/nuevo")
+def nuevo():
+    """Procesa el formulario y da de alta a la persona mediante el servicio."""
+    dni = request.form.get("dni", "").strip()
+    nombre = request.form.get("nombre", "").strip()
+    apellido = request.form.get("apellido", "").strip()
+    id_tipo_personal = request.form.get("idTipoPersonal")
+    id_tipo_menu = request.form.get("idTipoMenu")
+
+    errores = []
+    if not dni or not dni.isdigit():
+        errores.append("El DNI es obligatorio y debe contener solo números.")
+    if not nombre:
+        errores.append("El nombre es obligatorio.")
+    if not apellido:
+        errores.append("El apellido es obligatorio.")
+    if not id_tipo_personal:
+        errores.append("Debe seleccionar un tipo de personal.")
+    if not id_tipo_menu:
+        errores.append("Debe seleccionar un tipo de menú.")
+
+    tipos_personal = service_personal.get_tipos_personal()
+    tipos_menu = service_personal.get_tipos_menu()
+
+    if errores:
+        return render_template(
+            "personal/form.html",
+            persona=None,
+            tipos_personal=tipos_personal,
+            tipos_menu=tipos_menu,
+            errores=errores,
+            valores=request.form,
+        ), 400
+
+    persona_creada = service_personal.create(
+        dni=dni,
+        nombre=nombre,
+        apellido=apellido,
+        id_tipo_personal=int(id_tipo_personal),
+        id_tipo_menu=int(id_tipo_menu),
+    )
+
+    if persona_creada is None:
+        errores.append("Ya existe una persona registrada con ese DNI.")
+        return render_template(
+            "personal/form.html",
+            persona=None,
+            tipos_personal=tipos_personal,
+            tipos_menu=tipos_menu,
+            errores=errores,
+            valores=request.form,
+        ), 400
+
+    flash("Personal registrado con éxito.", "success")
+    return redirect(url_for("personal.index"), code=303)
+
+
+@personal_bp.get("/<int:id>/editar")
+def editar_form(id: int):
+    """Muestra el formulario para modificar datos de una persona."""
+    persona = service_personal.get_by_id(id)
+    if not persona:
+        flash("La persona solicitada no existe.", "danger")
+        return redirect(url_for("personal.index"), code=303)
+
+    tipos_personal = service_personal.get_tipos_personal()
+    tipos_menu = service_personal.get_tipos_menu()
+    return render_template(
+        "personal/form.html",
+        persona=persona,
+        tipos_personal=tipos_personal,
+        tipos_menu=tipos_menu,
+    )
+
+
+@personal_bp.post("/<int:id>/editar")
+def editar(id: int):
+    """Aplica las modificaciones llamando al servicio."""
+    persona = service_personal.get_by_id(id)
+    if not persona:
+        flash("La persona solicitada no existe.", "danger")
+        return redirect(url_for("personal.index"), code=303)
+
+    dni = request.form.get("dni", "").strip()
+    nombre = request.form.get("nombre", "").strip()
+    apellido = request.form.get("apellido", "").strip()
+    id_tipo_personal = request.form.get("idTipoPersonal")
+    id_tipo_menu = request.form.get("idTipoMenu")
+
+    errores = []
+    if not dni or not dni.isdigit():
+        errores.append("El DNI es obligatorio y debe contener solo números.")
+    if not nombre:
+        errores.append("El nombre es obligatorio.")
+    if not apellido:
+        errores.append("El apellido es obligatorio.")
+    if not id_tipo_personal:
+        errores.append("Debe seleccionar un tipo de personal.")
+    if not id_tipo_menu:
+        errores.append("Debe seleccionar un tipo de menú.")
+
+    tipos_personal = service_personal.get_tipos_personal()
+    tipos_menu = service_personal.get_tipos_menu()
+
+    if errores:
+        return render_template(
+            "personal/form.html",
+            persona=persona,
+            tipos_personal=tipos_personal,
+            tipos_menu=tipos_menu,
+            errores=errores,
+            valores=request.form,
+        ), 400
+
+    persona_actualizada = service_personal.update(
+        id_personal=id,
+        dni=dni,
+        nombre=nombre,
+        apellido=apellido,
+        id_tipo_personal=int(id_tipo_personal),
+        id_tipo_menu=int(id_tipo_menu),
+    )
+
+    if persona_actualizada is None:
+        errores.append("El DNI ingresado ya pertenece a otra persona.")
+        return render_template(
+            "personal/form.html",
+            persona=persona,
+            tipos_personal=tipos_personal,
+            tipos_menu=tipos_menu,
+            errores=errores,
+            valores=request.form,
+        ), 400
+
+    flash("Datos actualizados correctamente.", "success")
+    return redirect(url_for("personal.index"), code=303)
+
+
+@personal_bp.post("/<int:id>/desactivar")
+def desactivar(id: int):
+    """Baja lógica delegada al servicio."""
+    exito = service_personal.set_active(id_personal=id, is_active=False)
+    if exito:
+        flash("Se desactivó al personal correctamente.", "info")
+    else:
+        flash("No se encontró el registro.", "danger")
+
+    return redirect(url_for("personal.index"), code=303)
+
+@personal_bp.post("/<int:id>/activar")
+def activar(id: int):
+    """Reactivación de personal inactivo."""
+    exito = service_personal.set_active(id_personal=id, is_active=True)
+    if exito:
+        flash("Se activó al personal correctamente.", "success")
+    else:
+        flash("No se encontró el registro.", "danger")
+
+    return redirect(url_for("personal.index"), code=303)

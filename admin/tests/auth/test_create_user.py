@@ -12,7 +12,9 @@ from src.core.security.password import hash_password
 
 
 from src.core.models.Rol import Rol
-from src.core.models.PersonalTemporal import PersonalTemporal #cuando este hecho Personal reemplazar esto
+from src.core.models.Personal import Personal 
+from src.core.models.TipoPersonal import TipoPersonal
+from src.core.models.TipoMenu import TipoMenu
 
 from src.core.repositories.usuarios.usuario import create, get_by_email
 
@@ -33,9 +35,24 @@ def app():
 
 def test_create_user(app):
     rol = Rol(idRol=1, nombre="Administrador")
-    personal = PersonalTemporal(idPersonal=1)
+    tipo_p = TipoPersonal(idTipoPersonal=1, nombre="Fijo")
+    tipo_m = TipoMenu(idTipoMenu=1, nombre="General")
+    personal = Personal(
+        idPersonal=1,
+        dni="12345678",
+        nombre="Test",
+        apellido="Usuario",
+        isActive=True,
+        idTipoPersonal=1,
+        idTipoMenu=1,
+        inserted_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
 
     db.session.add(rol)
+    db.session.add(tipo_p)
+    db.session.add(tipo_m)
+    db.session.flush()
     db.session.add(personal)
     db.session.flush()
 
