@@ -37,3 +37,9 @@
     font-weight: 600;
     vertical-align: middle;
 }
+
+
+/* Evita el subrayado del enlace para crear usuarios. */
+.btn:hover {
+    text-decoration: none;
+}

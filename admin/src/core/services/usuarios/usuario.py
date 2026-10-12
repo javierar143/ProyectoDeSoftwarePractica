@@ -63,22 +63,26 @@ def create(
 
 
 
+
 def update(
     user_id: int,
     email: str,
     alias: str,
     rol_id: int,
+    is_system_admin: bool | None = None,
+    password: str = "",
 ) -> Usuario | None:
-    """Modifica los datos administrables de un usuario si son válidos."""
+    """Actualiza los datos de un usuario y su privilegio de administrador."""
     usuario_actual = usuario.get_by_id(user_id)
     email_existente = usuario.get_by_email(email)
     rol_encontrado = rol.get_by_id(rol_id)
-    usuario_actualizado = None
 
     email_disponible = (
         email_existente is None
         or email_existente.id_user == user_id
     )
+
+    usuario_actualizado = None
 
     if (
         usuario_actual is not None
@@ -88,11 +92,17 @@ def update(
         usuario_actual.email = email
         usuario_actual.alias = alias
         usuario_actual.idRol = rol_encontrado.idRol
-        usuario_actual.updated_at = datetime.now()
+        if is_system_admin is not None:
+            usuario_actual.isSystemAdmin = is_system_admin
 
+        if password:
+            usuario_actual.password_hash = hash_password(password)
+
+        usuario_actual.updated_at = datetime.now()
         usuario_actualizado = usuario.update(usuario_actual)
 
     return usuario_actualizado
+
 
 
 

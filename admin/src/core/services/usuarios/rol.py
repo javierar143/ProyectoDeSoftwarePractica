@@ -9,3 +9,10 @@ def get_all() -> list[Rol]:
     roles = rol.get_all()
 
     return roles
+
+
+def get_by_id(rol_id: int) -> Rol | None:
+    """Obtiene un rol por su identificador."""
+    rol_encontrado = rol.get_by_id(rol_id)
+
+    return rol_encontrado

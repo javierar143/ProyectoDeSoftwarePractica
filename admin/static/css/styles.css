@@ -134,3 +134,8 @@ footer {
 		padding: 16px;
 	}
 }
+
+dt {
+        font-size: 1.05rem;
+        font-weight: 700;
+    }

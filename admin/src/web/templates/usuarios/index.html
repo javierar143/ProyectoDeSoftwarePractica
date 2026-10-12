@@ -58,6 +58,11 @@
                             </td>
                             <td>{{ rol_nombre }}</td>
                             <td>
+                                <a  class="btn btn-primary"
+                                    href="{{ url_for('usuarios.listado_usuarios.detalle', user_id=usuario.id_user) }}"
+                                >
+                                    Ver detalles
+                                </a>
                                 <form method="post" action="{{ url_for('usuarios.edicion_usuarios.edit') }}">
                                     <input type="hidden" name="accion" value="seleccionar">
                                     <input type="hidden" name="user_id" value="{{ usuario.id_user }}">

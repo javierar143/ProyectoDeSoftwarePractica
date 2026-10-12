@@ -52,12 +52,15 @@ def _get_user_to_edit():
     return usuario_seleccionado
 
 
+
 def _save_user_changes() -> None:
     """Valida y persiste los cambios del usuario seleccionado."""
     user_id = session.get("usuario_editar_id")
     email = request.form.get("email", "").strip()
     alias = request.form.get("alias", "").strip()
     rol_id_texto = request.form.get("rol_id", "")
+    password = request.form.get("password", "")
+    is_system_admin = request.form.get("is_system_admin") == "on"
 
     if (
         not isinstance(user_id, int)
@@ -65,20 +68,23 @@ def _save_user_changes() -> None:
         or not alias
         or not rol_id_texto.isdigit()
     ):
-        abort(400)
+        abort(400, description="Datos de usuario inválidos.")
 
     usuario_actualizado = usuario.update(
         user_id=user_id,
         email=email,
         alias=alias,
         rol_id=int(rol_id_texto),
+        is_system_admin=is_system_admin,
+        password=password,
     )
 
     if usuario_actualizado is None:
-        abort(400, description="No se pudo actualizar el usuario")
+        abort(400, description="No se pudo actualizar el usuario.")
 
     session.pop("usuario_editar_id", None)
     return None
+
 
 
 def _render_edit_form():

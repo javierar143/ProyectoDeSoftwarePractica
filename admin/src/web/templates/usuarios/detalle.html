@@ -1,0 +1,54 @@
+
+{% extends "layout.html" %}
+
+{% block module_styles %}
+<link
+    rel="stylesheet"
+    href="{{ url_for('static', filename='css/usuarios.css') }}"
+>
+{% endblock %}
+
+{% block content %}
+<main>
+    <h1>Detalle del usuario</h1>
+
+    <section aria-labelledby="detalle-usuario-title">
+        <h2 id="detalle-usuario-title">
+            {{ usuario.alias }}
+        </h2>
+
+        <dl>
+            <dt>ID</dt>
+            <dd>{{ usuario.id_user }}</dd>
+
+            <dt>Correo electrónico</dt>
+            <dd>{{ usuario.email }}</dd>
+
+            <dt>Alias</dt>
+            <dd>{{ usuario.alias }}</dd>
+
+            <dt>Rol</dt>
+            <dd>{{ rol_nombre }}</dd>
+
+            <dt>Administrador del sistema</dt>
+            <dd>{{ "Sí" if usuario.isSystemAdmin else "No" }}</dd>
+
+            <dt>Estado</dt>
+            <dd>{{ "Activo" if usuario.isActive else "Bloqueado" }}</dd>
+
+            <dt>Fecha de creación</dt>
+            <dd>{{ usuario.inserted_at }}</dd>
+
+            <dt>Última actualización</dt>
+            <dd>{{ usuario.updated_at }}</dd>
+
+            <dt>Contraseña</dt>
+            <dd>No disponible por seguridad.</dd>
+        </dl>
+
+        <a href="{{ url_for('usuarios.listado_usuarios.index') }}">
+            Volver al listado
+        </a>
+    </section>
+</main>
+{% endblock %}
