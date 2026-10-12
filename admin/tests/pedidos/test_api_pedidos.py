@@ -12,6 +12,10 @@ from src.core.services.pedidos.pedidos import (
     PedidoConflictError,
 )
 
+from datetime import date
+from src.core.models.enums import CondicionCupo
+from src.core.services.pedidos import pedidos
+
 
 @pytest.fixture(scope="module")
 def app():
@@ -114,3 +118,39 @@ def test_crear_pedido_duplicado(mock_crear_pedido, mock_db, client):
     assert response.status_code == 409
     assert "Ya existe una solicitud" in response.json["error"]
     mock_db.session.rollback.assert_called_once()
+
+@patch("src.core.services.pedidos.pedidos.repo_pedidos.create_pedido_con_solicitudes")
+@patch("src.core.services.pedidos.pedidos.Solicitud.existe_duplicado")
+@patch("src.core.services.pedidos.pedidos.db")
+@patch("src.core.services.pedidos.pedidos.cupos.get_by_sector_y_comida")
+def test_calculo_regular_y_excepcion(
+    mock_get_cupo, mock_session_get, mock_existe_duplicado, mock_repo_create
+):
+    """Verifica que si el cupo es 2 y se piden 3 personas, 2 sean REGULAR y 1 EXCEPCION."""
+    class MockCupo:
+        cantComensales = 2
+
+    mock_get_cupo.return_value = MockCupo()
+
+    class MockPersona:
+        isActive = True
+        idTipoMenu = 1
+
+    mock_session_get.return_value = MockPersona()
+    mock_existe_duplicado.return_value = False
+    mock_repo_create.side_effect = lambda pedido, solicitudes: pedido
+
+    pedidos.crear_pedido(
+        id_jefe=1,
+        id_sector=1,
+        fecha_desde=date(2026, 6, 29),
+        periodicidad="diaria",
+        comidas={1: [10, 11, 12]},
+    )
+
+    _, solicitudes_generadas = mock_repo_create.call_args[0]
+
+    assert len(solicitudes_generadas) == 3
+    assert solicitudes_generadas[0].condicionCupo == CondicionCupo.REGULAR
+    assert solicitudes_generadas[1].condicionCupo == CondicionCupo.REGULAR
+    assert solicitudes_generadas[2].condicionCupo == CondicionCupo.EXCEPCION
