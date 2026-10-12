@@ -8,11 +8,8 @@ from src.core import database
 from src.web.controllers.auth import auth_bp
 from src.web.controllers.auth.api_auth import api_auth_controller
 from src.web.controllers.usuarios.usuarios import usuarios_controller
-<<<<<<< HEAD
 from src.web.controllers.personal.personal import personal_bp
-=======
 from src.web.controllers.autorizaciones.api_autorizaciones import api_autorizaciones_controller
->>>>>>> origin/development
 from src.web.handlers import error
 
 
