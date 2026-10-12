@@ -1,7 +1,9 @@
 from datetime import datetime
 
+from src.core.models.TipoMenu import TipoMenu
+from src.core.models.TipoPersonal import TipoPersonal
 from sqlalchemy import ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core.database import BaseModel
 
@@ -18,3 +20,7 @@ class Personal(BaseModel):
     updated_at: Mapped[datetime]
     idTipoPersonal: Mapped[int] = mapped_column(ForeignKey("TipoPersonal.idTipoPersonal"))
     idTipoMenu: Mapped[int] = mapped_column(ForeignKey("TipoMenu.idTipoMenu"))
+
+    # son relaciones de navegacion, no columnas de la tabla 
+    tipo_personal: Mapped["TipoPersonal"] = relationship(lazy="joined")
+    tipo_menu: Mapped["TipoMenu"] = relationship(lazy="joined")
