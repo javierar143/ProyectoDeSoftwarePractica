@@ -22,6 +22,10 @@ def reset_db():
     # Importar los modelos para registrar sus tablas en BaseModel.
     from src.core import models
 
+    # Inicio de código temporal: registra TipoComidaTemporal para resolver las claves foráneas pendientes.
+    from src.core.models import TipoComidaTemporal
+    # Aviso de fin de código temporal.
+
     # Recrear la estructura de la base de datos.
     BaseModel.metadata.drop_all(db.engine)
     BaseModel.metadata.create_all(db.engine)

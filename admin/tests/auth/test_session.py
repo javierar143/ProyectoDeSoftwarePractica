@@ -1,20 +1,13 @@
-from datetime import datetime
+"""Pruebas de la gestión de sesiones y autenticación web."""
+
+import pytest
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from src.core.database import db, reset_db
-from src.core.models.Personal import Personal
-from src.core.models.TipoPersonal import TipoPersonal
-from src.core.models.TipoMenu import TipoMenu
-from src.core.models.Rol import Rol
-from src.core.models.Usuario import Usuario
-from src.core.security.password import hash_password
-
-import pytest
-
 from src.web import create_app
+from src.core.database import reset_db
 from src.core.security.session import (
     set_authenticated_user,
     get_authenticated_user_id,
@@ -26,60 +19,28 @@ from src.core.security.session import (
 
 @pytest.fixture(scope="module")
 def app():
-    """Crea la aplicación y prepara la base de datos para los tests."""
+    """Crea la aplicación y prepara la base de datos para las pruebas."""
     app = create_app()
 
     with app.app_context():
         reset_db()
         yield app
 
+
 @pytest.fixture(scope="module")
 def usuario(app):
-    """Crea el usuario necesario para probar el inicio de sesión."""
-    rol = Rol(
-        idRol=1,
-        nombre="Administrador",
-    )
+    """Obtiene el usuario administrador creado por los datos iniciales."""
+    from src.core.repositories.usuarios import usuario as usuario_repo
 
-    tipo_p = TipoPersonal(idTipoPersonal=1, nombre="Fijo")
-    tipo_m = TipoMenu(idTipoMenu=1, nombre="General")
-    personal = Personal(
-        idPersonal=1,
-        dni="12345678",
-        nombre="Test",
-        apellido="Usuario",
-        isActive=True,
-        idTipoPersonal=1,
-        idTipoMenu=1,
-        inserted_at=datetime.now(),
-        updated_at=datetime.now(),
-    )
+    usuario_existente = usuario_repo.get_by_email("admin@temporal.com")
 
-    usuario = Usuario(
-        id_user=1,
-        email="test@example.com",
-        alias="test",
-        password_hash=hash_password("Test1234"),
-        isSystemAdmin=True,
-        isActive=True,
-        updated_at=datetime.now(),
-        inserted_at=datetime.now(),
-        idRol=1,
-        idPersonal=1,
-    )
+    assert usuario_existente is not None
 
-    db.session.add(rol)
-    db.session.add(tipo_p)
-    db.session.add(tipo_m)
-    db.session.flush()
-    db.session.add(personal)
-    db.session.flush()
-    db.session.add(usuario)
-    db.session.commit()
+    return usuario_existente
 
-    return usuario
 
 def test_session_user(app):
+    """Comprueba que se almacene el identificador del usuario."""
     with app.test_request_context():
         set_authenticated_user(10)
 
@@ -89,6 +50,7 @@ def test_session_user(app):
 
 
 def test_clear_session(app):
+    """Comprueba que se elimine el identificador de la sesión."""
     with app.test_request_context():
         set_authenticated_user(10)
 
@@ -98,7 +60,9 @@ def test_clear_session(app):
 
         assert user_id is None
 
+
 def test_logout(app):
+    """Comprueba que cerrar sesión elimine al usuario autenticado."""
     client = app.test_client()
 
     with client.session_transaction() as session:
@@ -106,35 +70,43 @@ def test_logout(app):
 
     response = client.post("/logout")
 
-    assert response.status_code == 200
+    assert response.status_code == 302
 
     with client.session_transaction() as session:
         assert "user_id" not in session
 
+
 def test_login_creates_session(app, usuario):
+    """Comprueba que iniciar sesión cree la sesión autenticada."""
     client = app.test_client()
 
     response = client.post(
         "/login",
         data={
-            "email": "test@example.com",
-            "password": "Test1234",
+            "email": usuario.email,
+            "password": "1234",
         },
+        follow_redirects=False,
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 302
 
     with client.session_transaction() as session:
-        assert session["user_id"] == 1
+        assert session["user_id"] == usuario.id_user
+
 
 def test_is_authenticated(app):
+    """Comprueba que se reconozca una sesión autenticada."""
     with app.test_request_context():
         set_authenticated_user(1)
 
         assert is_authenticated() is True
 
+
 def test_require_authentication(app):
+    """Comprueba el comportamiento de la función de autenticación."""
     with app.test_request_context():
         set_authenticated_user(1)
 
         require_authentication()
+

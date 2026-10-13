@@ -11,3 +11,24 @@ from src.core.models.Cupo import Cupo
 from src.core.models.Pedido import Pedido
 
 from src.core.models.SectorTemporal import SectorTemporal #borrar cuando se cree la tabla SECTOR
+
+
+#inicio de codigo temporal
+from sqlalchemy import Integer, String
+from sqlalchemy.orm import Mapped, mapped_column
+
+from src.core.database import BaseModel
+
+
+class TipoComidaTemporal(BaseModel):
+    """Modelo temporal para resolver la dependencia de TipoComida."""
+
+    __tablename__ = "TipoComida"
+
+    idTipoComida: Mapped[int] = mapped_column(
+        Integer, primary_key=True
+    )
+    nombre: Mapped[str] = mapped_column(String, nullable=False)
+
+
+#aaviso de fin de codigo temporal

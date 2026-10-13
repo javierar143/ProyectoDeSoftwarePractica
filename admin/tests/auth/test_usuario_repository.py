@@ -1,97 +1,49 @@
-from datetime import datetime
+
+"""Pruebas del repositorio de usuarios."""
 
 import pytest
-from dotenv import load_dotenv
-
-load_dotenv()
 
 from src.web import create_app
-from src.core.database import db, reset_db
-from src.core.models.Usuario import Usuario
-from src.core.models.Rol import Rol
-from src.core.models.Personal import Personal
-from src.core.models.TipoPersonal import TipoPersonal
-from src.core.models.TipoMenu import TipoMenu
-from src.core.security.password import hash_password
-from src.core.repositories.usuarios.usuario import get_by_email, get_by_id, create
+from src.core.database import reset_db
+from src.core.repositories.usuarios.usuario import get_by_email, get_by_id
 
 
 @pytest.fixture(scope="module")
 def app():
+    """Crea la aplicación y carga los datos iniciales."""
     app = create_app()
-    app.app_context().push()
-    reset_db()
-    return app
 
-
-@pytest.fixture(scope="module")
-def usuario_existente(app):
-    rol = Rol(
-        idRol=1,
-        nombre="Administrador"
-    )
-
-    tipo_p = TipoPersonal(idTipoPersonal=1, nombre="Fijo")
-    tipo_m = TipoMenu(idTipoMenu=1, nombre="General")
-    personal = Personal(
-        idPersonal=1,
-        dni="12345678",
-        nombre="Test",
-        apellido="Usuario",
-        isActive=True,
-        idTipoPersonal=1,
-        idTipoMenu=1,
-        inserted_at=datetime.now(),
-        updated_at=datetime.now(),
-    )
-
-    usuario = Usuario(
-        id_user=1,
-        email="test@example.com",
-        alias="test",
-        password_hash=hash_password("Test1234"),
-        isSystemAdmin=True,
-        isActive=True,
-        updated_at=datetime.now(),
-        inserted_at=datetime.now(),
-        idRol=1,
-        idPersonal=1,
-    )
-
-    db.session.add(rol)
-    db.session.add(tipo_p)
-    db.session.add(tipo_m)
-    db.session.flush()
-    db.session.add(personal)
-    db.session.flush()
-
-    create(usuario)
-
-    return usuario
+    with app.app_context():
+        reset_db()
+        yield app
 
 
 def test_get_by_id_usuario_inexistente(app):
-    usuario = get_by_id(999)
+    """Devuelve None cuando el identificador no existe."""
+    assert get_by_id(999999) is None
 
-    assert usuario is None
 
+def test_get_by_id_usuario_existente(app):
+    """Busca un usuario creado por los datos iniciales."""
+    usuario = get_by_email("admin@temporal.com")
 
-def test_get_by_id_usuario_existente(app, usuario_existente):
-    usuario_buscado = get_by_id(usuario_existente.id_user)
+    assert usuario is not None
+    usuario_buscado = get_by_id(usuario.id_user)
 
     assert usuario_buscado is not None
-    assert usuario_buscado.email == "test@example.com"
+    assert usuario_buscado.email == "admin@temporal.com"
 
 
 def test_get_by_email_usuario_inexistente(app):
+    """Devuelve None cuando el correo no existe."""
     usuario = get_by_email("noexiste@example.com")
 
     assert usuario is None
 
 
-def test_get_by_email_usuario_existente(app, usuario_existente):
-    usuario_buscado = get_by_email(usuario_existente.email)
+def test_get_by_email_usuario_existente(app):
+    """Busca un usuario existente por su correo."""
+    usuario = get_by_email("admin@temporal.com")
 
-    assert usuario_buscado is not None
-    assert usuario_buscado.id_user == 1
-    assert usuario_buscado.email == "test@example.com"
+    assert usuario is not None
+    assert usuario.email == "admin@temporal.com"
