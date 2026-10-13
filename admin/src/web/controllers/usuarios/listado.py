@@ -11,7 +11,7 @@ from flask import (
 
 from src.core.security.permissions import require_permission
 
-from src.core.services.usuarios import rol, usuario
+from src.core.services.usuarios import personal, rol, usuario
 
 
 listado_controller = Blueprint("listado_usuarios", __name__)
@@ -27,6 +27,7 @@ def index():
         usuarios=usuarios,
     )
     return response
+
 
 
 @listado_controller.post("/desactivar")
@@ -83,17 +84,19 @@ def detalle(user_id: int):
     """Muestra los detalles de una cuenta de usuario."""
     require_permission("user_index")
 
-    usuario_seleccionado = usuario.get_by_id(user_id)
+    usuario_seleccionado = usuario.get_by_id(user_id)    
 
     if usuario_seleccionado is None:
         abort(404, description="Usuario no encontrado.")
 
     rol_actual = rol.get_by_id(usuario_seleccionado.idRol)
     rol_nombre = rol_actual.nombre if rol_actual is not None else "Sin rol"
+    personal_asociado = personal.get_by_id(usuario_seleccionado.idPersonal)
 
     response = render_template(
         "usuarios/detalle.html",
         usuario=usuario_seleccionado,
         rol_nombre=rol_nombre,
+        personal=personal_asociado,
     )
     return response

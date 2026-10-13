@@ -18,6 +18,14 @@
         </h2>
 
         <dl>
+            <dt>DNI</dt>
+            <dd>{{ personal.dni if personal else "Sin datos" }}</dd>
+
+            <dt>Nombre</dt>
+            <dd>{{ personal.nombre if personal else "Sin datos" }}</dd>
+
+            <dt>Apellido</dt>
+            <dd>{{ personal.apellido if personal else "Sin datos" }}</dd>
             <dt>ID</dt>
             <dd>{{ usuario.id_user }}</dd>
 
