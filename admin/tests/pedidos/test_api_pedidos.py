@@ -154,3 +154,66 @@ def test_calculo_regular_y_excepcion(
     assert solicitudes_generadas[0].condicionCupo == CondicionCupo.REGULAR
     assert solicitudes_generadas[1].condicionCupo == CondicionCupo.REGULAR
     assert solicitudes_generadas[2].condicionCupo == CondicionCupo.EXCEPCION
+
+@patch("src.web.controllers.pedidos.api_pedidos.db")
+@patch("src.web.controllers.pedidos.api_pedidos.pedidos.validar_sector_personal")
+@patch("src.core.services.pedidos.pedidos.db")
+@patch("src.core.services.pedidos.pedidos.cupos.get_by_sector_y_comida")
+def test_personal_fijo_otro_sector_rechazado(
+    mock_get_cupo, mock_pedidos_db, mock_validar_sector, mock_controller_db, client
+):
+    """Verifica que si el personal fijo no pertenece al sector del jefe, devuelva 400."""
+    class MockCupo:
+        cantComensales = 5
+
+    class MockPersona:
+        idPersonal = 8
+        isActive = True
+        idTipoMenu = 1
+        idTipoPersonal = 1
+
+    mock_get_cupo.return_value = MockCupo()
+    mock_pedidos_db.session.get.return_value = MockPersona()
+    mock_validar_sector.side_effect = PedidoValidationError(
+        "La persona con ID 8 es personal fijo y no pertenece al sector del Jefe de Servicio."
+    )
+
+    response = client.post(
+        "/api/requests",
+        json={
+            "fecha_desde": "2026-06-29",
+            "periodicidad": "diaria",
+            "comidas": {"1": [8]},
+        },
+    )
+
+    assert response.status_code == 400
+    assert "no pertenece al sector" in response.json["error"]
+    mock_controller_db.session.rollback.assert_called_once()
+
+@patch("src.core.services.pedidos.pedidos.pertenece_a_sector")
+@patch("src.core.services.pedidos.pedidos.db")
+def test_regla_residente_vs_personal_fijo(mock_db, mock_pertenece):
+    """Verifica que un Residente se acepte en cualquier sector y un Fijo de otro sector falle."""
+    from src.core.services.pedidos.pedidos import validar_sector_personal
+
+    class MockPersona:
+        idPersonal = 15
+        idTipoPersonal = 2
+
+    class MockTipoResidente:
+        nombre = "Residente"
+
+    mock_db.session.get.return_value = MockTipoResidente()
+    mock_pertenece.return_value = False
+
+    validar_sector_personal(MockPersona(), id_sector_jefe=1)
+
+    class MockTipoFijo:
+        nombre = "Personal Fijo"
+
+    mock_db.session.get.return_value = MockTipoFijo()
+    mock_pertenece.return_value = False
+
+    with pytest.raises(PedidoValidationError):
+        validar_sector_personal(MockPersona(), id_sector_jefe=1)

@@ -1,5 +1,6 @@
 from datetime import date
 
+from src.core.models.TipoPersonal import TipoPersonal
 from src.core.models.enums import (
     EstadoPedido,
     Periodicidad,
@@ -23,6 +24,34 @@ class PedidoConflictError(Exception):
     """Error para conflictos o duplicados que devuelven HTTP 409."""
     pass
 
+def pertenece_a_sector(id_personal: int, id_sector: int) -> bool:
+    """
+    Consulta en la tabla intermedia si el personal fijo pertenece al sector indicado.
+    """
+    # TODO: Descomentar cuando esté creado el modelo de la tabla intermedia SectorCompuestoPorPersonal
+    # from src.core.models.SectorCompuestoPorPersonal import SectorCompuestoPorPersonal
+    # stmt = db.select(SectorCompuestoPorPersonal).filter_by(
+    #     idPersonal=id_personal,
+    #     idSector=id_sector,
+    # )
+    # return db.session.scalar(stmt) is not None
+    return True
+
+def validar_sector_personal(persona: Personal, id_sector_jefe: int) -> None:
+    """
+    Verifica que si la persona es Personal Fijo, su sector coincida con el del Jefe de Servicio.
+    Los Residentes pueden incorporarse a pedidos de cualquier sector sin esta validación.
+    """
+    tipo_personal = db.session.get(TipoPersonal, persona.idTipoPersonal)
+
+    if (
+            tipo_personal
+            and "fijo" in tipo_personal.nombre.strip().lower()
+            and not pertenece_a_sector(persona.idPersonal, id_sector_jefe)
+    ):
+        raise PedidoValidationError(
+            f"La persona con ID {persona.idPersonal} es personal fijo y no pertenece al sector del Jefe de Servicio."
+        )
 
 def crear_pedido(
     id_jefe: int,
@@ -74,6 +103,8 @@ def crear_pedido(
                 raise PedidoValidationError(
                     f"La persona con ID {id_personal} no existe o está inactiva."
                 )
+
+            validar_sector_personal(persona, id_sector)
 
             if Solicitud.existe_duplicado(
                 session=db.session,
