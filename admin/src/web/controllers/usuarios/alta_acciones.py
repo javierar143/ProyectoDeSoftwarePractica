@@ -81,7 +81,6 @@ def crear_usuario(form):
         datos["alias"],
         datos["password"],
         datos["rol_nombre"],
-        str(persona.idPersonal),
     )
 
     if not datos_validos:
@@ -151,11 +150,12 @@ def crear_personal_usuario(form):
         datos["alias"],
         datos["password"],
         datos["rol_nombre"],
-        "1",
     )
 
     if not usuario_valido:
-        errores.append("Completá correctamente los datos obligatorios del usuario.")
+        errores.append(
+            "Completá correctamente los datos obligatorios del usuario."
+        )
 
     if errores:
         return mostrar_formulario(

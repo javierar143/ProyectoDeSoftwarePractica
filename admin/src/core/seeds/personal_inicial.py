@@ -1,5 +1,5 @@
 
-"""Carga personas y usuarios ficticios para desarrollo y pruebas."""
+"""Carga el personal y las cuentas iniciales para desarrollo y pruebas."""
 
 from datetime import datetime
 
@@ -19,47 +19,43 @@ PERSONAL_INICIAL = (
         "dni": "11111111",
         "nombre": "Juan",
         "apellido": "Soyadmin",
-        "email": "admin@temporal.com",
-        "alias": "Administrador",
-        "rol": "Administrador",
-        "password": "1234",
-        "es_admin": True,
+        "usuario": {
+            "email": "admin@temporal.com",
+            "alias": "Administrador",
+            "rol": "Administrador",
+            "password": "1234",
+            "es_admin": True,
+        },
     },
     {
         "dni": "22222222",
         "nombre": "Fulano",
         "apellido": "Detal",
-        "email": "jefe@ejemplo.com",
-        "alias": "Jefe de Servicio",
-        "rol": "Jefe de Servicio",
-        "password": "1234",
-        "es_admin": False,
+        "usuario": {
+            "email": "jefe@ejemplo.com",
+            "alias": "Jefe de Servicio",
+            "rol": "Jefe de Servicio",
+            "password": "1234",
+            "es_admin": False,
+        },
     },
     {
         "dni": "33333333",
         "nombre": "Mengano",
         "apellido": "Perez",
-        "email": "alimentacion@ejemplo.com",
-        "alias": "Servicio de Alimentación",
-        "rol": "Servicio de Alimentación",
-        "password": "1234",
-        "es_admin": False,
+        "usuario": None,
     },
     {
         "dni": "44444444",
         "nombre": "Pascuala",
         "apellido": "Gomez",
-        "email": "comedor@ejemplo.com",
-        "alias": "Sector Comedor",
-        "rol": "Sector Comedor",
-        "password": "1234",
-        "es_admin": False,
+        "usuario": None,
     },
 )
 
 
 def load_personal_inicial() -> None:
-    """Crea las personas y los usuarios iniciales que no existen."""
+    """Carga el personal inicial y solo las cuentas expresamente definidas."""
     tipo_personal = db.session.execute(
         select(TipoPersonal).where(TipoPersonal.nombre == "Fijo")
     ).scalar_one_or_none()
@@ -91,15 +87,24 @@ def load_personal_inicial() -> None:
             db.session.add(persona)
             db.session.flush()
 
+        datos_usuario = datos["usuario"]
+
+        if datos_usuario is None:
+            continue
+
         rol = db.session.execute(
-            select(Rol).where(Rol.nombre == datos["rol"])
+            select(Rol).where(Rol.nombre == datos_usuario["rol"])
         ).scalar_one_or_none()
 
         if rol is None:
-            raise ValueError(f"No existe el rol {datos['rol']}.")
+            raise ValueError(
+                f"No existe el rol {datos_usuario['rol']}."
+            )
 
         usuario_por_email = db.session.execute(
-            select(Usuario).where(Usuario.email == datos["email"])
+            select(Usuario).where(
+                Usuario.email == datos_usuario["email"]
+            )
         ).scalar_one_or_none()
 
         usuario_por_persona = db.session.execute(
@@ -108,23 +113,29 @@ def load_personal_inicial() -> None:
             )
         ).scalar_one_or_none()
 
-        if usuario_por_email is None and usuario_por_persona is None:
-            usuario = Usuario(
-                email=datos["email"],
-                alias=datos["alias"],
-                password_hash=hash_password(datos["password"]),
-                isSystemAdmin=datos["es_admin"],
+        if usuario_por_email is not None:
+            if usuario_por_email.idPersonal != persona.idPersonal:
+                raise ValueError(
+                    f"El correo {datos_usuario['email']} "
+                    "ya pertenece a otra persona."
+                )
+            continue
+
+        if usuario_por_persona is not None:
+            continue
+
+        db.session.add(
+            Usuario(
+                email=datos_usuario["email"],
+                alias=datos_usuario["alias"],
+                password_hash=hash_password(datos_usuario["password"]),
+                isSystemAdmin=datos_usuario["es_admin"],
                 isActive=True,
                 inserted_at=ahora,
                 updated_at=ahora,
                 idRol=rol.idRol,
                 idPersonal=persona.idPersonal,
             )
-            db.session.add(usuario)
-        elif usuario_por_email is not None:
-            if usuario_por_email.idPersonal != persona.idPersonal:
-                raise ValueError(
-                    f"El correo {datos['email']} ya pertenece a otra persona."
-                )
+        )
 
     db.session.flush()
