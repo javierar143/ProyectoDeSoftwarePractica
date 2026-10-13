@@ -17,8 +17,8 @@ from src.core.security.password import hash_password
 PERSONAL_INICIAL = (
     {
         "dni": "11111111",
-        "nombre": "Administrador",
-        "apellido": "Prueba",
+        "nombre": "Juan",
+        "apellido": "Soyadmin",
         "email": "admin@temporal.com",
         "alias": "Administrador",
         "rol": "Administrador",
@@ -27,8 +27,8 @@ PERSONAL_INICIAL = (
     },
     {
         "dni": "22222222",
-        "nombre": "Jefe",
-        "apellido": "Prueba",
+        "nombre": "Fulano",
+        "apellido": "Detal",
         "email": "jefe@ejemplo.com",
         "alias": "Jefe de Servicio",
         "rol": "Jefe de Servicio",
@@ -37,8 +37,8 @@ PERSONAL_INICIAL = (
     },
     {
         "dni": "33333333",
-        "nombre": "Alimentacion",
-        "apellido": "Prueba",
+        "nombre": "Mengano",
+        "apellido": "Perez",
         "email": "alimentacion@ejemplo.com",
         "alias": "Servicio de Alimentación",
         "rol": "Servicio de Alimentación",
@@ -47,8 +47,8 @@ PERSONAL_INICIAL = (
     },
     {
         "dni": "44444444",
-        "nombre": "Comedor",
-        "apellido": "Prueba",
+        "nombre": "Pascuala",
+        "apellido": "Gomez",
         "email": "comedor@ejemplo.com",
         "alias": "Sector Comedor",
         "rol": "Sector Comedor",

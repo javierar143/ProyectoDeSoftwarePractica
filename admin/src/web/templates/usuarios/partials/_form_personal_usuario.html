@@ -1,43 +1,32 @@
-
-{#
-    Formulario para el alta conjunta de Personal y Usuario.
-
-    PENDIENTE DE INTEGRACIÓN:
-    - Incorporar los campos definitivos del módulo de Personal.
-    - Reutilizar las validaciones y el servicio de creación de Personal.
-    - Coordinar ambas altas dentro de una única transacción.
-    - Revertir ambas operaciones si alguna falla.
-#}
-
 <h2>Alta de Personal y Usuario</h2>
 
-<form
-    method="post"
-    action="{{ url_for('usuarios.alta_usuarios.new') }}"
->
-    <input
-        type="hidden"
-        name="accion"
-        value="crear_personal_usuario"
-    >
+<form method="post" action="{{ url_for('usuarios.alta_usuarios.new') }}">
+    <input type="hidden" name="accion" value="crear_personal_usuario">
 
     <fieldset>
         <legend>Datos personales</legend>
 
-        {#
-            Estos campos son provisionales.
-            Reemplazarlos o adaptarlos al formulario real de Personal
-            cuando esté disponible su implementación.
-        #}
+        <div>
+            <label for="dni-personal">DNI</label>
+            <input
+                type="text"
+                id="dni-personal"
+                name="dni"
+                value="{{ form_data.get('dni', '') }}"
+                inputmode="numeric"
+                required
+            >
+        </div>
 
         <div>
             <label for="nombre-personal">Nombre</label>
             <input
                 type="text"
                 id="nombre-personal"
-                name="nombre_personal"
+                name="nombre"
+                value="{{ form_data.get('nombre', '') }}"
                 autocomplete="given-name"
-                disabled
+                required
             >
         </div>
 
@@ -46,21 +35,45 @@
             <input
                 type="text"
                 id="apellido-personal"
-                name="apellido_personal"
+                name="apellido"
+                value="{{ form_data.get('apellido', '') }}"
                 autocomplete="family-name"
-                disabled
+                required
             >
         </div>
 
         <div>
-            <label for="dni-personal">DNI</label>
-            <input
-                type="text"
-                id="dni-personal"
-                name="dni_personal"
-                inputmode="numeric"
-                disabled
-            >
+            <label for="tipo-personal">Tipo de personal</label>
+            <select id="tipo-personal" name="idTipoPersonal" required>
+                <option value="">Seleccione un tipo</option>
+                {% for tipo in tipos_personal %}
+                    <option
+                        value="{{ tipo.idTipoPersonal }}"
+                        {% if form_data.get('idTipoPersonal', '')|string == tipo.idTipoPersonal|string %}
+                            selected
+                        {% endif %}
+                    >
+                        {{ tipo.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="tipo-menu">Tipo de menú</label>
+            <select id="tipo-menu" name="idTipoMenu" required>
+                <option value="">Seleccione un menú</option>
+                {% for menu in tipos_menu %}
+                    <option
+                        value="{{ menu.idTipoMenu }}"
+                        {% if form_data.get('idTipoMenu', '')|string == menu.idTipoMenu|string %}
+                            selected
+                        {% endif %}
+                    >
+                        {{ menu.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
         </div>
     </fieldset>
 
@@ -73,8 +86,9 @@
                 type="email"
                 id="email-nuevo"
                 name="email"
+                value="{{ form_data.get('email', '') }}"
                 autocomplete="email"
-                disabled
+                required
             >
         </div>
 
@@ -84,8 +98,9 @@
                 type="text"
                 id="alias-nuevo"
                 name="alias"
+                value="{{ form_data.get('alias', '') }}"
                 autocomplete="username"
-                disabled
+                required
             >
         </div>
 
@@ -96,7 +111,7 @@
                 id="password-nuevo"
                 name="password"
                 autocomplete="new-password"
-                disabled
+                required
             >
         </div>
 
@@ -105,31 +120,34 @@
                 type="checkbox"
                 id="admin-nuevo"
                 name="is_system_admin"
-                disabled
+                {% if form_data.get('is_system_admin') == 'on' %}
+                    checked
+                {% endif %}
             >
-            <label for="admin-nuevo">
-                Administrador del sistema
-            </label>
+            <label for="admin-nuevo">Administrador del sistema</label>
         </div>
 
         <div>
             <label for="rol-nuevo">Rol</label>
-            <select
-                id="rol-nuevo"
-                name="rol_nombre"
-                disabled
-            >
+            
+            <select id="rol-nuevo" name="rol_nombre" required>
                 <option value="">Seleccione un rol</option>
-                <option value="Jefe de Servicio">Jefe de Servicio</option>
-                <option value="Servicio de Alimentación">
-                    Servicio de Alimentación
-                </option>
-                <option value="Sector Comedor">Sector Comedor</option>
+                {% for rol in roles %}
+                    {# Ocultamos el rol de Administrador de la lista #}
+                    {% if rol.nombre != 'Administrador' %}
+                        <option
+                            value="{{ rol.nombre }}"
+                            {% if form_data.get('rol_nombre', '') == rol.nombre %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ rol.nombre }}
+                        </option>
+                    {% endif %}
+                {% endfor %}
             </select>
         </div>
     </fieldset>
 
-    <button type="submit" disabled>
-        Crear Personal y Usuario
-    </button>
+    <button type="submit">Crear Personal y Usuario</button>
 </form>

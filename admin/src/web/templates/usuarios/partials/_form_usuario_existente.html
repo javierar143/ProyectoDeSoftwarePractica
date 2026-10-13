@@ -103,31 +103,24 @@
             </div>
 
             <div>
-                <label for="rol-existente">Rol</label>
-                <select
-                    id="rol-existente"
-                    name="rol_nombre"
-                    required
-                >
-                    <option value="">Seleccione un rol</option>
-                    <option
-                        value="Jefe de Servicio"
-                        {% if form_data.get('rol_nombre') == 'Jefe de Servicio' %}selected{% endif %}
-                    >
-                        Jefe de Servicio
-                    </option>
-                    <option
-                        value="Servicio de Alimentación"
-                        {% if form_data.get('rol_nombre') == 'Servicio de Alimentación' %}selected{% endif %}
-                    >
-                        Servicio de Alimentación
-                    </option>
-                    <option
-                        value="Sector Comedor"
-                        {% if form_data.get('rol_nombre') == 'Sector Comedor' %}selected{% endif %}
-                    >
-                        Sector Comedor
-                    </option>
+                <label for="rol-nuevo">Rol</label>
+            
+            <select id="rol-nuevo" name="rol_nombre" required>
+                <option value="">Seleccione un rol</option>
+                {% for rol in roles %}
+                    {# Ocultamos el rol de Administrador de la lista #}
+                    {% if rol.nombre != 'Administrador' %}
+                        <option
+                            value="{{ rol.nombre }}"
+                            {% if form_data.get('rol_nombre', '') == rol.nombre %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ rol.nombre }}
+                        </option>
+                    {% endif %}
+                {% endfor %}
+            </select>
                 </select>
             </div>
         </fieldset>
