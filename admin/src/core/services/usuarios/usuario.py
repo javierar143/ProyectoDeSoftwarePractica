@@ -1,4 +1,3 @@
-
 """Servicios relacionados con la gestión de usuarios."""
 
 from datetime import datetime
@@ -27,10 +26,11 @@ def create(
     rol_nombre: str,
     personal_id: int,
 ) -> Usuario:
-    """Crea un usuario si el email y el rol son válidos.
+    """Crea un usuario si los datos y sus asociaciones son válidos.
 
     Raises:
-        ValueError: Si el email ya existe o el rol no es válido.
+        ValueError: Si los datos son inválidos, el email ya existe,
+            el Personal ya tiene un usuario o el rol no es válido.
     """
     email = email.strip()
     alias = alias.strip()
@@ -42,6 +42,12 @@ def create(
     usuario_existente = repo_usuario.get_by_email(email)
     if usuario_existente is not None:
         raise ValueError("El email ya está registrado.")
+
+    usuario_por_personal = repo_usuario.get_by_personal_id(personal_id)
+    if usuario_por_personal is not None:
+        raise ValueError(
+            "El Personal seleccionado ya tiene un usuario asociado."
+        )
 
     rol_encontrado = rol.get_by_name(rol_nombre)
     if rol_encontrado is None:

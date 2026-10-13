@@ -1,8 +1,6 @@
-
 """Repositorio para la persistencia y consulta de usuarios."""
 
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 
 from src.core.database import db
 from src.core.models.Rol import Rol
@@ -12,6 +10,14 @@ from src.core.models.Usuario import Usuario
 def get_by_email(email: str) -> Usuario | None:
     """Obtiene un usuario a partir de su dirección de email."""
     statement = select(Usuario).where(Usuario.email == email)
+    return db.session.execute(statement).scalar_one_or_none()
+
+
+def get_by_personal_id(personal_id: int) -> Usuario | None:
+    """Obtiene el usuario asociado a un identificador de Personal."""
+    statement = select(Usuario).where(
+        Usuario.idPersonal == personal_id
+    )
     return db.session.execute(statement).scalar_one_or_none()
 
 
