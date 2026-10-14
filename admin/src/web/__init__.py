@@ -30,6 +30,13 @@ def create_app(
     Session(app)
     database.init_app(app)
 
+    @app.context_processor
+    def inject_current_user():
+        """Expone el usuario autenticado a todas las plantillas."""
+        user_id = get_authenticated_user_id()
+        current_user = usuario_service.get_by_id(user_id) if user_id else None
+        return {"current_user": current_user}
+
     @app.route("/")
     def home():
         """Renderiza la página principal de la aplicación."""
