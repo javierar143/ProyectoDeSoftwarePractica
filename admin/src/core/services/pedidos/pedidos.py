@@ -1,5 +1,6 @@
-from datetime import date
+"""Servicios para la creación, actualización y eliminación de pedidos."""
 
+from datetime import date
 from src.core.models.TipoPersonal import TipoPersonal
 from src.core.models.enums import (
     EstadoPedido,
@@ -14,9 +15,17 @@ from src.core.models.Personal import Personal
 from src.core.services.cupos import cupos
 from src.core.repositories.pedidos import pedidos as repo_pedidos
 
+class PedidoForbiddenError(Exception):
+    """Error cuando un Jefe de Servicio intenta operar sobre un pedido de otro sector (HTTP 403)."""
+
+    pass
+
+
 class PedidoNotFoundError(Exception):
     """Error cuando el pedido solicitado no existe (HTTP 404)."""
     pass
+
+
 class PedidoValidationError(Exception):
     """Error para datos inválidos o reglas que devuelven HTTP 400."""
     pass
@@ -25,6 +34,7 @@ class PedidoValidationError(Exception):
 class PedidoConflictError(Exception):
     """Error para conflictos o duplicados que devuelven HTTP 409."""
     pass
+
 
 def pertenece_a_sector(id_personal: int, id_sector: int) -> bool:
     """
@@ -38,6 +48,7 @@ def pertenece_a_sector(id_personal: int, id_sector: int) -> bool:
     # )
     # return db.session.scalar(stmt) is not None
     return True
+
 
 def validar_sector_personal(persona: Personal, id_sector_jefe: int) -> None:
     """
@@ -54,6 +65,7 @@ def validar_sector_personal(persona: Personal, id_sector_jefe: int) -> None:
         raise PedidoValidationError(
             f"La persona con ID {persona.idPersonal} es personal fijo y no pertenece al sector del Jefe de Servicio."
         )
+
 
 def crear_pedido(
     id_jefe: int,
@@ -140,7 +152,8 @@ def crear_pedido(
 def actualizar_pedido(
     id_pedido: int,
     comidas: dict[int, list[int]],
-) -> Pedido:
+    id_sector_jefe: int | None = None
+    ):
     """
     Modifica un pedido existente, siempre y cuando siga en estado CONFIRMADO.
     Elimina las solicitudes anteriores y recalcula cupos (Regular/Excepción)
@@ -149,6 +162,11 @@ def actualizar_pedido(
     pedido = repo_pedidos.get_pedido_by_id(id_pedido)
     if not pedido:
         raise PedidoNotFoundError(f"El pedido con ID {id_pedido} no existe.")
+
+    if id_sector_jefe is not None and pedido.idSector != id_sector_jefe:
+        raise PedidoForbiddenError(
+            "No tiene permisos para operar sobre un pedido de otro sector."
+        )
 
     if pedido.estado_general != EstadoPedido.CONFIRMADO:
         raise PedidoConflictError(
@@ -211,7 +229,7 @@ def actualizar_pedido(
 
     return repo_pedidos.guardar_nuevas_solicitudes(pedido, solicitudes_a_guardar)
 
-def borrar_pedido(id_pedido: int) -> None:
+def borrar_pedido(id_pedido: int, id_sector_jefe: int | None = None):
     """
     Valida y elimina un pedido. Solo puede eliminarse si sigue en estado CONFIRMADO.
     """
@@ -219,9 +237,100 @@ def borrar_pedido(id_pedido: int) -> None:
     if not pedido:
         raise PedidoNotFoundError(f"El pedido con ID {id_pedido} no existe.")
 
+    if id_sector_jefe is not None and pedido.idSector != id_sector_jefe:
+        raise PedidoForbiddenError(
+            "No tiene permisos para operar sobre un pedido de otro sector."
+        )
     if pedido.estado_general != EstadoPedido.CONFIRMADO:
         raise PedidoConflictError(
             f"No se puede eliminar un pedido que ya fue {pedido.estado_general.value}."
         )
 
     repo_pedidos.eliminar_pedido(pedido)
+
+
+def obtener_detalle_pedido(id_pedido: int, id_sector_jefe: int | None = None) -> dict:
+    """Devuelve el detalle completo de un pedido con totales pedidos y autorizados separados."""
+    pedido = repo_pedidos.get_pedido_by_id(id_pedido)
+    if not pedido:
+        raise PedidoNotFoundError(f"El pedido con ID {id_pedido} no existe.")
+
+    if id_sector_jefe is not None and pedido.idSector != id_sector_jefe:
+        raise PedidoForbiddenError(
+            "No tiene permisos para consultar un pedido de otro sector."
+        )
+
+    solicitudes = repo_pedidos.get_solicitudes_by_pedido(id_pedido)
+
+    totales_pedidos: dict[str, int] = {}
+    totales_autorizados: dict[str, int] = {}
+    detalle_solicitudes = []
+
+    for s in solicitudes:
+        clave = f"comida_{s.idTipoComida}_menu_{s.idTipoMenu}"
+        totales_pedidos[clave] = totales_pedidos.get(clave, 0) + 1
+        if s.estadoAutorizacion == EstadoAutorizacion.AUTORIZADA:
+            totales_autorizados[clave] = totales_autorizados.get(clave, 0) + 1
+
+        detalle_solicitudes.append({
+            "idSolicitud": s.idSolicitud,
+            "idPersonal": s.idPersonal,
+            "idTipoComida": s.idTipoComida,
+            "idTipoMenu": s.idTipoMenu,
+            "fecha_vianda": s.fecha_vianda.isoformat(),
+            "condicionCupo": s.condicionCupo.value,
+            "estadoAutorizacion": s.estadoAutorizacion.value,
+        })
+
+    resultado = {
+        "idPedido": pedido.idPedido,
+        "idSector": pedido.idSector,
+        "fecha_desde": pedido.fecha_desde.isoformat(),
+        "periodicidad": pedido.periodicidad.value,
+        "estado": pedido.estado_general.value,
+        "cantidades_pedidas": totales_pedidos,
+        "solicitudes": detalle_solicitudes,
+    }
+
+    if pedido.estado_general in (EstadoPedido.AUTORIZADO, EstadoPedido.RECHAZADO):
+        resultado["cantidades_autorizadas"] = totales_autorizados
+
+    return resultado
+
+
+def listar_pedidos_sector(
+    id_sector: int,
+    fecha_desde: date | None = None,
+    fecha_hasta: date | None = None,
+    estado_str: str | None = None,
+    id_tipo_comida: int | None = None,
+    id_tipo_menu: int | None = None,
+    page: int = 1,
+    per_page: int = 25,
+) -> tuple[list[dict], int]:
+    """Lista los pedidos del sector del Jefe con sus totales por comida y menú."""
+    estado_enum = None
+    if estado_str:
+        try:
+            estado_enum = EstadoPedido(estado_str.lower())
+        except ValueError:
+            raise PedidoValidationError("El filtro de estado no es válido.")
+
+    if page < 1:
+        page = 1
+    if per_page < 1 or per_page > 25:
+        per_page = 25
+
+    pedidos_lista, total = repo_pedidos.list_pedidos_by_sector(
+        id_sector=id_sector,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        estado=estado_enum,
+        id_tipo_comida=id_tipo_comida,
+        id_tipo_menu=id_tipo_menu,
+        page=page,
+        per_page=per_page,
+    )
+
+    items = [obtener_detalle_pedido(p.idPedido, id_sector) for p in pedidos_lista]
+    return items, total
