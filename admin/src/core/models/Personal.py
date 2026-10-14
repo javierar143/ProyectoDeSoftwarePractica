@@ -12,7 +12,7 @@ class Personal(BaseModel):
     __tablename__ = "Personal"
 
     idPersonal: Mapped[int] = mapped_column(primary_key=True)
-    dni: Mapped[str]
+    dni: Mapped[str] = mapped_column(unique=True)
     nombre: Mapped[str]
     apellido: Mapped[str]
     isActive: Mapped[bool]
