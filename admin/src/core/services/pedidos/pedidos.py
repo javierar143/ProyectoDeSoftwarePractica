@@ -14,7 +14,9 @@ from src.core.models.Personal import Personal
 from src.core.services.cupos import cupos
 from src.core.repositories.pedidos import pedidos as repo_pedidos
 
-
+class PedidoNotFoundError(Exception):
+    """Error cuando el pedido solicitado no existe (HTTP 404)."""
+    pass
 class PedidoValidationError(Exception):
     """Error para datos inválidos o reglas que devuelven HTTP 400."""
     pass
@@ -134,3 +136,77 @@ def crear_pedido(
             solicitudes_a_guardar.append(nueva_solicitud)
 
     return repo_pedidos.create_pedido_con_solicitudes(nuevo_pedido, solicitudes_a_guardar)
+
+def actualizar_pedido(
+    id_pedido: int,
+    comidas: dict[int, list[int]],
+) -> Pedido:
+    """
+    Modifica un pedido existente, siempre y cuando siga en estado CONFIRMADO.
+    Elimina las solicitudes anteriores y recalcula cupos (Regular/Excepción)
+    para la nueva lista de personas.
+    """
+    pedido = repo_pedidos.get_pedido_by_id(id_pedido)
+    if not pedido:
+        raise PedidoNotFoundError(f"El pedido con ID {id_pedido} no existe.")
+
+    if pedido.estado_general != EstadoPedido.CONFIRMADO:
+        raise PedidoConflictError(
+            f"No se puede modificar un pedido que ya está {pedido.estado_general.value}."
+        )
+
+    if not comidas or not any(comidas.values()):
+        raise PedidoValidationError("El pedido actualizado debe incluir al menos una solicitud.")
+
+    repo_pedidos.limpiar_solicitudes_de_pedido(id_pedido)
+
+    solicitudes_a_guardar = []
+
+    for id_tipo_comida_str, lista_personal in comidas.items():
+        id_tipo_comida = int(id_tipo_comida_str)
+
+        cupo = cupos.get_by_sector_y_comida(pedido.idSector, id_tipo_comida)
+        limite_cupo = cupo.cantComensales if cupo else 0
+
+        contador_comida = 0
+        vistos_en_comida = set()
+
+        for id_personal in lista_personal:
+            if id_personal in vistos_en_comida:
+                raise PedidoConflictError(f"La persona {id_personal} está repetida en la misma comida.")
+            vistos_en_comida.add(id_personal)
+
+            persona = db.session.get(Personal, id_personal)
+            if not persona or not persona.isActive:
+                raise PedidoValidationError(f"La persona con ID {id_personal} no existe o está inactiva.")
+
+            validar_sector_personal(persona, pedido.idSector)
+
+            if Solicitud.existe_duplicado(
+                session=db.session,
+                id_personal=id_personal,
+                id_sector=pedido.idSector,
+                fecha=pedido.fecha_desde,
+                id_tipo_comida=id_tipo_comida,
+            ):
+                raise PedidoConflictError(
+                    f"Ya existe una solicitud para la persona {id_personal} en esa fecha."
+                )
+
+            contador_comida += 1
+            if contador_comida <= limite_cupo:
+                condicion = CondicionCupo.REGULAR
+            else:
+                condicion = CondicionCupo.EXCEPCION
+
+            nueva_solicitud = Solicitud(
+                idPersonal=id_personal,
+                idTipoComida=id_tipo_comida,
+                idTipoMenu=persona.idTipoMenu,
+                condicionCupo=condicion,
+                estadoAutorizacion=EstadoAutorizacion.PENDIENTE,
+                fecha_vianda=pedido.fecha_desde,
+            )
+            solicitudes_a_guardar.append(nueva_solicitud)
+
+    return repo_pedidos.guardar_nuevas_solicitudes(pedido, solicitudes_a_guardar)

@@ -7,6 +7,7 @@ from src.core.services.pedidos import pedidos
 from src.core.services.pedidos.pedidos import (
     PedidoValidationError,
     PedidoConflictError,
+    PedidoNotFoundError,
 )
 
 bp_pedidos = Blueprint("pedidos", __name__, url_prefix="/api/requests")
@@ -57,3 +58,41 @@ def crear_nuevo_pedido():
     except Exception:
         db.session.rollback()
         return jsonify({"error": "Error interno al procesar el pedido."}), 500
+
+@bp_pedidos.route("/<int:request_id>", methods=["PUT"])
+def actualizar_pedido_existente(request_id: int):
+    """Endpoint para editar un pedido si aún no fue autorizado/rechazado."""
+    data = request.get_json()
+
+    if not data or "comidas" not in data:
+        return jsonify({"error": "Faltan datos obligatorios ('comidas')"}), 400
+
+    try:
+        pedido_actualizado = pedidos.actualizar_pedido(
+            id_pedido=request_id,
+            comidas=data["comidas"],
+        )
+
+        db.session.commit()
+
+        return jsonify({
+            "mensaje": "Pedido actualizado exitosamente",
+            "idPedido": pedido_actualizado.idPedido,
+            "estado": pedido_actualizado.estado_general.value,
+        }), 200
+
+    except PedidoNotFoundError as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 404
+
+    except PedidoValidationError as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 400
+
+    except PedidoConflictError as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 409
+
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "Error interno al actualizar el pedido."}), 500

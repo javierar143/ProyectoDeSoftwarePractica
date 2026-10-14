@@ -10,6 +10,7 @@ from src.core.models.enums import EstadoPedido
 from src.core.services.pedidos.pedidos import (
     PedidoValidationError,
     PedidoConflictError,
+    PedidoNotFoundError
 )
 
 from datetime import date
@@ -217,3 +218,54 @@ def test_regla_residente_vs_personal_fijo(mock_db, mock_pertenece):
 
     with pytest.raises(PedidoValidationError):
         validar_sector_personal(MockPersona(), id_sector_jefe=1)
+
+@patch("src.web.controllers.pedidos.api_pedidos.db")
+@patch("src.web.controllers.pedidos.api_pedidos.pedidos.actualizar_pedido")
+def test_actualizar_pedido_exito(mock_actualizar, mock_db, client):
+    """Verifica que se actualice un pedido correctamente y se haga commit (200)."""
+    class MockPedido:
+        idPedido = 10
+        estado_general = EstadoPedido.CONFIRMADO
+
+    mock_actualizar.return_value = MockPedido()
+
+    response = client.put(
+        "/api/requests/10",
+        json={"comidas": {"1": [1, 5]}},
+    )
+
+    assert response.status_code == 200
+    assert response.json["mensaje"] == "Pedido actualizado exitosamente"
+    mock_db.session.commit.assert_called_once()
+
+
+@patch("src.web.controllers.pedidos.api_pedidos.db")
+@patch("src.web.controllers.pedidos.api_pedidos.pedidos.actualizar_pedido")
+def test_actualizar_pedido_no_encontrado(mock_actualizar, mock_db, client):
+    """Verifica que si el pedido no existe devuelva 404."""
+    mock_actualizar.side_effect = PedidoNotFoundError("El pedido con ID 99 no existe.")
+
+    response = client.put(
+        "/api/requests/99",
+        json={"comidas": {"1": [1]}},
+    )
+
+    assert response.status_code == 404
+    assert "no existe" in response.json["error"]
+
+@patch("src.web.controllers.pedidos.api_pedidos.db")
+@patch("src.web.controllers.pedidos.api_pedidos.pedidos.actualizar_pedido")
+def test_actualizar_pedido_ya_procesado(mock_actualizar, mock_db, client):
+    """Verifica que si el pedido ya fue autorizado rechace la edición (409)."""
+    mock_actualizar.side_effect = PedidoConflictError(
+        "No se puede modificar un pedido que ya está autorizado."
+    )
+
+    response = client.put(
+        "/api/requests/10",
+        json={"comidas": {"1": [1]}},
+    )
+
+    assert response.status_code == 409
+    assert "autorizado" in response.json["error"]
+    mock_db.session.rollback.assert_called_once()

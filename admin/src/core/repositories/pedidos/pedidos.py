@@ -16,3 +16,26 @@ def create_pedido_con_solicitudes(nuevo_pedido: Pedido, lista_solicitudes: list[
         db.session.add(solicitud)
 
     return nuevo_pedido
+
+
+def get_pedido_by_id(id_pedido: int) -> Pedido | None:
+    """Recupera un pedido por su clave primaria."""
+    return db.session.get(Pedido, id_pedido)
+
+
+def limpiar_solicitudes_de_pedido(id_pedido: int):
+    """
+    Borra todos los renglones (solicitudes) actuales de un pedido.
+    """
+    stmt = db.delete(Solicitud).where(Solicitud.idPedido == id_pedido)
+    db.session.execute(stmt)
+    db.session.flush()
+
+
+def guardar_nuevas_solicitudes(pedido: Pedido, nuevas_solicitudes: list[Solicitud]) -> Pedido:
+    """Asocia y agrega los nuevos renglones al pedido."""
+    for sol in nuevas_solicitudes:
+        sol.idPedido = pedido.idPedido
+        db.session.add(sol)
+
+    return pedido
