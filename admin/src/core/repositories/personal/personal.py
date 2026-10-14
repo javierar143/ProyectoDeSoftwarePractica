@@ -8,7 +8,7 @@ from src.core.models.Personal import Personal
 from src.core.models.TipoPersonal import TipoPersonal
 from src.core.models.TipoMenu import TipoMenu
 from src.core.models.SectorCompuestoPorPersonal import SectorCompuestoPorPersonal
-from src.core.models.SectorTemporal import SectorTemporal
+from src.core.models.Sector import Sector
 
 
 def get_all(solo_activos: bool = False) -> list[Personal]:
@@ -64,11 +64,11 @@ def get_tipos_menu() -> list[TipoMenu]:
     statement = select(TipoMenu).order_by(TipoMenu.nombre)
     return db.session.execute(statement).scalars().all()
 
-def get_sector_asignado(id_personal: int) -> SectorTemporal | None:
+def get_sector_asignado(id_personal: int) -> Sector | None:
     """Obtiene el sector asignado al personal si existe en la tabla intermedia."""
     statement = (
-        select(SectorTemporal)
-        .join(SectorCompuestoPorPersonal, SectorCompuestoPorPersonal.idSector == SectorTemporal.idSector)
+        select(Sector)
+        .join(SectorCompuestoPorPersonal, SectorCompuestoPorPersonal.idSector == Sector.idSector)
         .where(SectorCompuestoPorPersonal.idPersonal == id_personal)
     )
     return db.session.execute(statement).scalar_one_or_none()
@@ -87,7 +87,7 @@ def set_sector(id_personal: int, id_sector: int | None) -> None:
     db.session.commit()
 
 
-def get_sectores() -> list[SectorTemporal]:
+def get_sectores() -> list[Sector]:
     """Obtiene el catálogo de sectores activos para los desplegables."""
-    statement = select(SectorTemporal).where(SectorTemporal.isActive.is_(True)).order_by(SectorTemporal.nombre)
+    statement = select(Sector).where(Sector.isActive.is_(True)).order_by(Sector.nombre)
     return db.session.execute(statement).scalars().all()

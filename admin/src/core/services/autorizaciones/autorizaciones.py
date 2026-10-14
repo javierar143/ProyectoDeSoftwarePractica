@@ -1,12 +1,12 @@
-from src.core.repositories.autorizaciones import solicitudes as solicitudes
-from src.core.repositories.autorizaciones import entregas as entregas
+from src.core.repositories.autorizaciones import solicitudes as repo_solicitudes
+from src.core.repositories.autorizaciones import entregas as repo_entregas
 from src.core.models.enums import EstadoAutorizacion
 
 # <------ Solicitudes ------>
 def obtener_solicitudes_pendientes():
     """Obtiene las solicitudes confirmadas listas para revisar"""
 
-    return solicitudes.get_solicitudes_pendientes()
+    return repo_solicitudes.get_solicitudes_pendientes()
 
 def actualizar_autorizacion(idSolicitud, nuevo_estado_texto, id_evaluador):
     """Convierte el texto recibido a Enum y valida que sea correcto"""
@@ -22,15 +22,15 @@ def actualizar_autorizacion(idSolicitud, nuevo_estado_texto, id_evaluador):
     if estado_enum not in estados_permitidos:
         raise ValueError("Solo se permite transicionar a Autorizado o Rechazado.")
         
-    return solicitudes.actualizar_estado_autorizacion(idSolicitud, estado_enum, id_evaluador)
+    return repo_solicitudes.actualizar_estado_autorizacion(idSolicitud, estado_enum, id_evaluador)
 
 # <------ Entregas ------>
 def registrar_entrega_comedor(id_user, id_solicitud, id_personal):
     """Evita entregas duplicadas para una misma solicitud"""
     
     # Si ya fue entregada, levanto ValueError
-    if entregas.verificar_entrega_existente(id_solicitud):
+    if repo_entregas.verificar_entrega_existente(id_solicitud):
         raise ValueError("Esta comida ya fue entregada anteriormente.")
     
     # Si no fue entregada, la registro en la BD
-    return entregas.registrar_entrega(id_user, id_solicitud, id_personal)
+    return repo_entregas.registrar_entrega(id_user, id_solicitud, id_personal)

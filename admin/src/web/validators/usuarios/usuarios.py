@@ -1,29 +1,58 @@
-"""Validaciones relacionadas con la gestión de usuarios."""
+"""Validaciones de los datos de usuarios."""
 
 
 def validate_user_data(
     email: str,
     alias: str,
     password: str,
-    rol_id: str,
-    personal_id: str,
+    rol_nombre: str,
 ) -> bool:
-    """Valida los datos necesarios para crear un usuario."""
-    valid = True
+    """Comprueba que los datos obligatorios del usuario sean válidos."""
+    email_limpio = email.strip()
+    alias_limpio = alias.strip()
+    password_limpia = password.strip()
+    rol_limpio = rol_nombre.strip()
 
-    if not email.strip():
-        valid = False
+    datos_validos = all(
+        (
+            email_limpio,
+            "@" in email_limpio,
+            alias_limpio,
+            password_limpia,
+            rol_limpio,
+        )
+    )
 
-    if not alias.strip():
-        valid = False
+    return datos_validos
 
-    if not password:
-        valid = False
 
-    if not rol_id.isdigit() or int(rol_id) <= 0:
-        valid = False
+def validate_alta_conjunta_data(datos: dict[str, str]) -> list[str]:
+    """Valida los campos requeridos para el alta simultánea de Personal y Usuario."""
+    errores = []
 
-    if not personal_id.isdigit() or int(personal_id) <= 0:
-        valid = False
+    if not datos.get("dni", "").isdigit():
+        errores.append("El DNI es obligatorio y debe contener solo números.")
 
-    return valid
+    if not datos.get("nombre", ""):
+        errores.append("El nombre es obligatorio.")
+
+    if not datos.get("apellido", ""):
+        errores.append("El apellido es obligatorio.")
+
+    if not datos.get("idTipoPersonal", "").isdigit():
+        errores.append("Debe seleccionar un tipo de personal.")
+
+    if not datos.get("idTipoMenu", "").isdigit():
+        errores.append("Debe seleccionar un tipo de menú.")
+
+    usuario_valido = validate_user_data(
+        datos.get("email", ""),
+        datos.get("alias", ""),
+        datos.get("password", ""),
+        datos.get("rol_nombre", ""),
+    )
+
+    if not usuario_valido:
+        errores.append("Completá correctamente los datos obligatorios del usuario.")
+
+    return errores

@@ -7,11 +7,15 @@ from .config import config
 from src.core import database
 from src.web.controllers.auth import auth_bp
 from src.web.controllers.auth.api_auth import api_auth_controller
-from src.web.controllers.usuarios.usuarios import usuarios_controller
+from src.web.controllers.usuarios import usuarios_controller
 from src.web.controllers.personal.personal import personal_bp
 from src.web.controllers.autorizaciones.api_autorizaciones import api_autorizaciones_controller
+from src.web.controllers.configuracion.config import config_controller
 from src.web.handlers import error
+from src.web.controllers.sectores.sectores import sectores_bp
 
+from src.core.security.session import get_authenticated_user_id
+from src.core.services.usuarios import usuario as usuario_service
 
 def create_app(
     env="development",
@@ -28,6 +32,13 @@ def create_app(
 
     Session(app)
     database.init_app(app)
+
+    @app.context_processor
+    def inject_current_user():
+        """Expone el usuario autenticado a todas las plantillas."""
+        user_id = get_authenticated_user_id()
+        current_user = usuario_service.get_by_id(user_id) if user_id else None
+        return {"current_user": current_user}
 
     @app.route("/")
     def home():
@@ -58,10 +69,12 @@ def create_app(
     # =========================
     app.register_blueprint(usuarios_controller)
     app.register_blueprint(personal_bp)
+    app.register_blueprint(sectores_bp)
 
     # =========================
     # OPERACIÓN/AUTORIZACIONES
     # =========================
+    app.register_blueprint(config_controller)
     app.register_blueprint(api_autorizaciones_controller)
 
     return app

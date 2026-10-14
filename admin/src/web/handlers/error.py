@@ -66,3 +66,4 @@ def bad_request(error):
     )
 
     return render_template("error.html", error=error_data), 400
+    

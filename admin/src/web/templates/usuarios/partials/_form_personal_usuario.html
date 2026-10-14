@@ -1,0 +1,150 @@
+<h2>Alta de Personal y Usuario</h2>
+
+<form method="post" action="{{ url_for('usuarios.alta_usuarios.crear_alta_conjunta') }}">
+    <fieldset>
+        <legend>Datos personales</legend>
+
+        <div>
+            <label for="dni-personal">DNI</label>
+            <input
+                type="text"
+                id="dni-personal"
+                name="dni"
+                value="{{ form_data.get('dni', '') }}"
+                inputmode="numeric"
+                required
+            >
+        </div>
+
+        <div>
+            <label for="nombre-personal">Nombre</label>
+            <input
+                type="text"
+                id="nombre-personal"
+                name="nombre"
+                value="{{ form_data.get('nombre', '') }}"
+                autocomplete="given-name"
+                required
+            >
+        </div>
+
+        <div>
+            <label for="apellido-personal">Apellido</label>
+            <input
+                type="text"
+                id="apellido-personal"
+                name="apellido"
+                value="{{ form_data.get('apellido', '') }}"
+                autocomplete="family-name"
+                required
+            >
+        </div>
+
+        <div>
+            <label for="tipo-personal">Tipo de personal</label>
+            <select id="tipo-personal" name="idTipoPersonal" required>
+                <option value="">Seleccione un tipo</option>
+                {% for tipo in tipos_personal %}
+                    <option
+                        value="{{ tipo.idTipoPersonal }}"
+                        {% if form_data.get('idTipoPersonal', '')|string == tipo.idTipoPersonal|string %}
+                            selected
+                        {% endif %}
+                    >
+                        {{ tipo.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="tipo-menu">Tipo de menú</label>
+            <select id="tipo-menu" name="idTipoMenu" required>
+                <option value="">Seleccione un menú</option>
+                {% for menu in tipos_menu %}
+                    <option
+                        value="{{ menu.idTipoMenu }}"
+                        {% if form_data.get('idTipoMenu', '')|string == menu.idTipoMenu|string %}
+                            selected
+                        {% endif %}
+                    >
+                        {{ menu.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Datos del usuario</legend>
+
+        <div>
+            <label for="email-nuevo">Email</label>
+            <input
+                type="email"
+                id="email-nuevo"
+                name="email"
+                value="{{ form_data.get('email', '') }}"
+                autocomplete="email"
+                required
+            >
+        </div>
+
+        <div>
+            <label for="alias-nuevo">Alias</label>
+            <input
+                type="text"
+                id="alias-nuevo"
+                name="alias"
+                value="{{ form_data.get('alias', '') }}"
+                autocomplete="username"
+                required
+            >
+        </div>
+
+        <div>
+            <label for="password-nuevo">Contraseña</label>
+            <input
+                type="password"
+                id="password-nuevo"
+                name="password"
+                autocomplete="new-password"
+                required
+            >
+        </div>
+
+        <div>
+            <input
+                type="checkbox"
+                id="admin-nuevo"
+                name="is_system_admin"
+                {% if form_data.get('is_system_admin') == 'on' %}
+                    checked
+                {% endif %}
+            >
+            <label for="admin-nuevo">Administrador del sistema</label>
+        </div>
+
+        <div>
+            <label for="rol-nuevo">Rol</label>
+            <select id="rol-nuevo" name="rol_nombre" required>
+                <option value="">Seleccione un rol</option>
+                {% for rol in roles %}
+                    {# Ocultamos el rol de Administrador de la lista #}
+                    {% if rol.nombre != 'Administrador' %}
+                        <option
+                            value="{{ rol.nombre }}"
+                            {% if form_data.get('rol_nombre', '') == rol.nombre %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ rol.nombre }}
+                        </option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+    </fieldset>
+
+    <button type="submit">Crear Personal y Usuario</button>
+</form>

@@ -1,3 +1,9 @@
+"""Importaciones de los modelos para registrar sus tablas."""
+
+from sqlalchemy import Integer, String
+from sqlalchemy.orm import Mapped, mapped_column
+
+from src.core.database import BaseModel
 from src.core.models.Rol import Rol
 from src.core.models.Permiso import Permiso
 from src.core.models.Usuario import Usuario
@@ -11,5 +17,6 @@ from src.core.models.Cupo import Cupo
 from src.core.models.Pedido import Pedido
 from src.core.models.SectorCompuestoPorPersonal import SectorCompuestoPorPersonal
 
-from src.core.models.SectorTemporal import SectorTemporal #borrar cuando se cree la tabla SECTOR
 from src.core.models.TipoComidaTemporal import TipoComidaTemporal #borrar cuando se cree la tabla TIPO_COMIDA
+from src.core.models.Configuracion import Configuracion
+from src.core.models.Sector import Sector

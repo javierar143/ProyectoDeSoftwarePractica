@@ -6,7 +6,7 @@ from src.core.models.Personal import Personal
 from src.core.models.TipoPersonal import TipoPersonal
 from src.core.models.TipoMenu import TipoMenu
 from src.core.repositories.personal import personal as repo_personal
-from src.core.models.SectorTemporal import SectorTemporal
+from src.core.models.Sector import Sector
 
 
 def get_all(solo_activos: bool = False) -> list[Personal]:
@@ -129,11 +129,11 @@ def get_tipos_menu() -> list[TipoMenu]:
     """Obtiene las opciones predefinidas de tipos de menú."""
     return repo_personal.get_tipos_menu()
 
-def get_sector_asignado(id_personal: int) -> SectorTemporal | None:
+def get_sector_asignado(id_personal: int) -> Sector | None:
     """Obtiene el sector asignado al personal."""
     return repo_personal.get_sector_asignado(id_personal)
 
 
-def get_sectores() -> list[SectorTemporal]:
+def get_sectores() -> list[Sector]:
     """Obtiene el listado de sectores disponibles."""
     return repo_personal.get_sectores()

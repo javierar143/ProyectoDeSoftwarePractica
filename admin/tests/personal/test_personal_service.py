@@ -10,7 +10,7 @@ from src.core.database import db, reset_db
 from src.core.models.TipoPersonal import TipoPersonal
 from src.core.models.TipoMenu import TipoMenu
 from src.core.services.personal import personal as service_personal
-from src.core.models.SectorTemporal import SectorTemporal
+from src.core.models.Sector import Sector
 
 
 @pytest.fixture
@@ -37,7 +37,7 @@ def app():
             TipoMenu(idTipoMenu=3, nombre="Celíaco"),
         ])
 
-        db.session.add(SectorTemporal(idSector=1, nombre="Guardia", isActive=True))
+        db.session.add(Sector(idSector=1, nombre="Guardia", isActive=True))
 
         db.session.commit()
 

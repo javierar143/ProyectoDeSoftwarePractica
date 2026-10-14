@@ -11,7 +11,7 @@ from src.core.models.Personal import Personal
 from src.core.models.TipoPersonal import TipoPersonal
 from src.core.models.TipoMenu import TipoMenu
 from src.core.repositories.personal import personal as repo_personal
-from src.core.models.SectorTemporal import SectorTemporal
+from src.core.models.Sector import Sector
 
 
 @pytest.fixture
@@ -106,8 +106,8 @@ def test_repo_catalogos(app):
 
 def test_repo_catalogos_sectores(app):
     """Verifica la recuperación únicamente de sectores activos."""
-    s1 = SectorTemporal(nombre="Guardia", isActive=True)
-    s2 = SectorTemporal(nombre="Inactivo", isActive=False)
+    s1 = Sector(nombre="Guardia", isActive=True)
+    s2 = Sector(nombre="Inactivo", isActive=False)
     db.session.add_all([s1, s2])
     db.session.commit()
 
@@ -118,7 +118,7 @@ def test_repo_catalogos_sectores(app):
 
 def test_repo_set_and_get_sector_asignado(app):
     """Verifica la asignación, consulta y posterior desasignación de sector en la tabla intermedia."""
-    sector = SectorTemporal(nombre="Cirugía", isActive=True)
+    sector = Sector(nombre="Cirugía", isActive=True)
     db.session.add(sector)
     db.session.commit()
 
