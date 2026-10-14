@@ -54,9 +54,10 @@
             <dd>No disponible por seguridad.</dd>
         </dl>
 
+        {% if request.endpoint != 'usuarios.listado_usuarios.perfil' %}
         <a href="{{ url_for('usuarios.listado_usuarios.index') }}">
             Volver al listado
         </a>
-    </section>
+{% endif %}
 </main>
 {% endblock %}

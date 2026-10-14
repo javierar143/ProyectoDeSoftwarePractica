@@ -1,53 +1,80 @@
 <!doctype html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8" />
-    <title>{% block title %}Mi Aplicación{% endblock %}</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Inicio{% endblock %} | Servicio de Alimentación</title>
 
-    {% block head %}
-        <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-        {% block module_styles %}{% endblock %}
-    {% endblock %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+
+    {% block head %}{% endblock %}
+    {% block module_styles %}{% endblock %}
 </head>
-
 <body>
-    <header>
-        {% block header %}
-        <h1>Mi Aplicación</h1>
-        {% endblock %}
+    <header class="topbar">
+        <a class="topbar__brand" href="{{ url_for('home') }}">Servicio de Alimentación</a>
+
+        {% if current_user %}
+            <details class="account-menu">
+                <summary>{{ current_user.alias }}</summary>
+                <!-- Muestra el alias del usuario autenticado; reemplazar después por nombre y apellido. -->
+                <ul>
+                    <li>
+                        <a href="{{ url_for('usuarios.listado_usuarios.perfil') }}">
+                            Ver perfil
+                        </a>
+                    </li>
+                    <li>
+                        <form action="{{ url_for('auth.logout') }}" method="post">
+                            <button type="submit">Cerrar sesión</button>
+                        </form>
+                    </li>
+                </ul>
+            </details>
+        {% else %}
+            <a class="topbar__login" href="{{ url_for('auth.login') }}">Iniciar sesión</a>
+        {% endif %}
     </header>
 
-   <nav aria-label="Navegación principal">
-    {% block nav %}
-        {% if usuario_actual %}
-            <span>Usuario: {{ usuario_actual.alias }}</span>
-
-            {% if usuario_actual.isSystemAdmin %}
-                <a href="{{ url_for('usuarios.listado_usuarios.index') }}">
-                    Administrar usuarios
-                </a>
-            {% endif %}
-
-            <form method="post" action="{{ url_for('auth.logout') }}">
-                <button type="submit">Cerrar sesión</button>
-            </form>
-        {% else %}
-            <a href="{{ url_for('auth.login') }}">Iniciar sesión</a>
+    <div class="app">
+        {% if current_user %}
+            {% set menu = [
+                ("usuarios", "usuarios.listado_usuarios.index", "Usuarios"),
+                ("sectores", "sectores.index", "Sectores"),
+                ("personal", "personal.index", "Personal"),
+                ("config", "config.mostrar_config", "Ajustes del sistema"),
+            ] %}
+            <nav class="sidebar" aria-label="Navegación principal">
+                <ul>
+                    {% for blueprint, endpoint, label in menu %}
+                        <li>
+                            <a href="{{ url_for(endpoint) }}"
+                               {% if request.blueprint == blueprint %}class="active" aria-current="page"{% endif %}>
+                                {{ label }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </nav>
         {% endif %}
-    {% endblock %}
-    </nav>
 
-    <main>
-        {% block content %}
-        <!-- Contenido principal -->
-        {% endblock %}
-    </main>
+        <main class="content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="alerts">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
 
-    <footer>
-        {% block footer %}
-        &copy; Mi Aplicación
-        {% endblock %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <footer class="footer">
+        {% block footer %}Hospital "Sor María Ludovica" · Servicio de Alimentación y Dietética{% endblock %}
     </footer>
 </body>
 </html>
