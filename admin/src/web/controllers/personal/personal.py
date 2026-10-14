@@ -17,6 +17,8 @@ personal_bp = Blueprint("personal", __name__, url_prefix="/personal")
 def index():
     """Listado general de personal."""
     lista_personal = service_personal.get_all()
+    for p in lista_personal:
+        p.sector_asignado = service_personal.get_sector_asignado(p.idPersonal)
     return render_template("personal/index.html", personal=lista_personal)
 
 
@@ -25,11 +27,13 @@ def nuevo_form():
     """Muestra el formulario vacío para cargar un nuevo empleado."""
     tipos_personal = service_personal.get_tipos_personal()
     tipos_menu = service_personal.get_tipos_menu()
+    sectores = service_personal.get_sectores()
     return render_template(
         "personal/form.html",
         persona=None,
         tipos_personal=tipos_personal,
         tipos_menu=tipos_menu,
+        sectores=sectores,
     )
 
 
@@ -41,6 +45,7 @@ def nuevo():
     apellido = request.form.get("apellido", "").strip()
     id_tipo_personal = request.form.get("idTipoPersonal")
     id_tipo_menu = request.form.get("idTipoMenu")
+    id_sector = request.form.get("idSector")
 
     errores = []
     if not dni or not dni.isdigit():
@@ -56,6 +61,11 @@ def nuevo():
 
     tipos_personal = service_personal.get_tipos_personal()
     tipos_menu = service_personal.get_tipos_menu()
+    sectores = service_personal.get_sectores()
+
+    tipo_sel = next((t for t in tipos_personal if str(t.idTipoPersonal) == id_tipo_personal), None)
+    if tipo_sel and "fijo" in tipo_sel.nombre.lower() and not id_sector:
+        errores.append("Debe seleccionar un sector para el personal fijo.")
 
     if errores:
         return render_template(
@@ -63,6 +73,7 @@ def nuevo():
             persona=None,
             tipos_personal=tipos_personal,
             tipos_menu=tipos_menu,
+            sectores=sectores,
             errores=errores,
             valores=request.form,
         ), 400
@@ -73,6 +84,7 @@ def nuevo():
         apellido=apellido,
         id_tipo_personal=int(id_tipo_personal),
         id_tipo_menu=int(id_tipo_menu),
+        id_sector=int(id_sector) if id_sector else None,
     )
 
     if persona_creada is None:
@@ -82,6 +94,7 @@ def nuevo():
             persona=None,
             tipos_personal=tipos_personal,
             tipos_menu=tipos_menu,
+            sectores=sectores,
             errores=errores,
             valores=request.form,
         ), 400
@@ -98,13 +111,18 @@ def editar_form(id: int):
         flash("La persona solicitada no existe.", "danger")
         return redirect(url_for("personal.index"), code=303)
 
+    sector_actual = service_personal.get_sector_asignado(id)
     tipos_personal = service_personal.get_tipos_personal()
     tipos_menu = service_personal.get_tipos_menu()
+    sectores = service_personal.get_sectores()
+
     return render_template(
         "personal/form.html",
         persona=persona,
+        sector_actual=sector_actual,
         tipos_personal=tipos_personal,
         tipos_menu=tipos_menu,
+        sectores=sectores,
     )
 
 
@@ -121,6 +139,7 @@ def editar(id: int):
     apellido = request.form.get("apellido", "").strip()
     id_tipo_personal = request.form.get("idTipoPersonal")
     id_tipo_menu = request.form.get("idTipoMenu")
+    id_sector = request.form.get("idSector")
 
     errores = []
     if not dni or not dni.isdigit():
@@ -136,13 +155,21 @@ def editar(id: int):
 
     tipos_personal = service_personal.get_tipos_personal()
     tipos_menu = service_personal.get_tipos_menu()
+    sectores = service_personal.get_sectores()
+
+    tipo_sel = next((t for t in tipos_personal if str(t.idTipoPersonal) == id_tipo_personal), None)
+    if tipo_sel and "fijo" in tipo_sel.nombre.lower() and not id_sector:
+        errores.append("Debe seleccionar un sector para el personal fijo.")
 
     if errores:
+        sector_actual = service_personal.get_sector_asignado(id)
         return render_template(
             "personal/form.html",
             persona=persona,
+            sector_actual=sector_actual,
             tipos_personal=tipos_personal,
             tipos_menu=tipos_menu,
+            sectores=sectores,
             errores=errores,
             valores=request.form,
         ), 400
@@ -154,15 +181,19 @@ def editar(id: int):
         apellido=apellido,
         id_tipo_personal=int(id_tipo_personal),
         id_tipo_menu=int(id_tipo_menu),
+        id_sector=int(id_sector) if id_sector else None
     )
 
     if persona_actualizada is None:
+        sector_actual = service_personal.get_sector_asignado(id)
         errores.append("El DNI ingresado ya pertenece a otra persona.")
         return render_template(
             "personal/form.html",
             persona=persona,
+            sector_actual=sector_actual,
             tipos_personal=tipos_personal,
             tipos_menu=tipos_menu,
+            sectores=sectores,
             errores=errores,
             valores=request.form,
         ), 400
