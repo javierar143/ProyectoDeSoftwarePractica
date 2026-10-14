@@ -25,10 +25,15 @@
             <div style="margin-bottom: 20px;">
                 <label for="elementos_por_pagina" style="font-weight: bold; display: block; margin-bottom: 5px;">
                     Elementos por página
-                </label>
+                </label>                
+                    <input type="number"
+                        id="elementos_por_pagina"
+                        name="elementos_por_pagina"
+                        value="{{ config.elementos_por_pagina }}"
+                        min="1"
+                        max="25"
+                        required>
 
-                <input type="number" id="elementos_por_pagina" name="elementos_por_pagina" 
-                       value="{{ config.elementos_por_pagina }}" min="1" max="100" required>
                 <p class="text-muted" style="font-size: 14px; margin-top: 5px;">
                     Define la cantidad máxima de elementos que se mostrarán por página en los listados de Usuarios, Sectores, etc.
                 </p>
