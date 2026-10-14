@@ -1,8 +1,6 @@
 <h2>Alta de Personal y Usuario</h2>
 
-<form method="post" action="{{ url_for('usuarios.alta_usuarios.new') }}">
-    <input type="hidden" name="accion" value="crear_personal_usuario">
-
+<form method="post" action="{{ url_for('usuarios.alta_usuarios.crear_alta_conjunta') }}">
     <fieldset>
         <legend>Datos personales</legend>
 
@@ -129,7 +127,6 @@
 
         <div>
             <label for="rol-nuevo">Rol</label>
-            
             <select id="rol-nuevo" name="rol_nombre" required>
                 <option value="">Seleccione un rol</option>
                 {% for rol in roles %}

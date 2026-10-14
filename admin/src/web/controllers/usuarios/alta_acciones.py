@@ -1,10 +1,13 @@
 """Coordina las acciones disponibles en el alta de usuarios."""
 
-from flask import abort, current_app, redirect, render_template, url_for
+from flask import current_app, redirect, render_template, url_for
 
 from src.core.services.personal import personal as personal_service
-from src.core.services.usuarios import alta_conjunta, personal, usuario, rol
-from src.web.validators.usuarios.usuarios import validate_user_data
+from src.core.services.usuarios import alta_conjunta, personal, rol, usuario
+from src.web.validators.usuarios.usuarios import (
+    validate_alta_conjunta_data,
+    validate_user_data,
+)
 
 
 def _obtener_datos(form) -> dict[str, str]:
@@ -22,8 +25,21 @@ def _obtener_datos(form) -> dict[str, str]:
         "personal_id",
         "is_system_admin",
     )
-    datos = {campo: form.get(campo, "").strip() for campo in campos}
-    return datos
+    return {campo: form.get(campo, "").strip() for campo in campos}
+
+
+def _obtener_catalogos() -> dict:
+    """Obtiene los catálogos necesarios para los selectores del formulario."""
+    return {
+        "tipos_personal": personal_service.get_tipos_personal(),
+        "tipos_menu": personal_service.get_tipos_menu(),
+        "roles": rol.get_all(),
+    }
+
+
+def _buscar_persona(dni: str):
+    """Obtiene una persona por DNI si el valor es válido."""
+    return personal.get_by_dni(dni.strip()) if dni else None
 
 
 def mostrar_formulario(
@@ -35,24 +51,21 @@ def mostrar_formulario(
     status: int = 200,
 ):
     """Renderiza el formulario con sus catálogos y el estado de la operación."""
-    respuesta = render_template(
-        "usuarios/new.html",
-        dni=dni,
-        persona_encontrada=persona_encontrada,
-        mostrar_existente=mostrar_existente,
-        error=error,
-        form_data=form_data or {},
-        tipos_personal=personal_service.get_tipos_personal(),
-        tipos_menu=personal_service.get_tipos_menu(),
-        roles=rol.get_all(),
-    )
-    return respuesta, status
+    contexto = {
+        **_obtener_catalogos(),
+        "dni": dni,
+        "persona_encontrada": persona_encontrada,
+        "mostrar_existente": mostrar_existente,
+        "error": error,
+        "form_data": form_data or {},
+    }
+    return render_template("usuarios/new.html", **contexto), status
 
 
 def buscar_personal(form):
     """Busca una persona por DNI para asociarle un usuario."""
     dni = form.get("dni", "").strip()
-    persona = personal.get_by_dni(dni) if dni else None
+    persona = _buscar_persona(dni)
 
     return mostrar_formulario(
         dni=dni,
@@ -65,7 +78,7 @@ def crear_usuario(form):
     """Crea un usuario asociado a Personal que ya existe."""
     datos = _obtener_datos(form)
     dni = datos["dni"]
-    persona = personal.get_by_dni(dni) if dni else None
+    persona = _buscar_persona(dni)
 
     if persona is None:
         return mostrar_formulario(
@@ -76,14 +89,12 @@ def crear_usuario(form):
             status=400,
         )
 
-    datos_validos = validate_user_data(
+    if not validate_user_data(
         datos["email"],
         datos["alias"],
         datos["password"],
         datos["rol_nombre"],
-    )
-
-    if not datos_validos:
+    ):
         return mostrar_formulario(
             dni=dni,
             persona_encontrada=persona,
@@ -128,34 +139,7 @@ def crear_usuario(form):
 def crear_personal_usuario(form):
     """Valida y solicita el alta conjunta y transaccional de Personal y Usuario."""
     datos = _obtener_datos(form)
-    errores = []
-
-    if not datos["dni"].isdigit():
-        errores.append("El DNI es obligatorio y debe contener solo números.")
-
-    if not datos["nombre"]:
-        errores.append("El nombre es obligatorio.")
-
-    if not datos["apellido"]:
-        errores.append("El apellido es obligatorio.")
-
-    if not datos["idTipoPersonal"].isdigit():
-        errores.append("Debe seleccionar un tipo de personal.")
-
-    if not datos["idTipoMenu"].isdigit():
-        errores.append("Debe seleccionar un tipo de menú.")
-
-    usuario_valido = validate_user_data(
-        datos["email"],
-        datos["alias"],
-        datos["password"],
-        datos["rol_nombre"],
-    )
-
-    if not usuario_valido:
-        errores.append(
-            "Completá correctamente los datos obligatorios del usuario."
-        )
+    errores = validate_alta_conjunta_data(datos)
 
     if errores:
         return mostrar_formulario(
@@ -194,19 +178,3 @@ def crear_personal_usuario(form):
         )
 
     return redirect(url_for("usuarios.listado_usuarios.index"))
-
-
-def procesar_alta(form):
-    """Deriva el formulario a la acción solicitada y devuelve su respuesta HTTP."""
-    acciones = {
-        "buscar_personal": buscar_personal,
-        "crear_usuario": crear_usuario,
-        "crear_personal_usuario": crear_personal_usuario,
-    }
-
-    accion = acciones.get(form.get("accion", ""))
-
-    if accion is None:
-        abort(400, description="Acción no válida")
-
-    return accion(form)

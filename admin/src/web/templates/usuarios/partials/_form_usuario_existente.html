@@ -1,9 +1,6 @@
-
 <h2>Personal existente</h2>
 
-<form method="post" action="{{ url_for('usuarios.alta_usuarios.new') }}">
-    <input type="hidden" name="accion" value="buscar_personal">
-
+<form method="post" action="{{ url_for('usuarios.alta_usuarios.buscar') }}">
     <div>
         <label for="dni">DNI</label>
         <input
@@ -39,8 +36,7 @@
         </p>
     </section>
 
-    <form method="post" action="{{ url_for('usuarios.alta_usuarios.new') }}">
-        <input type="hidden" name="accion" value="crear_usuario">
+    <form method="post" action="{{ url_for('usuarios.alta_usuarios.crear_usuario_existente') }}">
         <input
             type="hidden"
             name="personal_id"
@@ -104,23 +100,22 @@
 
             <div>
                 <label for="rol-nuevo">Rol</label>
-            
-            <select id="rol-nuevo" name="rol_nombre" required>
-                <option value="">Seleccione un rol</option>
-                {% for rol in roles %}
-                    {# Ocultamos el rol de Administrador de la lista #}
-                    {% if rol.nombre != 'Administrador' %}
-                        <option
-                            value="{{ rol.nombre }}"
-                            {% if form_data.get('rol_nombre', '') == rol.nombre %}
-                                selected
-                            {% endif %}
-                        >
-                            {{ rol.nombre }}
-                        </option>
-                    {% endif %}
-                {% endfor %}
-            </select>               
+                <select id="rol-nuevo" name="rol_nombre" required>
+                    <option value="">Seleccione un rol</option>
+                    {% for rol in roles %}
+                        {# Ocultamos el rol de Administrador de la lista #}
+                        {% if rol.nombre != 'Administrador' %}
+                            <option
+                                value="{{ rol.nombre }}"
+                                {% if form_data.get('rol_nombre', '') == rol.nombre %}
+                                    selected
+                                {% endif %}
+                            >
+                                {{ rol.nombre }}
+                            </option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
             </div>
         </fieldset>
 
