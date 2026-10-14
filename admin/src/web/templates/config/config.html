@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "layout.html" %}
 
 {% block title %}Ajustes del Sistema{% endblock %}
 
@@ -6,15 +6,15 @@
 <div class="container">
     <h1>Configuración del Sistema</h1>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
+    <!--{# % with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
                 <div style="background-color: #d1e7dd; color: #0f5132; padding: 15px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid #badbcc;">
                     {{ message }}
                 </div>
             {% endfor %}
-        {% endif %}
-    {% endwith %}
+        {% endif %} lo comento por si explota algo
+    {% endwith %} -->
 
     <div class="card">
         <h2 style="margin-bottom: 20px;">Ajustes Generales</h2>
