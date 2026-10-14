@@ -1,3 +1,5 @@
+"""Enumeraciones del dominio para pedidos, solicitudes y cupos."""
+
 import enum
 
 
