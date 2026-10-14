@@ -10,6 +10,7 @@ from src.core.database import db, reset_db
 from src.core.models.TipoPersonal import TipoPersonal
 from src.core.models.TipoMenu import TipoMenu
 from src.core.services.personal import personal as service_personal
+from src.core.models.SectorTemporal import SectorTemporal
 
 
 @pytest.fixture
@@ -20,7 +21,7 @@ def app():
     with app.app_context():
         # limpieza aislada de las tablas de personal y catalogos relacionados para evitar conflictos con otros tests
         db.session.execute(text("""
-            TRUNCATE TABLE "Personal", "TipoPersonal", "TipoMenu" RESTART IDENTITY CASCADE;
+            TRUNCATE TABLE "Personal", "TipoPersonal", "TipoMenu", "SectorCompuestoPorPersonal", "Sector" RESTART IDENTITY CASCADE;
         """))
         db.session.commit()
 
@@ -35,6 +36,8 @@ def app():
             TipoMenu(idTipoMenu=2, nombre="Vegetariano"),
             TipoMenu(idTipoMenu=3, nombre="Celíaco"),
         ])
+
+        db.session.add(SectorTemporal(idSector=1, nombre="Guardia", isActive=True))
 
         db.session.commit()
 
@@ -52,6 +55,7 @@ def test_create_personal_exitoso(app):
         apellido="Gómez",
         id_tipo_personal=1,
         id_tipo_menu=1,
+        id_sector=1
     )
 
     # aserciones sobre el objeto retornado
@@ -67,6 +71,10 @@ def test_create_personal_exitoso(app):
     assert persona_en_db is not None
     assert persona_en_db.idPersonal == persona.idPersonal
 
+    sector_asig = service_personal.get_sector_asignado(persona.idPersonal)
+    assert sector_asig is not None
+    assert sector_asig.idSector == 1
+
 def test_create_personal_dni_duplicado(app):
     """Verifica que el servicio rechace la creación si el DNI ya existe."""
     # crear una primera persona valida
@@ -76,6 +84,7 @@ def test_create_personal_dni_duplicado(app):
         apellido="Gómez",
         id_tipo_personal=1,
         id_tipo_menu=1,
+        id_sector=1
     )
     assert primera_persona is not None
 
@@ -106,6 +115,7 @@ def test_update_personal_exitoso(app):
         apellido="Pérez",
         id_tipo_personal=1,
         id_tipo_menu=1,
+        id_sector=1
     )
     assert persona is not None
 
@@ -117,6 +127,7 @@ def test_update_personal_exitoso(app):
         apellido="Pérez Ramos",
         id_tipo_personal=1,
         id_tipo_menu=2,  # cambia a Vegetariano
+        id_sector=1  # mantiene el mismo sector
     )
 
     # comprobar retorno y persistencia
@@ -139,6 +150,7 @@ def test_set_active_soft_delete(app):
         apellido="Sosa",
         id_tipo_personal=2,
         id_tipo_menu=3,
+        id_sector=1
     )
     assert persona.isActive is True
 
@@ -156,3 +168,87 @@ def test_set_active_soft_delete(app):
     persona_reactivada = service_personal.set_active(persona.idPersonal, is_active=True)
     assert persona_reactivada is not None
     assert persona_reactivada.isActive is True
+
+
+def test_create_personal_fijo_sin_sector_lanza_error(app):
+    """Regla de negocio: El Personal Fijo exige obligatoriamente un sector."""
+    with pytest.raises(ValueError, match="requiere un sector asignado"):
+        service_personal.create(
+            dni="41000111",
+            nombre="Esteban",
+            apellido="Quito",
+            id_tipo_personal=1,  # Fijo
+            id_tipo_menu=1,
+            id_sector=None,
+        )
+
+
+def test_create_personal_residente_no_tiene_sector(app):
+    """Regla de negocio: El Residente no tiene sector asignado aunque se intente enviar uno."""
+    persona = service_personal.create(
+        dni="42000222",
+        nombre="Camila",
+        apellido="Ríos",
+        id_tipo_personal=2,  # Residente
+        id_tipo_menu=1,
+        id_sector=1,  # Intentamos mandarle sector
+    )
+    assert persona is not None
+
+    # Debe persistir sin asociacion en la tabla intermedia
+    sector = service_personal.get_sector_asignado(persona.idPersonal)
+    assert sector is None
+
+
+def test_transicion_fijo_a_residente_remueve_sector(app):
+    """Transición: Si un Fijo pasa a ser Residente, se debe eliminar su sector asignado."""
+    persona = service_personal.create(
+        dni="43000333",
+        nombre="Franco",
+        apellido="Armani",
+        id_tipo_personal=1,  # Fijo
+        id_tipo_menu=1,
+        id_sector=1,
+    )
+    assert service_personal.get_sector_asignado(persona.idPersonal) is not None
+
+    # Lo actualizamos a Residente
+    service_personal.update(
+        id_personal=persona.idPersonal,
+        dni="43000333",
+        nombre="Franco",
+        apellido="Armani",
+        id_tipo_personal=2,  # Residente
+        id_tipo_menu=1,
+        id_sector=None,
+    )
+
+    sector_despues = service_personal.get_sector_asignado(persona.idPersonal)
+    assert sector_despues is None
+
+
+def test_transicion_residente_a_fijo_asigna_sector(app):
+    """Transición: Si un Residente pasa a Fijo, se le asocia el nuevo sector."""
+    persona = service_personal.create(
+        dni="44000444",
+        nombre="Enzo",
+        apellido="Fernández",
+        id_tipo_personal=2,  # Residente
+        id_tipo_menu=1,
+    )
+    assert service_personal.get_sector_asignado(persona.idPersonal) is None
+
+    # Lo actualizamos a Fijo con sector
+    service_personal.update(
+        id_personal=persona.idPersonal,
+        dni="44000444",
+        nombre="Enzo",
+        apellido="Fernández",
+        id_tipo_personal=1,  # Fijo
+        id_tipo_menu=1,
+        id_sector=1,
+    )
+
+    sector_despues = service_personal.get_sector_asignado(persona.idPersonal)
+    assert sector_despues is not None
+    assert sector_despues.idSector == 1
