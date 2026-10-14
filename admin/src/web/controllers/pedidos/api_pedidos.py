@@ -96,3 +96,23 @@ def actualizar_pedido_existente(request_id: int):
     except Exception:
         db.session.rollback()
         return jsonify({"error": "Error interno al actualizar el pedido."}), 500
+
+@bp_pedidos.route("/<int:request_id>", methods=["DELETE"])
+def eliminar_pedido_existente(request_id: int):
+    """Endpoint para dar de baja un pedido confirmado."""
+    try:
+        pedidos.borrar_pedido(request_id)
+        db.session.commit()
+        return "", 204
+
+    except PedidoNotFoundError as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 404
+
+    except PedidoConflictError as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 409
+
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "Error interno al eliminar el pedido."}), 500

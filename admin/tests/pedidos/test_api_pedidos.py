@@ -269,3 +269,41 @@ def test_actualizar_pedido_ya_procesado(mock_actualizar, mock_db, client):
     assert response.status_code == 409
     assert "autorizado" in response.json["error"]
     mock_db.session.rollback.assert_called_once()
+
+@patch("src.web.controllers.pedidos.api_pedidos.db")
+@patch("src.web.controllers.pedidos.api_pedidos.pedidos.borrar_pedido")
+def test_eliminar_pedido_exito(mock_borrar, mock_db, client):
+    """Verifica la eliminación exitosa de un pedido (204)."""
+    response = client.delete("/api/requests/10")
+
+    assert response.status_code == 204
+    assert response.data == b""
+    mock_borrar.assert_called_once_with(10)
+    mock_db.session.commit.assert_called_once()
+
+
+@patch("src.web.controllers.pedidos.api_pedidos.db")
+@patch("src.web.controllers.pedidos.api_pedidos.pedidos.borrar_pedido")
+def test_eliminar_pedido_no_encontrado(mock_borrar, mock_db, client):
+    """Verifica que devuelva 404 si el pedido a borrar no existe."""
+    mock_borrar.side_effect = PedidoNotFoundError("El pedido con ID 99 no existe.")
+
+    response = client.delete("/api/requests/99")
+
+    assert response.status_code == 404
+    assert "no existe" in response.json["error"]
+    mock_db.session.rollback.assert_called_once()
+
+@patch("src.web.controllers.pedidos.api_pedidos.db")
+@patch("src.web.controllers.pedidos.api_pedidos.pedidos.borrar_pedido")
+def test_eliminar_pedido_ya_procesado(mock_borrar, mock_db, client):
+    """Verifica que rechace borrar un pedido si ya fue procesado (409)."""
+    mock_borrar.side_effect = PedidoConflictError(
+        "No se puede eliminar un pedido que ya fue autorizado."
+    )
+
+    response = client.delete("/api/requests/10")
+
+    assert response.status_code == 409
+    assert "autorizado" in response.json["error"]
+    mock_db.session.rollback.assert_called_once()

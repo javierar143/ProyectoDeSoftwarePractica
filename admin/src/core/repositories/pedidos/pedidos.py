@@ -39,3 +39,15 @@ def guardar_nuevas_solicitudes(pedido: Pedido, nuevas_solicitudes: list[Solicitu
         db.session.add(sol)
 
     return pedido
+
+
+def eliminar_pedido(pedido: Pedido):
+    """
+    Elimina físicamente el pedido y sus solicitudes asociadas.
+    La eliminación del detalle (solicitudes) se hace primero para mantener
+    la integridad referencial.
+    """
+    stmt = db.delete(Solicitud).where(Solicitud.idPedido == pedido.idPedido)
+    db.session.execute(stmt)
+
+    db.session.delete(pedido)

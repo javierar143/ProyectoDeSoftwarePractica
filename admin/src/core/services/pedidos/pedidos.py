@@ -210,3 +210,18 @@ def actualizar_pedido(
             solicitudes_a_guardar.append(nueva_solicitud)
 
     return repo_pedidos.guardar_nuevas_solicitudes(pedido, solicitudes_a_guardar)
+
+def borrar_pedido(id_pedido: int) -> None:
+    """
+    Valida y elimina un pedido. Solo puede eliminarse si sigue en estado CONFIRMADO.
+    """
+    pedido = repo_pedidos.get_pedido_by_id(id_pedido)
+    if not pedido:
+        raise PedidoNotFoundError(f"El pedido con ID {id_pedido} no existe.")
+
+    if pedido.estado_general != EstadoPedido.CONFIRMADO:
+        raise PedidoConflictError(
+            f"No se puede eliminar un pedido que ya fue {pedido.estado_general.value}."
+        )
+
+    repo_pedidos.eliminar_pedido(pedido)
