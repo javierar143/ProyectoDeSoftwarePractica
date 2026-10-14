@@ -135,3 +135,150 @@ footer {
 	}
 }
 
+/* ===== Barra superior ===== */
+.topbar {
+	align-items: center;
+	background-color: var(--primary-color);
+	color: #fff;
+	display: flex;
+	justify-content: space-between;
+	padding: 12px 16px;
+}
+
+.topbar__brand,
+.topbar__login {
+	color: #fff;
+	font-weight: bold;
+}
+
+/* ===== Menú de cuenta ===== */
+.account-menu {
+	position: relative;
+}
+
+.account-menu summary {
+	cursor: pointer;
+	list-style: none;
+}
+
+.account-menu ul {
+	background-color: var(--surface-color);
+	border: 1px solid var(--border-color);
+	border-radius: var(--radius);
+	list-style: none;
+	min-width: 180px;
+	padding: 8px;
+	position: absolute;
+	right: 0;
+	top: calc(100% + 8px);
+	z-index: 10;
+}
+
+.account-menu a,
+.account-menu button {
+	background: none;
+	color: var(--text-color);
+	display: block;
+	padding: 8px;
+	text-align: left;
+	width: 100%;
+}
+
+/* ===== Estructura: celular (por defecto) ===== */
+.app {
+	display: grid;
+	grid-template-columns: 1fr;
+}
+
+.sidebar {
+	background-color: var(--surface-color);
+	border-bottom: 1px solid var(--border-color);
+	padding: 0;
+}
+
+.sidebar ul {
+	display: flex;
+	list-style: none;
+	overflow-x: auto;
+}
+
+.sidebar a {
+	color: var(--text-color);
+	display: block;
+	padding: 12px 16px;
+	white-space: nowrap;
+}
+
+.sidebar a.active {
+	border-bottom: 3px solid var(--primary-color);
+	color: var(--primary-dark);
+	font-weight: bold;
+}
+
+.content {
+	max-width: none;
+	padding: 16px;
+	width: 100%;
+}
+
+/* ===== Tablet: 768px a 1024px ===== */
+@media (min-width: 768px) {
+	.app {
+		grid-template-columns: 180px 1fr;
+		min-height: calc(100vh - 120px);
+	}
+
+	.sidebar {
+		border-bottom: 0;
+		border-right: 1px solid var(--border-color);
+	}
+
+	.sidebar ul {
+		display: block;
+	}
+
+	.sidebar a.active {
+		background-color: #e0e7ff;
+		border-bottom: 0;
+		border-left: 4px solid var(--primary-color);
+	}
+
+	.content {
+		padding: 24px;
+	}
+}
+
+/* ===== Escritorio: 1025px en adelante ===== */
+@media (min-width: 1025px) {
+	.app {
+		grid-template-columns: 220px 1fr;
+	}
+
+	.content {
+		padding: 32px;
+	}
+}
+
+/* ===== Mensajes flash ===== */
+.alerts {
+	margin-bottom: 16px;
+}
+
+.alert {
+	border: 1px solid transparent;
+	border-radius: var(--radius);
+	margin-bottom: 8px;
+	padding: 12px 16px;
+}
+
+.alert-success { background-color: #d1e7dd; border-color: #badbcc; color: #0f5132; }
+.alert-danger  { background-color: #f8d7da; border-color: #f5c2c7; color: #842029; }
+.alert-warning { background-color: #fff3cd; border-color: #ffecb5; color: #664d03; }
+.alert-info    { background-color: #cff4fc; border-color: #b6effb; color: #055160; }
+
+.footer {
+	background-color: var(--text-color);
+	color: #fff;
+	padding: 16px;
+	text-align: center;
+}
