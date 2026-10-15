@@ -13,9 +13,11 @@ from src.web.controllers.autorizaciones.api_autorizaciones import api_autorizaci
 from src.web.controllers.configuracion.config import config_controller
 from src.web.handlers import error
 from src.web.controllers.sectores.sectores import sectores_bp
-
+from src.core.seeds.sectores import SECTORES_INICIALES
+from src.core.services.sectores import sector as sector_service
 from src.core.security.session import get_authenticated_user_id
 from src.core.services.usuarios import usuario as usuario_service
+from src.web.controllers.sectores.api_sectores import api_sectores_bp
 
 def create_app(
     env="development",
@@ -58,6 +60,12 @@ def create_app(
         print("Base de datos reseteada correctamente")
         return None
 
+    @app.cli.command("seed-sectores")
+    def seed_sectores():
+        """Carga los sectores iniciales del hospital que todavía no existan."""
+        creados = sector_service.seed(SECTORES_INICIALES)
+        print(f"Sectores creados: {creados}")
+    
     # =========================
     # AUTENTICACIÓN
     # =========================
@@ -70,6 +78,7 @@ def create_app(
     app.register_blueprint(usuarios_controller)
     app.register_blueprint(personal_bp)
     app.register_blueprint(sectores_bp)
+    app.register_blueprint(api_sectores_bp)
 
     # =========================
     # OPERACIÓN/AUTORIZACIONES

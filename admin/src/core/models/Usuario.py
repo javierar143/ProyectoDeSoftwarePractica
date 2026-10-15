@@ -26,3 +26,4 @@ class Usuario(BaseModel):
     idPersonal: Mapped[int] = mapped_column(
         ForeignKey("Personal.idPersonal")
     )
+    idSector: Mapped[int | None] = mapped_column(ForeignKey("Sector.idSector"))

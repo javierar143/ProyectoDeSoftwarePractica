@@ -1,7 +1,108 @@
 {% extends "layout.html" %}
 
 {% block title %}Sectores{% endblock %}
-<!-- Armo la base despues lo termino de hacer -->
+
 {% block content %}
-<h1>Sectores</h1>
+{% macro sort_link(campo, etiqueta) %}
+    {% set activo = filtros.order_by == campo %}
+    {% set nueva_dir = 'desc' if activo and filtros.direction == 'asc' else 'asc' %}
+    <a href="{{ url_for('sectores.index', **dict(query_args, order_by=campo, direction=nueva_dir)) }}">
+        {{ etiqueta }}{% if activo %} {{ '▲' if filtros.direction == 'asc' else '▼' }}{% endif %}
+    </a>
+{% endmacro %}
+
+<section>
+    <header class="page-header">
+        <h1>Sectores y servicios</h1>
+        <a class="btn" href="{{ url_for('sectores.nuevo_form') }}">Nuevo sector</a>
+    </header>
+
+    <form class="card filters" method="get" action="{{ url_for('sectores.index') }}" role="search">
+        <div>
+            <label for="nombre">Nombre</label>
+            <input type="search" id="nombre" name="nombre" maxlength="100" value="{{ filtros.nombre or '' }}">
+        </div>
+        <div>
+            <label for="estado">Estado</label>
+            <select id="estado" name="estado">
+                <option value="">Todos</option>
+                <option value="activo" {% if filtros.activo == true %}selected{% endif %}>Activo</option>
+                <option value="inactivo" {% if filtros.activo == false %}selected{% endif %}>Inactivo</option>
+            </select>
+        </div>
+        <div>
+            <label for="jefe">Jefe de Servicio</label>
+            <select id="jefe" name="jefe">
+                <option value="">Cualquiera</option>
+                {% for jefe in jefes %}
+                    <option value="{{ jefe.id_user }}" {% if filtros.id_jefe == jefe.id_user %}selected{% endif %}>
+                        {{ jefe.alias }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <input type="hidden" name="order_by" value="{{ filtros.order_by }}">
+        <input type="hidden" name="direction" value="{{ filtros.direction }}">
+        <button type="submit">Buscar</button>
+        <a href="{{ url_for('sectores.index') }}">Limpiar</a>
+    </form>
+
+    {% if sectores %}
+        <div class="table-wrapper">
+            <table>
+                <caption>{{ total }} sector(es) encontrado(s)</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">{{ sort_link('nombre', 'Nombre') }}</th>
+                        <th scope="col">Descripción</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col">{{ sort_link('fecha', 'Creado') }}</th>
+                        <th scope="col">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sector in sectores %}
+                        <tr>
+                            <td>{{ sector.nombre }}</td>
+                            <td>{{ sector.descripcion or '—' }}</td>
+                            <td>{{ 'Activo' if sector.isActive else 'Inactivo' }}</td>
+                            <td><time datetime="{{ sector.inserted_at.isoformat() }}">{{ sector.inserted_at.strftime('%d/%m/%Y') }}</time></td>
+                            <td class="actions">
+                                <a href="{{ url_for('sectores.editar_form', id=sector.idSector) }}">Editar</a>
+
+                                {% if sector.isActive %}
+                                    <form method="post" action="{{ url_for('sectores.desactivar', id=sector.idSector) }}"
+                                          onsubmit="return confirm('¿Desactivar el sector {{ sector.nombre }}?');">
+                                        <button type="submit">Desactivar</button>
+                                    </form>
+                                {% else %}
+                                    <form method="post" action="{{ url_for('sectores.activar', id=sector.idSector) }}">
+                                        <button type="submit">Activar</button>
+                                    </form>
+                                {% endif %}
+
+                                <form method="post" action="{{ url_for('sectores.eliminar', id=sector.idSector) }}"
+                                      onsubmit="return confirm('¿Eliminar el sector {{ sector.nombre }}?');">
+                                    <button type="submit">Eliminar</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <nav class="pagination" aria-label="Paginación">
+            {% if pagina > 1 %}
+                <a href="{{ url_for('sectores.index', page=pagina - 1, **query_args) }}">« Anterior</a>
+            {% endif %}
+            <span>Página {{ pagina }} de {{ total_paginas }}</span>
+            {% if pagina < total_paginas %}
+                <a href="{{ url_for('sectores.index', page=pagina + 1, **query_args) }}">Siguiente »</a>
+            {% endif %}
+        </nav>
+    {% else %}
+        <p>No se encontraron sectores con esos criterios.</p>
+    {% endif %}
+</section>
 {% endblock %}
