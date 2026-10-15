@@ -1,5 +1,4 @@
-
-"""Controlador web para el listado y la baja lógica de usuarios."""
+"""Controlador web para el listado, filtrado y baja lógica de usuarios."""
 
 from flask import (
     Blueprint,
@@ -16,7 +15,9 @@ from src.core.security.session import (
     require_authentication,
 )
 from src.core.services.usuarios import personal, rol, usuario
-from src.web.validators.usuarios.usuarios import validar_filtros_listado
+from src.core.services.usuarios import sector as sector_service
+from src.core.services.usuarios import busqueda as busqueda_service
+from src.web.validators.usuarios.filtros import validar_filtros_listado
 
 
 listado_controller = Blueprint("listado_usuarios", __name__)
@@ -24,22 +25,22 @@ listado_controller = Blueprint("listado_usuarios", __name__)
 
 @listado_controller.get("/")
 def index():
-    """Muestra el listado paginado y filtrado de usuarios."""
+    """Muestra el listado paginado y filtrado de usuarios con filtros combinables."""
     require_permission("user_index")
 
-    try:
-        filtros = validar_filtros_listado(request.args)
-    except ValueError as error:
-        abort(400, description=str(error))
+    filtros, errores_validacion = validar_filtros_listado(request.args)
 
-    usuarios, total_usuarios = usuario.buscar_paginado(filtros)
+    resultado_busqueda = busqueda_service.buscar_paginado(filtros)
+    
 
     response = render_template(
         "usuarios/index.html",
-        usuarios=usuarios,
+        usuarios=resultado_busqueda["usuarios"],
+        pagination=resultado_busqueda,
         filtros=filtros,
+        errores=errores_validacion,
         roles=rol.get_all(),
-        total_usuarios=total_usuarios,
+        sectores=sector_service.get_all(),
     )
 
     return response
@@ -69,7 +70,7 @@ def desactivar():
     if usuario_actualizado is None:
         abort(404, description="Usuario no encontrado.")
 
-    return redirect(url_for("listado_usuarios.index"))
+    return redirect(url_for("usuarios.listado_usuarios.index"))
 
 
 @listado_controller.post("/activar")
@@ -93,7 +94,7 @@ def activar():
     if usuario_actualizado is None:
         abort(404, description="Usuario no encontrado.")
 
-    return redirect(url_for("listado_usuarios.index"))
+    return redirect(url_for("usuarios.listado_usuarios.index"))
 
 
 @listado_controller.get("/<int:user_id>/detalle")
