@@ -58,3 +58,24 @@ def validate_alta_conjunta_data(datos: dict[str, str]) -> list[str]:
         )
 
     return errores
+
+
+def validate_edit_user_data(
+    email: str,
+    alias: str,
+    rol_id_texto: str,
+    password: str = "",
+) -> list[str]:
+    """Valida los campos requeridos para la edición de un usuario."""
+    errores = []
+    email_limpio = email.strip()
+    alias_limpio = alias.strip()
+    
+    if not email_limpio or "@" not in email_limpio:
+        errores.append("El correo electrónico es obligatorio y debe ser válido.")
+    if not alias_limpio:
+        errores.append("El alias es obligatorio.")
+    if not rol_id_texto.strip().isdigit():
+        errores.append("Debe seleccionar un rol válido.")
+    
+    return errores

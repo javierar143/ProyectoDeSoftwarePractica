@@ -8,210 +8,218 @@
 {% endblock %}
 
 {% block content %}
-<div class="usuarios-header">
-    <h1>Administración de usuarios</h1>
-    <div class="usuarios-header-actions">
-        <button type="button" id="btn-toggle-filtros" class="btn btn-secondary">
-            🔍 Filtrar
-        </button>
-        <a
-            class="btn btn-primary"
-            href="{{ url_for('usuarios.alta_usuarios.new') }}"
-        >
-            + Crear usuario
-        </a>
-    </div>
-</div>
-
-<!-- Panel de Filtros Combinables y Ordenamiento -->
-<section id="panel-filtros-usuarios" class="filtros-panel {% if not filtros.email and not filtros.nombre_apellido and not filtros.dni and not filtros.activo and not filtros.rol_id and not filtros.sector_id %}oculto{% endif %}" aria-label="Filtros de búsqueda">
-    <form method="GET" action="{{ url_for('usuarios.listado_usuarios.index') }}" class="filtros-form">
-        <div class="filtros-grid">
-            <div class="form-group">
-                <label for="filtro-email">Correo electrónico</label>
-                <input type="text" id="filtro-email" name="email" value="{{ filtros.email }}" placeholder="ej. usuario@dominio.com">
-                {% if errores.email %}<span class="error-msg">{{ errores.email }}</span>{% endif %}
-            </div>
-
-            <div class="form-group">
-                <label for="filtro-nombre-apellido">Nombre o apellido</label>
-                <input type="text" id="filtro-nombre-apellido" name="nombre_apellido" value="{{ filtros.nombre_apellido }}" placeholder="Buscar por nombre o apellido">
-                {% if errores.nombre_apellido %}<span class="error-msg">{{ errores.nombre_apellido }}</span>{% endif %}
-            </div>
-
-            <div class="form-group">
-                <label for="filtro-dni">DNI</label>
-                <input type="text" id="filtro-dni" name="dni" value="{{ filtros.dni }}" placeholder="Solo números">
-                {% if errores.dni %}<span class="error-msg">{{ errores.dni }}</span>{% endif %}
-            </div>
-
-            <div class="form-group">
-                <label for="filtro-activo">Activo</label>
-                <select id="filtro-activo" name="activo">
-                    <option value="" {% if filtros.activo == "" %}selected{% endif %}>Todos</option>
-                    <option value="1" {% if filtros.activo == "1" %}selected{% endif %}>Sí</option>
-                    <option value="0" {% if filtros.activo == "0" %}selected{% endif %}>No</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="filtro-rol">Rol</label>
-                <select id="filtro-rol" name="rol_id">
-                    <option value="">Todos los roles</option>
-                    {% for rol in roles %}
-                        <option value="{{ rol.idRol }}" {% if filtros.rol_id == rol.idRol %}selected{% endif %}>
-                            {{ rol.nombre }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="filtro-sector">Sector o servicio</label>
-                <select id="filtro-sector" name="sector_id">
-                    <option value="">Todos los sectores</option>
-                    {% for sector in sectores %}
-                        <option value="{{ sector.idSector }}" {% if filtros.sector_id == sector.idSector %}selected{% endif %}>
-                            {{ sector.nombre }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="filtro-orden">Ordenar por</label>
-                <select id="filtro-orden" name="orden">
-                    <option value="fecha" {% if filtros.orden == "fecha" %}selected{% endif %}>Fecha de creación</option>
-                    <option value="apellido_nombre" {% if filtros.orden == "apellido_nombre" %}selected{% endif %}>Apellido y nombre</option>
-                    <option value="email" {% if filtros.orden == "email" %}selected{% endif %}>Correo electrónico</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="filtro-sentido">Sentido</label>
-                <select id="filtro-sentido" name="sentido">
-                    <option value="asc" {% if filtros.sentido == "asc" %}selected{% endif %}>Ascendente</option>
-                    <option value="desc" {% if filtros.sentido == "desc" %}selected{% endif %}>Descendente</option>
-                </select>
-            </div>
+<div class="usuarios-contenedor">
+    <div class="usuarios-header">
+        
+        <h1>Administración de usuarios</h1>
+        <div class="usuarios-header-actions">
+            <button type="button" id="btn-toggle-filtros" class="btn btn-secondary">
+                Filtrar
+            </button>
+            <a
+                class="btn btn-primary"
+                href="{{ url_for('usuarios.alta_usuarios.new') }}"
+            >
+                + Crear usuario
+            </a>
         </div>
-
-        <div class="filtros-actions">
-            <a href="{{ url_for('usuarios.listado_usuarios.index') }}" class="btn btn-outline">Cerrar Filtros</a>
-            <button type="submit" class="btn btn-primary">Aplicar filtros</button>
-        </div>
-    </form>
-</section>
-
-<section aria-labelledby="usuarios-title">
-    <div class="usuarios-toolbar">
-        <h2 id="usuarios-title">Usuarios registrados ({{ pagination.total_usuarios }})</h2>
     </div>
 
-    {% if usuarios %}
-        <table class="tabla-usuarios">
-            <caption>Listado de usuarios del sistema</caption>
+    <section id="panel-filtros-usuarios" class="filtros-panel {% if not filtros.email and not filtros.nombre_apellido and not filtros.dni and not filtros.activo and not filtros.rol_id and not filtros.sector_id %}oculto{% endif %}" aria-label="Filtros de búsqueda">
+        <form method="GET" action="{{ url_for('usuarios.listado_usuarios.index') }}" class="filtros-form">
+            <div class="filtros-grid">
+                <div class="form-group">
+                    <label for="filtro-email">Correo electrónico</label>
+                    <input type="text" id="filtro-email" name="email" value="{{ filtros.email }}" maxlength="100" placeholder="ej. usuario@dominio.com">
+                    {% if errores.email %}<span class="error-msg">{{ errores.email }}</span>{% endif %}
+                </div>
 
-            <thead>
-                <tr>
-                    <th scope="col">Apellido y Nombre</th>
-                    <th scope="col">DNI</th>
-                    <th scope="col">Email</th>
-                    <th scope="col">Activo</th>
-                    <th scope="col">Rol</th>
-                    <th scope="col">Creado</th>
-                    <th scope="col">Acciones</th>
-                </tr>
-            </thead>
+                <div class="form-group">
+                    <label for="filtro-nombre-apellido">Nombre o apellido</label>
+                    <input type="text" id="filtro-nombre-apellido" name="nombre_apellido" value="{{ filtros.nombre_apellido }}" maxlength="100" placeholder="Buscar por nombre o apellido">
+                    {% if errores.nombre_apellido %}<span class="error-msg">{{ errores.nombre_apellido }}</span>{% endif %}
+                </div>
 
-            <tbody>
-                {% for usuario, rol_nombre, personal in usuarios %}
+                <div class="form-group">
+                    <label for="filtro-dni">DNI</label>
+                    <input type="text" id="filtro-dni" name="dni" value="{{ filtros.dni }}" inputmode="numeric" pattern="[0-9]{1,15}" maxlength="15" title="Solo números (máximo 15 dígitos)" placeholder="Solo números">
+                    {% if errores.dni %}<span class="error-msg">{{ errores.dni }}</span>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="filtro-activo">Activo</label>
+                    <select id="filtro-activo" name="activo">
+                        <option value="" {% if filtros.activo == "" %}selected{% endif %}>Todos</option>
+                        <option value="1" {% if filtros.activo == "1" %}selected{% endif %}>Sí</option>
+                        <option value="0" {% if filtros.activo == "0" %}selected{% endif %}>No</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="filtro-rol">Rol</label>
+                    <select id="filtro-rol" name="rol_id">
+                        <option value="">Todos los roles</option>
+                        {% for rol in roles %}
+                            <option value="{{ rol.idRol }}" {% if filtros.rol_id == rol.idRol %}selected{% endif %}>
+                                {{ rol.nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="filtro-sector">Sector o servicio</label>
+                    <select id="filtro-sector" name="sector_id">
+                        <option value="">Todos los sectores</option>
+                        {% for sector in sectores %}
+                            <option value="{{ sector.idSector }}" {% if filtros.sector_id == sector.idSector %}selected{% endif %}>
+                                {{ sector.nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="filtro-orden">Ordenar por</label>
+                    <select id="filtro-orden" name="orden">
+                        <option value="fecha" {% if filtros.orden == "fecha" %}selected{% endif %}>Fecha de creación</option>
+                        <option value="apellido_nombre" {% if filtros.orden == "apellido_nombre" %}selected{% endif %}>Apellido y nombre</option>
+                        <option value="email" {% if filtros.orden == "email" %}selected{% endif %}>Correo electrónico</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="filtro-sentido">Sentido</label>
+                    <select id="filtro-sentido" name="sentido">
+                        <option value="asc" {% if filtros.sentido == "asc" %}selected{% endif %}>Ascendente</option>
+                        <option value="desc" {% if filtros.sentido == "desc" %}selected{% endif %}>Descendente</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="filtros-actions">
+                <a href="{{ url_for('usuarios.listado_usuarios.index') }}" class="btn btn-outline">Limpiar filtros</a>
+                <button type="submit" class="btn btn-primary">Aplicar filtros</button>
+            </div>
+        </form>
+    </section>
+
+    <section aria-labelledby="usuarios-title">
+        <div class="usuarios-toolbar">
+            <h2 id="usuarios-title">Usuarios registrados ({{ pagination.total_usuarios }})</h2>
+        </div>
+
+        {% if usuarios %}
+            <table class="tabla-usuarios">
+                <caption>Listado de usuarios del sistema</caption>
+
+                <thead>
                     <tr>
-                        <td>
-                            {% if personal %}
-                                {{ personal.apellido }}, {{ personal.nombre }}
-                            {% else %}
-                                <em>Sin personal asociado</em>
-                            {% endif %}
-                        </td>
-                        <td>{{ personal.dni if personal else "-" }}</td>
-                        <td>
-                            {{ usuario.email }}
-                            {% if usuario.isSystemAdmin %}
-                                <span class="badge-admin">Admin</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if usuario.isActive %}
-                                Sí
-                            {% else %}
-                                No
-                            {% endif %}
-                        </td>
-                        <td>{{ rol_nombre }}</td>
-                        <td>{{ usuario.inserted_at.strftime('%d/%m/%Y') if usuario.inserted_at else '-' }}</td>
-                        <td>
-                            <a class="btn btn-sm" href="{{ url_for('usuarios.listado_usuarios.detalle', user_id=usuario.id_user) }}">
-                                Ver
-                            </a>
-                            
-                            {% if not usuario.isSystemAdmin and rol_nombre != "Administrador" %}
-                                {% if usuario.isActive %}
-                                    <form
-                                        method="post"
-                                        action="{{ url_for('usuarios.listado_usuarios.desactivar') }}"
-                                        onsubmit="return confirm('¿Confirmás el bloqueo de este usuario?');"
-                                        style="display:inline;"
-                                    >
-                                        <input type="hidden" name="user_id" value="{{ usuario.id_user }}">
-                                        <button type="submit" class="btn-danger-sm">Bloquear</button>
-                                    </form>
-                                {% else %}
-                                    <form
-                                        method="post"
-                                        action="{{ url_for('usuarios.listado_usuarios.activar') }}"
-                                        onsubmit="return confirm('¿Confirmás el desbloqueo de este usuario?');"
-                                        style="display:inline;"
-                                    >
-                                        <input type="hidden" name="user_id" value="{{ usuario.id_user }}">
-                                        <button type="submit" class="btn-success-sm">Desbloquear</button>
-                                    </form>
-                                {% endif %}
-                            {% endif %}
-                        </td>
+                        <th scope="col">Apellido y Nombre</th>
+                        <th scope="col">DNI</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Activo</th>
+                        <th scope="col">Rol</th>
+                        <th scope="col">Creado</th>
+                        <th scope="col">Acciones</th>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                </thead>
 
-        <!-- Paginación del lado del servidor -->
-        {% if pagination.total_paginas > 1 %}
-            <nav class="paginacion-nav" aria-label="Paginación de usuarios">
-                <ul class="paginacion-lista">
-                    {% if pagination.tiene_anterior %}
-                        <li>
-                            <a class="btn" href="{{ url_for('usuarios.listado_usuarios.index', pagina=pagination.pagina_actual - 1, email=filtros.email, nombre_apellido=filtros.nombre_apellido, dni=filtros.dni, activo=filtros.activo, rol_id=filtros.rol_id or '', sector_id=filtros.sector_id or '', orden=filtros.orden, sentido=filtros.sentido) }}">
-                                &laquo; Anterior
-                            </a>
+                <tbody>
+                    {% for usuario, rol_nombre, personal in usuarios %}
+                        <tr>
+                            <td>
+                                {% if personal %}
+                                    {{ personal.apellido }}, {{ personal.nombre }}
+                                {% else %}
+                                    <em>Sin personal asociado</em>
+                                {% endif %}
+                            </td>
+                            <td>{{ personal.dni if personal else "-" }}</td>
+                            <td>
+                                {{ usuario.email }}
+                                {% if usuario.isSystemAdmin %}
+                                    <span class="badge-admin">Admin</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if usuario.isActive %}
+                                    Sí
+                                {% else %}
+                                    No
+                                {% endif %}
+                            </td>
+                            <td>{{ rol_nombre }}</td>
+                            <td>{{ usuario.inserted_at.strftime('%d/%m/%Y') if usuario.inserted_at else '-' }}</td>
+                            <td class="acciones-celda">
+                                <a
+                                    class="btn btn-primary"
+                                    href="{{ url_for('usuarios.listado_usuarios.detalle', user_id=usuario.id_user) }}"
+                                >
+                                    Ver detalles
+                                </a>
+
+                                <form method="post" action="{{ url_for('usuarios.edicion_usuarios.edit') }}">
+                                    <input type="hidden" name="accion" value="seleccionar">
+                                    <input type="hidden" name="user_id" value="{{ usuario.id_user }}">
+                                    <button type="submit">Editar</button>
+                                </form>
+
+                                {% if not usuario.isSystemAdmin and rol_nombre != "Administrador" %}
+                                    {% if usuario.isActive %}
+                                        <form
+                                            method="post"
+                                            action="{{ url_for('usuarios.listado_usuarios.desactivar') }}"
+                                            onsubmit="return confirm('¿Confirmás el bloqueo de este usuario?');"
+                                        >
+                                            <input type="hidden" name="user_id" value="{{ usuario.id_user }}">
+                                            <button type="submit">Bloquear</button>
+                                        </form>
+                                    {% else %}
+                                        <form
+                                            method="post"
+                                            action="{{ url_for('usuarios.listado_usuarios.activar') }}"
+                                            onsubmit="return confirm('¿Confirmás el desbloqueo de este usuario?');"
+                                        >
+                                            <input type="hidden" name="user_id" value="{{ usuario.id_user }}">
+                                            <button type="submit">Desbloquear</button>
+                                        </form>
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if pagination.total_paginas > 1 %}
+                <nav class="paginacion-nav" aria-label="Paginación de usuarios">
+                    <ul class="paginacion-lista">
+                        {% if pagination.tiene_anterior %}
+                            <li>
+                                <a class="btn" href="{{ url_for('usuarios.listado_usuarios.index', pagina=pagination.pagina_actual - 1, email=filtros.email, nombre_apellido=filtros.nombre_apellido, dni=filtros.dni, activo=filtros.activo, rol_id=filtros.rol_id or '', sector_id=filtros.sector_id or '', orden=filtros.orden, sentido=filtros.sentido) }}">
+                                    &laquo; Anterior
+                                </a>
+                            </li>
+                        {% endif %}
+                        <li class="paginacion-info">
+                            Página <strong>{{ pagination.pagina_actual }}</strong> de <strong>{{ pagination.total_paginas }}</strong>
                         </li>
-                    {% endif %}
-                    <li class="paginacion-info">
-                        Página <strong>{{ pagination.pagina_actual }}</strong> de <strong>{{ pagination.total_paginas }}</strong>
-                    </li>
-                    {% if pagination.tiene_siguiente %}
-                        <li>
-                            <a class="btn" href="{{ url_for('usuarios.listado_usuarios.index', pagina=pagination.pagina_actual + 1, email=filtros.email, nombre_apellido=filtros.nombre_apellido, dni=filtros.dni, activo=filtros.activo, rol_id=filtros.rol_id or '', sector_id=filtros.sector_id or '', orden=filtros.orden, sentido=filtros.sentido) }}">
-                                Siguiente &raquo;
-                            </a>
-                        </li>
-                    {% endif %}
-                </ul>
-            </nav>
+                        {% if pagination.tiene_siguiente %}
+                            <li>
+                                <a class="btn" href="{{ url_for('usuarios.listado_usuarios.index', pagina=pagination.pagina_actual + 1, email=filtros.email, nombre_apellido=filtros.nombre_apellido, dni=filtros.dni, activo=filtros.activo, rol_id=filtros.rol_id or '', sector_id=filtros.sector_id or '', orden=filtros.orden, sentido=filtros.sentido) }}">
+                                    Siguiente &raquo;
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <p>No se encontraron usuarios con los filtros seleccionados.</p>
         {% endif %}
-    {% else %}
-        <p>No se encontraron usuarios con los filtros seleccionados.</p>
-    {% endif %}
-</section>
+    </section>
+</div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {

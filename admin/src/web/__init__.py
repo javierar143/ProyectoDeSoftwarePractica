@@ -1,6 +1,6 @@
 """Inicialización y configuración de la aplicación Flask."""
 
-from flask import Flask, render_template
+from flask import Flask, render_template, request, session
 from flask_session import Session
 
 from .config import config
@@ -16,6 +16,8 @@ from src.web.controllers.sectores.sectores import sectores_bp
 
 from src.core.security.session import get_authenticated_user_id
 from src.core.services.usuarios import usuario as usuario_service
+from src.core.services import configuracion as config_service
+from src.core.services.usuarios import permiso as permiso_service
 
 def create_app(
     env="development",
@@ -39,6 +41,48 @@ def create_app(
         user_id = get_authenticated_user_id()
         current_user = usuario_service.get_by_id(user_id) if user_id else None
         return {"current_user": current_user}
+
+    # =========================
+    # MIDDLEWARE MODO MANTENIMIENTO
+    # =========================
+    @app.before_request
+    def verificar_modo_mantenimiento():
+        """Intercepta las peticiones si el sitio se encuentra en mantenimiento."""
+        try:
+            cfg = config_service.obtener_configuracion()
+        except Exception:
+            return None
+
+        # Si no está en mantenimiento, permitimos el flujo normal
+        if not cfg or not cfg.modo_mantenimiento:
+            return None
+
+        # 1. Permitir recursos estáticos (CSS, JS, imágenes)
+        if request.endpoint and ('static' in request.endpoint or request.path.startswith('/static/')):
+            return None
+
+        # 2. Permitir acceso al login / autenticación para que el admin pueda ingresar
+        if request.endpoint and ('auth' in request.endpoint or request.path.startswith('/auth')):
+            return None
+
+        # 3. Permitir acceso al propio panel de configuración
+        if request.endpoint and 'config' in request.endpoint:
+            return None
+
+        # 4. Verificar si el usuario autenticado es Administrador o tiene permisos
+        user_id = get_authenticated_user_id()
+        if user_id:
+            user = usuario_service.get_by_id(user_id)
+            if user:
+                # Verificamos si es administrador del sistema (isSystemAdmin) o si tiene permisos globales
+                if getattr(user, "isSystemAdmin", False) or permiso_service.user_has_permission(user_id, "user_index"):
+                    return None
+
+        # 5. Si es un usuario común o invitado, bloqueamos y mostramos la vista de mantenimiento
+        return render_template(
+            "config/mantenimiento.html",
+            mensaje=cfg.mensaje_mantenimiento
+        ), 503
 
     @app.route("/")
     def home():

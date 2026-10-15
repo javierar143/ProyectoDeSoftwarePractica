@@ -1,10 +1,10 @@
-
 """Controlador web para la edición de usuarios."""
 
 from flask import Blueprint, abort, redirect, render_template, request, session, url_for
 
 from src.core.security.permissions import require_permission
 from src.core.services.usuarios import rol, usuario
+from src.web.validators.usuarios.usuarios import validate_edit_user_data
 
 
 edicion_controller = Blueprint(
@@ -54,7 +54,7 @@ def _get_user_to_edit():
 
 
 def _save_user_changes() -> None:
-    """Valida y persiste los cambios del usuario seleccionado."""
+    """Valida mediante módulo externo y persiste los cambios del usuario seleccionado."""
     user_id = session.get("usuario_editar_id")
     email = request.form.get("email", "").strip()
     alias = request.form.get("alias", "").strip()
@@ -62,12 +62,12 @@ def _save_user_changes() -> None:
     password = request.form.get("password", "")
     is_system_admin = request.form.get("is_system_admin") == "on"
 
-    if (
-        not isinstance(user_id, int)
-        or not email
-        or not alias
-        or not rol_id_texto.isdigit()
-    ):
+    if not isinstance(user_id, int):
+        abort(400, description="Datos de usuario inválidos.")
+
+    # Validación delegada al módulo aparte de validadores
+    errores = validate_edit_user_data(email, alias, rol_id_texto, password)
+    if errores:
         abort(400, description="Datos de usuario inválidos.")
 
     usuario_actualizado = usuario.update(

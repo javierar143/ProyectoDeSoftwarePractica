@@ -6,16 +6,6 @@
 <div class="container">
     <h1>Configuración del Sistema</h1>
 
-    {# { % with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div style="background-color: #d1e7dd; color: #0f5132; padding: 15px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid #badbcc;">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        {% endif %} lo comento por si explota algo
-    {% endwith %} #}
-
     <div class="card">
         <h2 style="margin-bottom: 20px;">Ajustes Generales</h2>
         
@@ -26,16 +16,16 @@
                 <label for="elementos_por_pagina" style="font-weight: bold; display: block; margin-bottom: 5px;">
                     Elementos por página
                 </label>                
-                    <input type="number"
-                        id="elementos_por_pagina"
-                        name="elementos_por_pagina"
-                        value="{{ config.elementos_por_pagina }}"
-                        min="1"
-                        max="25"
-                        required>
+                <input type="number"
+                    id="elementos_por_pagina"
+                    name="elementos_por_pagina"
+                    value="{{ config.elementos_por_pagina }}"
+                    min="1"
+                    max="25"
+                    required>
 
                 <p class="text-muted" style="font-size: 14px; margin-top: 5px;">
-                    Define la cantidad máxima de elementos que se mostrarán por página en los listados de Usuarios, Sectores, etc.
+                    Define la cantidad máxima de elementos que se mostrarán por página en los listados del sistema.
                 </p>
             </div>
 
@@ -50,7 +40,24 @@
                     Habilitar Modo Mantenimiento
                 </label>
                 <p class="text-muted" style="font-size: 14px; margin-top: 5px;">
-                    Si se activa, el sistema bloqueará el acceso a todos los usuarios excepto a los Administradores.
+                    Si se activa, el sistema bloqueará el acceso a los usuarios que no sean administradores.
+                </p>
+            </div>
+
+            <!-- Mensaje de Mantenimiento -->
+            <div style="margin-bottom: 20px;">
+                <label for="mensaje_mantenimiento" style="font-weight: bold; display: block; margin-bottom: 5px;">
+                    Mensaje de mantenimiento
+                </label>
+                <textarea 
+                    id="mensaje_mantenimiento" 
+                    name="mensaje_mantenimiento" 
+                    rows="3" 
+                    maxlength="255"
+                    style="width: 100%; padding: 10px; border-radius: var(--radius); border: 1px solid var(--border-color);"
+                >{{ config.mensaje_mantenimiento }}</textarea>
+                <p class="text-muted" style="font-size: 14px; margin-top: 5px;">
+                    Mensaje que se mostrará en pantalla cuando el sitio esté deshabilitado por mantenimiento.
                 </p>
             </div>
 
