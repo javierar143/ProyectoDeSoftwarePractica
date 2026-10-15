@@ -2,15 +2,15 @@
 
 from datetime import date, datetime
 
-from sqlalchemy import Enum, ForeignKey, select
+from sqlalchemy import Enum, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core.database import BaseModel
-from src.core.models.enums import CondicionCupo, EstadoAutorizacion, EstadoPedido
+from src.core.models.enums import CondicionCupo, EstadoAutorizacion
 
 
 class Solicitud(BaseModel):
-    """Una comida solicitada para una persona en una fecha."""
+    """Una comida solicitada para una persona en una fecha determinada."""
 
     __tablename__ = "Solicitud"
 
@@ -50,37 +50,12 @@ class Solicitud(BaseModel):
     idUserEvaluador: Mapped[int | None] = mapped_column(
         ForeignKey("Usuario.id_user"), nullable=True
     )
-    inserted_at: Mapped[datetime] = mapped_column(default=datetime.now)
-    updated_at: Mapped[datetime] = mapped_column(
-        default=datetime.now, onupdate=datetime.now
+    fecha_evaluacion: Mapped[datetime | None] = mapped_column(
+        default=None, nullable=True
     )
-
-    @classmethod
-    def existe_duplicado(
-        cls,
-        session,
-        id_personal: int,
-        id_sector: int,
-        fecha: date,
-        id_tipo_comida: int,
-        excluir_id_pedido: int | None = None,
-    ) -> bool:
-        """Verifica si la persona ya tiene esa comida solicitada en ese sector y fecha."""
-        from src.core.models.Pedido import Pedido
-
-        stmt = (
-            select(cls)
-            .join(Pedido, cls.idPedido == Pedido.idPedido)
-            .where(
-                cls.idPersonal == id_personal,
-                cls.fecha_vianda == fecha,
-                cls.idTipoComida == id_tipo_comida,
-                Pedido.idSector == id_sector,
-                Pedido.estado_general != EstadoPedido.RECHAZADO,
-            )
-        )
-        if excluir_id_pedido is not None:
-            stmt = stmt.where(Pedido.idPedido != excluir_id_pedido)
-
-        resultado = session.execute(stmt).scalars().first()
-        return resultado is not None
+    inserted_at: Mapped[datetime] = mapped_column(
+        default=datetime.now, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        default=datetime.now, onupdate=datetime.now, nullable=False
+    )
