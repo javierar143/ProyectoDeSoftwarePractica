@@ -17,6 +17,5 @@ from src.core.models.Cupo import Cupo
 from src.core.models.Pedido import Pedido
 from src.core.models.SectorCompuestoPorPersonal import SectorCompuestoPorPersonal
 
-from src.core.models.TipoComidaTemporal import TipoComidaTemporal #borrar cuando se cree la tabla TIPO_COMIDA
 from src.core.models.Configuracion import Configuracion
 from src.core.models.Sector import Sector
