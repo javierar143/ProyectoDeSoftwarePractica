@@ -18,6 +18,7 @@ from src.core.security.session import get_authenticated_user_id
 from src.core.services.usuarios import usuario as usuario_service
 from src.core.services import configuracion as config_service
 from src.core.services.usuarios import permiso as permiso_service
+from src.core.services.personal import personal as personal_service
 
 def create_app(
     env="development",
@@ -37,10 +38,13 @@ def create_app(
 
     @app.context_processor
     def inject_current_user():
-        """Expone el usuario autenticado a todas las plantillas."""
+        """Expone el usuario autenticado y su personal asociado a todas las plantillas."""
         user_id = get_authenticated_user_id()
         current_user = usuario_service.get_by_id(user_id) if user_id else None
-        return {"current_user": current_user}
+        current_personal = None
+        if current_user and hasattr(current_user, "idPersonal") and current_user.idPersonal:
+            current_personal = personal_service.get_by_id(current_user.idPersonal)
+        return {"current_user": current_user, "current_personal": current_personal}
 
     # =========================
     # MIDDLEWARE MODO MANTENIMIENTO

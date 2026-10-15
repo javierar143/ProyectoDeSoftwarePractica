@@ -7,6 +7,15 @@
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 
+    <style>
+        /* Estilo para asegurar que la sección activa del menú lateral tenga el fondo de la barra superior */
+        .sidebar a.active {
+            background-color: var(--primary-color, #2c3e50); /* O el color de fondo exacto de tu topbar */
+            color: #ffffff !important;
+            font-weight: bold;
+        }
+    </style>
+
     {% block head %}{% endblock %}
     {% block module_styles %}{% endblock %}
 </head>
@@ -16,8 +25,13 @@
 
         {% if current_user %}
             <details class="account-menu">
-                <summary>{{ current_user.alias }}</summary>
-                <!-- Muestra el alias del usuario autenticado; reemplazar después por nombre y apellido. -->
+                <summary>
+                    {% if current_personal %}
+                        {{ current_personal.nombre }} {{ current_personal.apellido }}
+                    {% else %}
+                        {{ current_user.alias }}
+                    {% endif %}
+                </summary>
                 <ul>
                     <li>
                         <a href="{{ url_for('usuarios.listado_usuarios.perfil') }}">
@@ -49,7 +63,7 @@
                     {% for blueprint, endpoint, label in menu %}
                         <li>
                             <a href="{{ url_for(endpoint) }}"
-                               {% if request.blueprint == blueprint %}class="active" aria-current="page"{% endif %}>
+                               {% if request.endpoint and (blueprint in request.endpoint) %}class="active" aria-current="page"{% endif %}>
                                 {{ label }}
                             </a>
                         </li>

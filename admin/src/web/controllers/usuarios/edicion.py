@@ -1,6 +1,6 @@
 """Controlador web para la edición de usuarios."""
 
-from flask import Blueprint, abort, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, redirect, render_template, request, session, url_for, current_app  
 
 from src.core.security.permissions import require_permission
 from src.core.services.usuarios import rol, usuario
@@ -53,6 +53,10 @@ def _get_user_to_edit():
 
 
 
+from flask import Blueprint, abort, redirect, render_template, request, session, url_for, current_app  # <-- Agregamos current_app
+
+# ... (resto de funciones sin cambios hasta _save_user_changes)
+
 def _save_user_changes() -> None:
     """Valida mediante módulo externo y persiste los cambios del usuario seleccionado."""
     user_id = session.get("usuario_editar_id")
@@ -63,25 +67,33 @@ def _save_user_changes() -> None:
     is_system_admin = request.form.get("is_system_admin") == "on"
 
     if not isinstance(user_id, int):
+        current_app.logger.warning("Intento de guardar cambios de usuario con ID de sesión inválido.")
         abort(400, description="Datos de usuario inválidos.")
 
     # Validación delegada al módulo aparte de validadores
     errores = validate_edit_user_data(email, alias, rol_id_texto, password)
     if errores:
+        current_app.logger.warning(f"Validación fallida al editar usuario ID {user_id}: {errores}")
         abort(400, description="Datos de usuario inválidos.")
 
-    usuario_actualizado = usuario.update(
-        user_id=user_id,
-        email=email,
-        alias=alias,
-        rol_id=int(rol_id_texto),
-        is_system_admin=is_system_admin,
-        password=password,
-    )
+    try:
+        usuario_actualizado = usuario.update(
+            user_id=user_id,
+            email=email,
+            alias=alias,
+            rol_id=int(rol_id_texto),
+            is_system_admin=is_system_admin,
+            password=password,
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error crítico en base de datos al actualizar el usuario ID {user_id}: {str(e)}")
+        abort(500, description="Error interno al actualizar el usuario.")
 
     if usuario_actualizado is None:
+        current_app.logger.warning(f"No se pudo encontrar o actualizar el usuario ID {user_id}.")
         abort(400, description="No se pudo actualizar el usuario.")
 
+    current_app.logger.info(f"Usuario ID {user_id} actualizado exitosamente.")
     session.pop("usuario_editar_id", None)
     return None
 
