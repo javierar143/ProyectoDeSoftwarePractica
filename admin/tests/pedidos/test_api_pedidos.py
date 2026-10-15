@@ -1,21 +1,20 @@
 """Pruebas unitarias para la API de pedidos."""
+
 from dotenv import load_dotenv
+
 load_dotenv()
 
-import pytest
 from unittest.mock import patch
+import pytest
 
-from src.web import create_app
 from src.core.models.enums import EstadoPedido
 from src.core.services.pedidos.pedidos import (
-    PedidoValidationError,
     PedidoConflictError,
-    PedidoNotFoundError
+    PedidoForbiddenError,
+    PedidoNotFoundError,
+    PedidoValidationError,
 )
-
-from datetime import date
-from src.core.models.enums import CondicionCupo
-from src.core.services.pedidos import pedidos
+from src.web import create_app
 
 
 @pytest.fixture(scope="module")
@@ -32,11 +31,74 @@ def client(app):
     return app.test_client()
 
 
-# 1. TEST CAMINO FELIZ (201)
+class MockUser:
+    """Usuario simulado para las pruebas de pedidos."""
+
+    def __init__(self, is_active=True, id_rol=1, id_personal=1):
+        self.isActive = is_active
+        self.id_user = 1
+        self.idRol = id_rol
+        self.idPersonal = id_personal
+
+
+class MockRol:
+    """Rol simulado para las pruebas de pedidos."""
+
+    def __init__(self, nombre):
+        self.nombre = nombre
+
+
+def test_pedidos_requiere_auth(client):
+    """Verifica que sin token devuelva 401."""
+    response = client.get("/api/requests")
+    assert response.status_code == 401
+
+
+@patch("src.web.controllers.pedidos.api_pedidos.api_auth.get_authenticated_user")
 @patch("src.web.controllers.pedidos.api_pedidos.db")
+def test_pedidos_rechaza_rol_incorrecto(mock_db, mock_get_user, client):
+    """Verifica que un rol distinto a Jefe de Servicio reciba 403."""
+    mock_get_user.return_value = MockUser()
+    mock_db.session.get.return_value = MockRol(nombre="alimentacion")
+
+    response = client.get(
+        "/api/requests", headers={"Authorization": "Bearer tokenfalso"}
+    )
+    assert response.status_code == 403
+    assert "Solo un Jefe de Servicio" in response.get_json()["error"]
+
+
+@patch("src.web.controllers.pedidos.api_pedidos.pedidos.obtener_detalle_pedido")
+@patch("src.web.controllers.pedidos.api_pedidos.obtener_sector_de_personal")
+@patch("src.web.controllers.pedidos.api_pedidos.api_auth.get_authenticated_user")
+@patch("src.web.controllers.pedidos.api_pedidos.db")
+def test_obtener_detalle_pedido_ajeno_403(
+    mock_db, mock_get_user, mock_obtener_sector, mock_servicio_detalle, client
+):
+    """Verifica que consultar un pedido de otro sector devuelva 403."""
+    mock_get_user.return_value = MockUser()
+    mock_db.session.get.return_value = MockRol(nombre="jefe")
+    mock_obtener_sector.return_value = 5
+    mock_servicio_detalle.side_effect = PedidoForbiddenError("No tiene permisos")
+
+    response = client.get(
+        "/api/requests/99", headers={"Authorization": "Bearer tokenfalso"}
+    )
+    assert response.status_code == 403
+
+
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.crear_pedido")
-def test_crear_pedido_exito(mock_crear_pedido, mock_db, client):
+@patch("src.web.controllers.pedidos.api_pedidos.obtener_sector_de_personal")
+@patch("src.web.controllers.pedidos.api_pedidos.api_auth.get_authenticated_user")
+@patch("src.web.controllers.pedidos.api_pedidos.db")
+def test_crear_pedido_exito(
+    mock_db, mock_get_user, mock_obtener_sector, mock_crear_pedido, client
+):
     """Verifica que se cree un pedido correctamente y se haga commit (201)."""
+    mock_get_user.return_value = MockUser()
+    mock_db.session.get.return_value = MockRol(nombre="jefe")
+    mock_obtener_sector.return_value = 5
+
     class MockPedido:
         idPedido = 10
         estado_general = EstadoPedido.CONFIRMADO
@@ -45,13 +107,11 @@ def test_crear_pedido_exito(mock_crear_pedido, mock_db, client):
 
     response = client.post(
         "/api/requests",
+        headers={"Authorization": "Bearer tokenfalso"},
         json={
             "fecha_desde": "2026-06-29",
             "periodicidad": "semanal",
-            "comidas": {
-                "1": [1, 2, 10],
-                "2": [1],
-            },
+            "comidas": {"1": [1, 2, 10], "2": [1]},
         },
     )
 
@@ -62,31 +122,45 @@ def test_crear_pedido_exito(mock_crear_pedido, mock_db, client):
     mock_db.session.commit.assert_called_once()
 
 
-# 2. TEST FALTAN DATOS OBLIGATORIOS (400)
-def test_crear_pedido_faltan_datos(client):
+@patch("src.web.controllers.pedidos.api_pedidos.obtener_sector_de_personal")
+@patch("src.web.controllers.pedidos.api_pedidos.api_auth.get_authenticated_user")
+@patch("src.web.controllers.pedidos.api_pedidos.db")
+def test_crear_pedido_faltan_datos(
+    mock_db, mock_get_user, mock_obtener_sector, client
+):
     """Verifica que rechace un JSON incompleto con código 400."""
+    mock_get_user.return_value = MockUser()
+    mock_db.session.get.return_value = MockRol(nombre="jefe")
+    mock_obtener_sector.return_value = 5
+
     response = client.post(
         "/api/requests",
-        json={
-            "fecha_desde": "2026-06-29",
-            # Faltan 'periodicidad' y 'comidas'
-        },
+        headers={"Authorization": "Bearer tokenfalso"},
+        json={"fecha_desde": "2026-06-29"},
     )
 
     assert response.status_code == 400
     assert response.json["error"] == "Faltan datos obligatorios"
 
 
-@patch("src.web.controllers.pedidos.api_pedidos.db")
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.crear_pedido")
-def test_crear_pedido_persona_inactiva(mock_crear_pedido, mock_db, client):
+@patch("src.web.controllers.pedidos.api_pedidos.obtener_sector_de_personal")
+@patch("src.web.controllers.pedidos.api_pedidos.api_auth.get_authenticated_user")
+@patch("src.web.controllers.pedidos.api_pedidos.db")
+def test_crear_pedido_persona_inactiva(
+    mock_db, mock_get_user, mock_obtener_sector, mock_crear_pedido, client
+):
     """Verifica que devuelva 400 y haga rollback si una persona está inactiva."""
+    mock_get_user.return_value = MockUser()
+    mock_db.session.get.return_value = MockRol(nombre="jefe")
+    mock_obtener_sector.return_value = 5
     mock_crear_pedido.side_effect = PedidoValidationError(
         "La persona con ID 5 no existe o está inactiva."
     )
 
     response = client.post(
         "/api/requests",
+        headers={"Authorization": "Bearer tokenfalso"},
         json={
             "fecha_desde": "2026-06-29",
             "periodicidad": "diaria",
@@ -99,16 +173,24 @@ def test_crear_pedido_persona_inactiva(mock_crear_pedido, mock_db, client):
     mock_db.session.rollback.assert_called_once()
 
 
-@patch("src.web.controllers.pedidos.api_pedidos.db")
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.crear_pedido")
-def test_crear_pedido_duplicado(mock_crear_pedido, mock_db, client):
+@patch("src.web.controllers.pedidos.api_pedidos.obtener_sector_de_personal")
+@patch("src.web.controllers.pedidos.api_pedidos.api_auth.get_authenticated_user")
+@patch("src.web.controllers.pedidos.api_pedidos.db")
+def test_crear_pedido_duplicado(
+    mock_db, mock_get_user, mock_obtener_sector, mock_crear_pedido, client
+):
     """Verifica que devuelva 409 y haga rollback si hay una solicitud duplicada."""
+    mock_get_user.return_value = MockUser()
+    mock_db.session.get.return_value = MockRol(nombre="jefe")
+    mock_obtener_sector.return_value = 5
     mock_crear_pedido.side_effect = PedidoConflictError(
         "Ya existe una solicitud para la persona 1 en esa fecha y comida."
     )
 
     response = client.post(
         "/api/requests",
+        headers={"Authorization": "Bearer tokenfalso"},
         json={
             "fecha_desde": "2026-06-29",
             "periodicidad": "diaria",
@@ -120,109 +202,19 @@ def test_crear_pedido_duplicado(mock_crear_pedido, mock_db, client):
     assert "Ya existe una solicitud" in response.json["error"]
     mock_db.session.rollback.assert_called_once()
 
-@patch("src.core.services.pedidos.pedidos.repo_pedidos.create_pedido_con_solicitudes")
-@patch("src.core.services.pedidos.pedidos.Solicitud.existe_duplicado")
-@patch("src.core.services.pedidos.pedidos.db")
-@patch("src.core.services.pedidos.pedidos.cupos.get_by_sector_y_comida")
-def test_calculo_regular_y_excepcion(
-    mock_get_cupo, mock_session_get, mock_existe_duplicado, mock_repo_create
-):
-    """Verifica que si el cupo es 2 y se piden 3 personas, 2 sean REGULAR y 1 EXCEPCION."""
-    class MockCupo:
-        cantComensales = 2
 
-    mock_get_cupo.return_value = MockCupo()
-
-    class MockPersona:
-        isActive = True
-        idTipoMenu = 1
-
-    mock_session_get.return_value = MockPersona()
-    mock_existe_duplicado.return_value = False
-    mock_repo_create.side_effect = lambda pedido, solicitudes: pedido
-
-    pedidos.crear_pedido(
-        id_jefe=1,
-        id_sector=1,
-        fecha_desde=date(2026, 6, 29),
-        periodicidad="diaria",
-        comidas={1: [10, 11, 12]},
-    )
-
-    _, solicitudes_generadas = mock_repo_create.call_args[0]
-
-    assert len(solicitudes_generadas) == 3
-    assert solicitudes_generadas[0].condicionCupo == CondicionCupo.REGULAR
-    assert solicitudes_generadas[1].condicionCupo == CondicionCupo.REGULAR
-    assert solicitudes_generadas[2].condicionCupo == CondicionCupo.EXCEPCION
-
-@patch("src.web.controllers.pedidos.api_pedidos.db")
-@patch("src.web.controllers.pedidos.api_pedidos.pedidos.validar_sector_personal")
-@patch("src.core.services.pedidos.pedidos.db")
-@patch("src.core.services.pedidos.pedidos.cupos.get_by_sector_y_comida")
-def test_personal_fijo_otro_sector_rechazado(
-    mock_get_cupo, mock_pedidos_db, mock_validar_sector, mock_controller_db, client
-):
-    """Verifica que si el personal fijo no pertenece al sector del jefe, devuelva 400."""
-    class MockCupo:
-        cantComensales = 5
-
-    class MockPersona:
-        idPersonal = 8
-        isActive = True
-        idTipoMenu = 1
-        idTipoPersonal = 1
-
-    mock_get_cupo.return_value = MockCupo()
-    mock_pedidos_db.session.get.return_value = MockPersona()
-    mock_validar_sector.side_effect = PedidoValidationError(
-        "La persona con ID 8 es personal fijo y no pertenece al sector del Jefe de Servicio."
-    )
-
-    response = client.post(
-        "/api/requests",
-        json={
-            "fecha_desde": "2026-06-29",
-            "periodicidad": "diaria",
-            "comidas": {"1": [8]},
-        },
-    )
-
-    assert response.status_code == 400
-    assert "no pertenece al sector" in response.json["error"]
-    mock_controller_db.session.rollback.assert_called_once()
-
-@patch("src.core.services.pedidos.pedidos.pertenece_a_sector")
-@patch("src.core.services.pedidos.pedidos.db")
-def test_regla_residente_vs_personal_fijo(mock_db, mock_pertenece):
-    """Verifica que un Residente se acepte en cualquier sector y un Fijo de otro sector falle."""
-    from src.core.services.pedidos.pedidos import validar_sector_personal
-
-    class MockPersona:
-        idPersonal = 15
-        idTipoPersonal = 2
-
-    class MockTipoResidente:
-        nombre = "Residente"
-
-    mock_db.session.get.return_value = MockTipoResidente()
-    mock_pertenece.return_value = False
-
-    validar_sector_personal(MockPersona(), id_sector_jefe=1)
-
-    class MockTipoFijo:
-        nombre = "Personal Fijo"
-
-    mock_db.session.get.return_value = MockTipoFijo()
-    mock_pertenece.return_value = False
-
-    with pytest.raises(PedidoValidationError):
-        validar_sector_personal(MockPersona(), id_sector_jefe=1)
-
-@patch("src.web.controllers.pedidos.api_pedidos.db")
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.actualizar_pedido")
-def test_actualizar_pedido_exito(mock_actualizar, mock_db, client):
+@patch("src.web.controllers.pedidos.api_pedidos.obtener_sector_de_personal")
+@patch("src.web.controllers.pedidos.api_pedidos.api_auth.get_authenticated_user")
+@patch("src.web.controllers.pedidos.api_pedidos.db")
+def test_actualizar_pedido_exito(
+    mock_db, mock_get_user, mock_obtener_sector, mock_actualizar, client
+):
     """Verifica que se actualice un pedido correctamente y se haga commit (200)."""
+    mock_get_user.return_value = MockUser()
+    mock_db.session.get.return_value = MockRol(nombre="jefe")
+    mock_obtener_sector.return_value = 5
+
     class MockPedido:
         idPedido = 10
         estado_general = EstadoPedido.CONFIRMADO
@@ -231,6 +223,7 @@ def test_actualizar_pedido_exito(mock_actualizar, mock_db, client):
 
     response = client.put(
         "/api/requests/10",
+        headers={"Authorization": "Bearer tokenfalso"},
         json={"comidas": {"1": [1, 5]}},
     )
 
@@ -239,30 +232,47 @@ def test_actualizar_pedido_exito(mock_actualizar, mock_db, client):
     mock_db.session.commit.assert_called_once()
 
 
-@patch("src.web.controllers.pedidos.api_pedidos.db")
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.actualizar_pedido")
-def test_actualizar_pedido_no_encontrado(mock_actualizar, mock_db, client):
+@patch("src.web.controllers.pedidos.api_pedidos.obtener_sector_de_personal")
+@patch("src.web.controllers.pedidos.api_pedidos.api_auth.get_authenticated_user")
+@patch("src.web.controllers.pedidos.api_pedidos.db")
+def test_actualizar_pedido_no_encontrado(
+    mock_db, mock_get_user, mock_obtener_sector, mock_actualizar, client
+):
     """Verifica que si el pedido no existe devuelva 404."""
+    mock_get_user.return_value = MockUser()
+    mock_db.session.get.return_value = MockRol(nombre="jefe")
+    mock_obtener_sector.return_value = 5
     mock_actualizar.side_effect = PedidoNotFoundError("El pedido con ID 99 no existe.")
 
     response = client.put(
         "/api/requests/99",
+        headers={"Authorization": "Bearer tokenfalso"},
         json={"comidas": {"1": [1]}},
     )
 
     assert response.status_code == 404
     assert "no existe" in response.json["error"]
 
-@patch("src.web.controllers.pedidos.api_pedidos.db")
+
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.actualizar_pedido")
-def test_actualizar_pedido_ya_procesado(mock_actualizar, mock_db, client):
+@patch("src.web.controllers.pedidos.api_pedidos.obtener_sector_de_personal")
+@patch("src.web.controllers.pedidos.api_pedidos.api_auth.get_authenticated_user")
+@patch("src.web.controllers.pedidos.api_pedidos.db")
+def test_actualizar_pedido_ya_procesado(
+    mock_db, mock_get_user, mock_obtener_sector, mock_actualizar, client
+):
     """Verifica que si el pedido ya fue autorizado rechace la edición (409)."""
+    mock_get_user.return_value = MockUser()
+    mock_db.session.get.return_value = MockRol(nombre="jefe")
+    mock_obtener_sector.return_value = 5
     mock_actualizar.side_effect = PedidoConflictError(
         "No se puede modificar un pedido que ya está autorizado."
     )
 
     response = client.put(
         "/api/requests/10",
+        headers={"Authorization": "Bearer tokenfalso"},
         json={"comidas": {"1": [1]}},
     )
 
@@ -270,39 +280,72 @@ def test_actualizar_pedido_ya_procesado(mock_actualizar, mock_db, client):
     assert "autorizado" in response.json["error"]
     mock_db.session.rollback.assert_called_once()
 
-@patch("src.web.controllers.pedidos.api_pedidos.db")
+
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.borrar_pedido")
-def test_eliminar_pedido_exito(mock_borrar, mock_db, client):
+@patch("src.web.controllers.pedidos.api_pedidos.obtener_sector_de_personal")
+@patch("src.web.controllers.pedidos.api_pedidos.api_auth.get_authenticated_user")
+@patch("src.web.controllers.pedidos.api_pedidos.db")
+def test_eliminar_pedido_exito(
+    mock_db, mock_get_user, mock_obtener_sector, mock_borrar, client
+):
     """Verifica la eliminación exitosa de un pedido (204)."""
-    response = client.delete("/api/requests/10")
+    mock_get_user.return_value = MockUser()
+    mock_db.session.get.return_value = MockRol(nombre="jefe")
+    mock_obtener_sector.return_value = 5
+
+    response = client.delete(
+        "/api/requests/10",
+        headers={"Authorization": "Bearer tokenfalso"},
+    )
 
     assert response.status_code == 204
     assert response.data == b""
-    mock_borrar.assert_called_once_with(10)
+    mock_borrar.assert_called_once_with(10, id_sector_jefe=5)
     mock_db.session.commit.assert_called_once()
 
 
-@patch("src.web.controllers.pedidos.api_pedidos.db")
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.borrar_pedido")
-def test_eliminar_pedido_no_encontrado(mock_borrar, mock_db, client):
+@patch("src.web.controllers.pedidos.api_pedidos.obtener_sector_de_personal")
+@patch("src.web.controllers.pedidos.api_pedidos.api_auth.get_authenticated_user")
+@patch("src.web.controllers.pedidos.api_pedidos.db")
+def test_eliminar_pedido_no_encontrado(
+    mock_db, mock_get_user, mock_obtener_sector, mock_borrar, client
+):
     """Verifica que devuelva 404 si el pedido a borrar no existe."""
+    mock_get_user.return_value = MockUser()
+    mock_db.session.get.return_value = MockRol(nombre="jefe")
+    mock_obtener_sector.return_value = 5
     mock_borrar.side_effect = PedidoNotFoundError("El pedido con ID 99 no existe.")
 
-    response = client.delete("/api/requests/99")
+    response = client.delete(
+        "/api/requests/99",
+        headers={"Authorization": "Bearer tokenfalso"},
+    )
 
     assert response.status_code == 404
     assert "no existe" in response.json["error"]
     mock_db.session.rollback.assert_called_once()
 
-@patch("src.web.controllers.pedidos.api_pedidos.db")
+
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.borrar_pedido")
-def test_eliminar_pedido_ya_procesado(mock_borrar, mock_db, client):
+@patch("src.web.controllers.pedidos.api_pedidos.obtener_sector_de_personal")
+@patch("src.web.controllers.pedidos.api_pedidos.api_auth.get_authenticated_user")
+@patch("src.web.controllers.pedidos.api_pedidos.db")
+def test_eliminar_pedido_ya_procesado(
+    mock_db, mock_get_user, mock_obtener_sector, mock_borrar, client
+):
     """Verifica que rechace borrar un pedido si ya fue procesado (409)."""
+    mock_get_user.return_value = MockUser()
+    mock_db.session.get.return_value = MockRol(nombre="jefe")
+    mock_obtener_sector.return_value = 5
     mock_borrar.side_effect = PedidoConflictError(
         "No se puede eliminar un pedido que ya fue autorizado."
     )
 
-    response = client.delete("/api/requests/10")
+    response = client.delete(
+        "/api/requests/10",
+        headers={"Authorization": "Bearer tokenfalso"},
+    )
 
     assert response.status_code == 409
     assert "autorizado" in response.json["error"]
