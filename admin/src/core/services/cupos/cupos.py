@@ -3,6 +3,7 @@
 from src.core.database import db
 from src.core.models.Cupo import Cupo
 from src.core.repositories.cupos import cupos as repo_cupos
+from src.core.services.configuracion import obtener_configuracion
 
 
 class CupoServiceError(Exception):
@@ -70,22 +71,22 @@ def listar(
     id_tipo_comida: int | None = None,
     orden: str = "asc",
     page: int = 1,
-    per_page: int = 25,
-) -> tuple[list[Cupo], int]:
-    """Valida los parámetros de paginación y devuelve el listado de cupos."""
+) -> tuple[list[Cupo], int, int]:
+    """Obtiene la paginación global del sistema y devuelve el listado de cupos."""
     if page < 1:
         page = 1
 
-    if per_page < 1 or per_page > 25:
-        per_page = 25
+    config = obtener_configuracion()
+    per_page = config.elementos_por_pagina
 
-    return repo_cupos.list_cupos(
+    items, total = repo_cupos.list_cupos(
         id_sector=id_sector,
         id_tipo_comida=id_tipo_comida,
         orden=orden,
         page=page,
         per_page=per_page,
     )
+    return items, total, per_page
 
 
 def obtener_por_id(id_cupo: int) -> Cupo:

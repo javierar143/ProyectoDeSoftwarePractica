@@ -1,45 +1,74 @@
-"""Servicios para la creación, actualización y eliminación de pedidos."""
+"""Servicios para la creación, actualización, consulta y eliminación de pedidos."""
 
 from datetime import date
-from src.core.models.TipoPersonal import TipoPersonal
+
+from src.core.database import db
 from src.core.models.enums import (
-    EstadoPedido,
-    Periodicidad,
     CondicionCupo,
     EstadoAutorizacion,
+    EstadoPedido,
+    Periodicidad,
 )
-from src.core.database import db
 from src.core.models.Pedido import Pedido
-from src.core.models.Solicitud import Solicitud
 from src.core.models.Personal import Personal
-from src.core.services.cupos import cupos
+from src.core.models.Solicitud import Solicitud
+from src.core.models.TipoPersonal import TipoPersonal
 from src.core.repositories.pedidos import pedidos as repo_pedidos
+from src.core.services.configuracion import obtener_configuracion
+from src.core.services.cupos import cupos
+
 
 class PedidoForbiddenError(Exception):
-    """Error cuando un Jefe de Servicio intenta operar sobre un pedido de otro sector (HTTP 403)."""
+    """Error cuando un usuario intenta operar sobre un pedido de otro sector (HTTP 403)."""
 
     pass
 
 
 class PedidoNotFoundError(Exception):
     """Error cuando el pedido solicitado no existe (HTTP 404)."""
+
     pass
 
 
 class PedidoValidationError(Exception):
     """Error para datos inválidos o reglas que devuelven HTTP 400."""
+
     pass
 
 
 class PedidoConflictError(Exception):
     """Error para conflictos o duplicados que devuelven HTTP 409."""
+
     pass
 
 
+def obtener_sector_de_personal(id_personal: int | None) -> int | None:
+    """
+    Obtiene el idSector asignado a una persona (usado para saber el sector del Jefe).
+    Busca primero en Personal y luego en la tabla intermedia si existe.
+    """
+    if id_personal is None:
+        return None
+
+    persona = db.session.get(Personal, id_personal)
+    if persona is not None:
+        id_sector = getattr(persona, "idSector", None) or getattr(persona, "id_sector", None)
+        if id_sector is not None:
+            return id_sector
+
+    # TODO: Descomentar cuando esté creado el modelo SectorCompuestoPorPersonal
+    # from src.core.models.SectorCompuestoPorPersonal import SectorCompuestoPorPersonal
+    # relacion = db.session.scalar(
+    #     db.select(SectorCompuestoPorPersonal).filter_by(idPersonal=id_personal)
+    # )
+    # if relacion is not None:
+    #     return relacion.idSector
+
+    return 1  # Valor por defecto temporal hasta que esté cargada la tabla intermedia
+
+
 def pertenece_a_sector(id_personal: int, id_sector: int) -> bool:
-    """
-    Consulta en la tabla intermedia si el personal fijo pertenece al sector indicado.
-    """
+    """Consulta si el personal fijo pertenece al sector indicado."""
     # TODO: Descomentar cuando esté creado el modelo de la tabla intermedia SectorCompuestoPorPersonal
     # from src.core.models.SectorCompuestoPorPersonal import SectorCompuestoPorPersonal
     # stmt = db.select(SectorCompuestoPorPersonal).filter_by(
@@ -52,15 +81,15 @@ def pertenece_a_sector(id_personal: int, id_sector: int) -> bool:
 
 def validar_sector_personal(persona: Personal, id_sector_jefe: int) -> None:
     """
-    Verifica que si la persona es Personal Fijo, su sector coincida con el del Jefe de Servicio.
+    Verifica que si la persona es Personal Fijo, su sector coincida con el del Jefe.
     Los Residentes pueden incorporarse a pedidos de cualquier sector sin esta validación.
     """
     tipo_personal = db.session.get(TipoPersonal, persona.idTipoPersonal)
 
     if (
-            tipo_personal
-            and "fijo" in tipo_personal.nombre.strip().lower()
-            and not pertenece_a_sector(persona.idPersonal, id_sector_jefe)
+        tipo_personal
+        and "fijo" in tipo_personal.nombre.strip().lower()
+        and not pertenece_a_sector(persona.idPersonal, id_sector_jefe)
     ):
         raise PedidoValidationError(
             f"La persona con ID {persona.idPersonal} es personal fijo y no pertenece al sector del Jefe de Servicio."
@@ -79,12 +108,19 @@ def crear_pedido(
     calculando qué viandas entran en cupo Regular y cuáles por Excepción.
     """
     if not comidas or not any(comidas.values()):
-        raise PedidoValidationError("El pedido debe incluir al menos una solicitud de comida.")
+        raise PedidoValidationError(
+            "El pedido debe incluir al menos una solicitud de comida."
+        )
 
     try:
         periodicidad_enum = Periodicidad(periodicidad.lower())
     except (ValueError, AttributeError):
         raise PedidoValidationError("La periodicidad indicada no es válida.")
+
+    if repo_pedidos.existe_pedido_en_sector_y_fecha(id_sector, fecha_desde):
+        raise PedidoConflictError(
+            "Ya existe un pedido registrado para este sector en la fecha indicada."
+        )
 
     nuevo_pedido = Pedido(
         idUser=id_jefe,
@@ -147,17 +183,19 @@ def crear_pedido(
             )
             solicitudes_a_guardar.append(nueva_solicitud)
 
-    return repo_pedidos.create_pedido_con_solicitudes(nuevo_pedido, solicitudes_a_guardar)
+    return repo_pedidos.create_pedido_con_solicitudes(
+        nuevo_pedido, solicitudes_a_guardar
+    )
+
 
 def actualizar_pedido(
     id_pedido: int,
     comidas: dict[int, list[int]],
-    id_sector_jefe: int | None = None
-    ):
+    id_sector_jefe: int | None = None,
+) -> Pedido:
     """
-    Modifica un pedido existente, siempre y cuando siga en estado CONFIRMADO.
-    Elimina las solicitudes anteriores y recalcula cupos (Regular/Excepción)
-    para la nueva lista de personas.
+    Modifica un pedido existente si sigue en estado CONFIRMADO.
+    Elimina las solicitudes anteriores y recalcula cupos (Regular/Excepción).
     """
     pedido = repo_pedidos.get_pedido_by_id(id_pedido)
     if not pedido:
@@ -174,7 +212,9 @@ def actualizar_pedido(
         )
 
     if not comidas or not any(comidas.values()):
-        raise PedidoValidationError("El pedido actualizado debe incluir al menos una solicitud.")
+        raise PedidoValidationError(
+            "El pedido actualizado debe incluir al menos una solicitud."
+        )
 
     repo_pedidos.limpiar_solicitudes_de_pedido(id_pedido)
 
@@ -191,12 +231,16 @@ def actualizar_pedido(
 
         for id_personal in lista_personal:
             if id_personal in vistos_en_comida:
-                raise PedidoConflictError(f"La persona {id_personal} está repetida en la misma comida.")
+                raise PedidoConflictError(
+                    f"La persona {id_personal} está repetida en la misma comida."
+                )
             vistos_en_comida.add(id_personal)
 
             persona = db.session.get(Personal, id_personal)
             if not persona or not persona.isActive:
-                raise PedidoValidationError(f"La persona con ID {id_personal} no existe o está inactiva.")
+                raise PedidoValidationError(
+                    f"La persona con ID {id_personal} no existe o está inactiva."
+                )
 
             validar_sector_personal(persona, pedido.idSector)
 
@@ -229,10 +273,9 @@ def actualizar_pedido(
 
     return repo_pedidos.guardar_nuevas_solicitudes(pedido, solicitudes_a_guardar)
 
-def borrar_pedido(id_pedido: int, id_sector_jefe: int | None = None):
-    """
-    Valida y elimina un pedido. Solo puede eliminarse si sigue en estado CONFIRMADO.
-    """
+
+def borrar_pedido(id_pedido: int, id_sector_jefe: int | None = None) -> None:
+    """Valida y elimina un pedido si sigue en estado CONFIRMADO."""
     pedido = repo_pedidos.get_pedido_by_id(id_pedido)
     if not pedido:
         raise PedidoNotFoundError(f"El pedido con ID {id_pedido} no existe.")
@@ -241,6 +284,7 @@ def borrar_pedido(id_pedido: int, id_sector_jefe: int | None = None):
         raise PedidoForbiddenError(
             "No tiene permisos para operar sobre un pedido de otro sector."
         )
+
     if pedido.estado_general != EstadoPedido.CONFIRMADO:
         raise PedidoConflictError(
             f"No se puede eliminar un pedido que ya fue {pedido.estado_general.value}."
@@ -306,9 +350,8 @@ def listar_pedidos_sector(
     id_tipo_comida: int | None = None,
     id_tipo_menu: int | None = None,
     page: int = 1,
-    per_page: int = 25,
-) -> tuple[list[dict], int]:
-    """Lista los pedidos del sector del Jefe con sus totales por comida y menú."""
+) -> tuple[list[dict], int, int]:
+    """Lista los pedidos del sector del Jefe usando la configuración general de paginado."""
     estado_enum = None
     if estado_str:
         try:
@@ -318,8 +361,9 @@ def listar_pedidos_sector(
 
     if page < 1:
         page = 1
-    if per_page < 1 or per_page > 25:
-        per_page = 25
+
+    config = obtener_configuracion()
+    per_page = config.elementos_por_pagina
 
     pedidos_lista, total = repo_pedidos.list_pedidos_by_sector(
         id_sector=id_sector,
@@ -333,4 +377,4 @@ def listar_pedidos_sector(
     )
 
     items = [obtener_detalle_pedido(p.idPedido, id_sector) for p in pedidos_lista]
-    return items, total
+    return items, total, per_page
