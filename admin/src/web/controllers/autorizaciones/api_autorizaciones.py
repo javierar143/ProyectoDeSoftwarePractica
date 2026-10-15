@@ -265,21 +265,3 @@ def resumen_authorizations():
         return jsonify(resultado), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 400
-
-
-@api_autorizaciones_controller.route("/summaries/deliveries", methods=["GET"])
-def resumen_deliveries_general():
-    """Obtiene el resumen general de entregas (autorizados vs entregados)"""
-
-    filtros = {
-        "fecha_desde": request.args.get("fecha_desde"),
-        "fecha_hasta": request.args.get("fecha_hasta"),
-        "sector": request.args.get("sector", type=int),
-        "tipo_comida": request.args.get("tipo_comida", type=int),
-        "tipo_menu": request.args.get("tipo_menu", type=int),
-    }
-    try:
-        resultado = autorizaciones_service.resumen_entregas_generales_service(filtros)
-        return jsonify(resultado), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
