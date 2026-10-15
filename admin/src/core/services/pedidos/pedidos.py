@@ -2,6 +2,9 @@
 
 from datetime import date
 
+from sqlalchemy import select, exists
+
+from src.core.models import SectorCompuestoPorPersonal
 from src.core.database import db
 from src.core.models.enums import (
     CondicionCupo,
@@ -43,40 +46,29 @@ class PedidoConflictError(Exception):
 
 
 def obtener_sector_de_personal(id_personal: int | None) -> int | None:
-    """
-    Obtiene el idSector asignado a una persona (usado para saber el sector del Jefe).
-    Busca primero en Personal y luego en la tabla intermedia si existe.
-    """
+    """Obtiene el idSector asignado a una persona según la tabla intermedia, o None si no tiene."""
+
     if id_personal is None:
         return None
 
-    persona = db.session.get(Personal, id_personal)
-    if persona is not None:
-        id_sector = getattr(persona, "idSector", None) or getattr(persona, "id_sector", None)
-        if id_sector is not None:
-            return id_sector
+    relacion = db.session.scalar(
+        db.select(SectorCompuestoPorPersonal).filter_by(idPersonal=id_personal)
+    )
+    if relacion is not None:
+        return relacion.idSector
 
-    # TODO: Descomentar cuando esté creado el modelo SectorCompuestoPorPersonal
-    # from src.core.models.SectorCompuestoPorPersonal import SectorCompuestoPorPersonal
-    # relacion = db.session.scalar(
-    #     db.select(SectorCompuestoPorPersonal).filter_by(idPersonal=id_personal)
-    # )
-    # if relacion is not None:
-    #     return relacion.idSector
-
-    return 1  # Valor por defecto temporal hasta que esté cargada la tabla intermedia
+    return None
 
 
 def pertenece_a_sector(id_personal: int, id_sector: int) -> bool:
-    """Consulta si el personal fijo pertenece al sector indicado."""
-    # TODO: Descomentar cuando esté creado el modelo de la tabla intermedia SectorCompuestoPorPersonal
-    # from src.core.models.SectorCompuestoPorPersonal import SectorCompuestoPorPersonal
-    # stmt = db.select(SectorCompuestoPorPersonal).filter_by(
-    #     idPersonal=id_personal,
-    #     idSector=id_sector,
-    # )
-    # return db.session.scalar(stmt) is not None
-    return True
+    """Consulta en la tabla intermedia si el personal fijo pertenece al sector indicado."""
+    stmt = select(
+        exists().where(
+            SectorCompuestoPorPersonal.idPersonal == id_personal,
+            SectorCompuestoPorPersonal.idSector == id_sector,
+        )
+    )
+    return bool(db.session.scalar(stmt))
 
 
 def validar_sector_personal(persona: Personal, id_sector_jefe: int) -> None:
