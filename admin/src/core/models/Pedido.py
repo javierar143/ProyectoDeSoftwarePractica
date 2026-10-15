@@ -16,6 +16,8 @@ class Pedido(BaseModel):
 
     idPedido: Mapped[int] = mapped_column(primary_key=True)
     fecha_desde: Mapped[date] = mapped_column(nullable=False)
+    # En pedidos diarios coincide con fecha_desde
+    fecha_hasta: Mapped[date] = mapped_column(nullable=False)
     periodicidad: Mapped[Periodicidad] = mapped_column(
         Enum(
             Periodicidad,
@@ -41,7 +43,9 @@ class Pedido(BaseModel):
     idUser: Mapped[int] = mapped_column(
         ForeignKey("Usuario.id_user"), nullable=False
     )
-    inserted_at: Mapped[datetime] = mapped_column(default=datetime.now)
+    inserted_at: Mapped[datetime] = mapped_column(
+        default=datetime.now, nullable=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        default=datetime.now, onupdate=datetime.now
+        default=datetime.now, onupdate=datetime.now, nullable=False
     )
