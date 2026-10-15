@@ -1,3 +1,4 @@
+
 """Controlador web para el listado y la baja lógica de usuarios."""
 
 from flask import (
@@ -10,29 +11,38 @@ from flask import (
 )
 
 from src.core.security.permissions import require_permission
-
 from src.core.security.session import (
     get_authenticated_user_id,
     require_authentication,
 )
-
 from src.core.services.usuarios import personal, rol, usuario
+from src.web.validators.usuarios.usuarios import validar_filtros_listado
 
 
 listado_controller = Blueprint("listado_usuarios", __name__)
 
+
 @listado_controller.get("/")
 def index():
-    """Muestra el listado de usuarios al administrador."""
+    """Muestra el listado paginado y filtrado de usuarios."""
     require_permission("user_index")
-    usuarios = usuario.get_all_with_role()
+
+    try:
+        filtros = validar_filtros_listado(request.args)
+    except ValueError as error:
+        abort(400, description=str(error))
+
+    usuarios, total_usuarios = usuario.buscar_paginado(filtros)
 
     response = render_template(
         "usuarios/index.html",
         usuarios=usuarios,
+        filtros=filtros,
+        roles=rol.get_all(),
+        total_usuarios=total_usuarios,
     )
-    return response
 
+    return response
 
 
 @listado_controller.post("/desactivar")
@@ -41,6 +51,7 @@ def desactivar():
     require_permission("user_destroy")
 
     user_id_form = request.form.get("user_id", "")
+
     if not user_id_form.isdecimal():
         abort(400, description="Identificador de usuario inválido.")
 
@@ -58,7 +69,7 @@ def desactivar():
     if usuario_actualizado is None:
         abort(404, description="Usuario no encontrado.")
 
-    return redirect(url_for("usuarios.listado_usuarios.index"))
+    return redirect(url_for("listado_usuarios.index"))
 
 
 @listado_controller.post("/activar")
@@ -67,6 +78,7 @@ def activar():
     require_permission("user_update")
 
     user_id_form = request.form.get("user_id", "")
+
     if not user_id_form.isdecimal():
         abort(400, description="Identificador de usuario inválido.")
 
@@ -81,7 +93,7 @@ def activar():
     if usuario_actualizado is None:
         abort(404, description="Usuario no encontrado.")
 
-    return redirect(url_for("usuarios.listado_usuarios.index"))
+    return redirect(url_for("listado_usuarios.index"))
 
 
 @listado_controller.get("/<int:user_id>/detalle")
@@ -89,14 +101,16 @@ def detalle(user_id: int):
     """Muestra los detalles de una cuenta de usuario."""
     require_permission("user_index")
 
-    usuario_seleccionado = usuario.get_by_id(user_id)    
+    usuario_seleccionado = usuario.get_by_id(user_id)
 
     if usuario_seleccionado is None:
         abort(404, description="Usuario no encontrado.")
 
     rol_actual = rol.get_by_id(usuario_seleccionado.idRol)
     rol_nombre = rol_actual.nombre if rol_actual is not None else "Sin rol"
-    personal_asociado = personal.get_by_id(usuario_seleccionado.idPersonal)
+    personal_asociado = personal.get_by_id(
+        usuario_seleccionado.idPersonal
+    )
 
     response = render_template(
         "usuarios/detalle.html",
@@ -104,6 +118,7 @@ def detalle(user_id: int):
         rol_nombre=rol_nombre,
         personal=personal_asociado,
     )
+
     return response
 
 
@@ -111,6 +126,7 @@ def detalle(user_id: int):
 def perfil():
     """Muestra los datos del usuario autenticado."""
     require_authentication()
+
     user_id = get_authenticated_user_id()
 
     if user_id is None:
@@ -133,5 +149,5 @@ def perfil():
         rol_nombre=rol_nombre,
         personal=personal_asociado,
     )
-    return response
 
+    return response

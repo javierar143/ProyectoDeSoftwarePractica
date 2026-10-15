@@ -17,6 +17,7 @@ from src.core.models.Cupo import Cupo
 from src.core.models.Pedido import Pedido
 from src.core.models.Configuracion import Configuracion
 from src.core.models.Sector import Sector
+from src.core.models.UsuarioEsJefeSector import UsuarioEsJefeSector
 
 
 class TipoComidaTemporal(BaseModel):
