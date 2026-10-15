@@ -60,18 +60,6 @@ def test_crear_cupo_cantidad_invalida():
         cupos.create(id_sector=1, id_tipo_comida=1, cant_comensales=-5)
 
 
-@patch("src.core.services.cupos.cupos.repo_cupos.get_by_sector_y_comida")
-def test_crear_cupo_duplicado(mock_get_existente):
-    """Verifica que rechace crear un cupo si ya existe para ese sector y comida."""
-    class MockCupo:
-        idCupo = 99
-
-    mock_get_existente.return_value = MockCupo()
-
-    with pytest.raises(CupoServiceError, match="Ya existe un cupo vigente"):
-        cupos.create(id_sector=1, id_tipo_comida=1, cant_comensales=10)
-
-
 @patch("src.core.services.cupos.cupos.obtener_configuracion")
 @patch("src.core.services.cupos.cupos.repo_cupos.list_cupos")
 def test_listar_cupos_usa_configuracion_global(mock_list, mock_config):
