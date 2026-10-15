@@ -1,5 +1,5 @@
 from datetime import date
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint, jsonify, request, session, current_app
 from src.core.services.autorizaciones import autorizaciones as autorizaciones_service
 from src.core.services.autorizaciones.autorizaciones import (RecursoNoEncontradoError,ConflictoEstadoError,)
 from src.core.repositories.autorizaciones import entregas as repo_entregas
@@ -45,7 +45,11 @@ def listar_autorizaciones():
         resultado = autorizaciones_service.listar_pedidos_para_autorizacion(filtros)
         return jsonify(resultado), 200
     except ValueError as e:
+        current_app.logger.warning(f"Error de validación al listar autorizaciones: {str(e)}")
         return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        current_app.logger.error(f"Error interno al listar autorizaciones: {str(e)}")
+        return jsonify({"error": "Ocurrió un error interno en el servidor"}), 500
 
 
 @api_autorizaciones_controller.route("/authorizations/<int:request_id>", methods=["GET"])
@@ -55,7 +59,11 @@ def detalle_autorizacion(request_id: int):
         detalle = autorizaciones_service.obtener_detalle_pedido_autorizacion(request_id)
         return jsonify(detalle), 200
     except RecursoNoEncontradoError as e:
+        current_app.logger.warning(f"Pedido no encontrado ({request_id}): {str(e)}")
         return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        current_app.logger.error(f"Error interno al obtener detalle del pedido {request_id}: {str(e)}")
+        return jsonify({"error": "Ocurrió un error interno en el servidor"}), 500
 
 
 @api_autorizaciones_controller.route("/authorizations/<int:request_id>", methods=["PUT"])
@@ -72,11 +80,17 @@ def autorizar_pedido(request_id: int):
         )
         return jsonify(pedido_actualizado), 200
     except RecursoNoEncontradoError as e:
+        current_app.logger.warning(f"Recurso no encontrado al autorizar pedido {request_id}: {str(e)}")
         return jsonify({"error": str(e)}), 404
     except ConflictoEstadoError as e:
+        current_app.logger.warning(f"Conflicto de estado al autorizar pedido {request_id}: {str(e)}")
         return jsonify({"error": str(e)}), 409
     except ValueError as e:
+        current_app.logger.warning(f"Datos inválidos al autorizar pedido {request_id}: {str(e)}")
         return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        current_app.logger.error(f"Error inesperado al autorizar pedido {request_id}: {str(e)}")
+        return jsonify({"error": "Ocurrió un error interno en el servidor"}), 500
 
 
 @api_autorizaciones_controller.route("/authorizations/<int:request_id>/reject", methods=["POST"])
@@ -90,9 +104,14 @@ def rechazar_pedido(request_id: int):
         pedido_rechazado = autorizaciones_service.rechazar_pedido(request_id, id_evaluador)
         return jsonify(pedido_rechazado), 200
     except RecursoNoEncontradoError as e:
+        current_app.logger.warning(f"Pedido no encontrado al rechazar {request_id}: {str(e)}")
         return jsonify({"error": str(e)}), 404
     except ConflictoEstadoError as e:
+        current_app.logger.warning(f"Conflicto al rechazar pedido {request_id}: {str(e)}")
         return jsonify({"error": str(e)}), 409
+    except Exception as e:
+        current_app.logger.error(f"Error inesperado al rechazar pedido {request_id}: {str(e)}")
+        return jsonify({"error": "Ocurrió un error interno en el servidor"}), 500
 
 
 # <------ Endpoints de Comidas Autorizadas ------>
@@ -112,7 +131,11 @@ def listar_comidas_autorizadas():
         resultado = autorizaciones_service.consultar_comidas_autorizadas(filtros)
         return jsonify(resultado), 200
     except ValueError as e:
+        current_app.logger.warning(f"Filtros insuficientes o inválidos en authorized-meals: {str(e)}")
         return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        current_app.logger.error(f"Error interno en authorized-meals: {str(e)}")
+        return jsonify({"error": "Ocurrió un error interno en el servidor"}), 500
 
 
 @api_autorizaciones_controller.route("/authorized-meals/<int:person_id>", methods=["GET"])
@@ -131,7 +154,11 @@ def comidas_autorizadas_por_persona(person_id: int):
         )
         return jsonify(resultado), 200
     except RecursoNoEncontradoError as e:
+        current_app.logger.warning(f"Persona no encontrada ({person_id}): {str(e)}")
         return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        current_app.logger.error(f"Error interno en authorized-meals por persona: {str(e)}")
+        return jsonify({"error": "Ocurrió un error interno en el servidor"}), 500
 
 # <------ Endpoints de Entregas ------>
 
@@ -165,9 +192,14 @@ def registrar_entrega():
             ],
         }), 201
     except ConflictoEstadoError as e:
+        current_app.logger.warning(f"Entrega duplicada o conflicto: {str(e)}")
         return jsonify({"error": str(e)}), 409
     except ValueError as e:
+        current_app.logger.warning(f"Validación fallida al registrar entrega: {str(e)}")
         return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        current_app.logger.error(f"Error interno al registrar entrega: {str(e)}")
+        return jsonify({"error": "Ocurrió un error interno en el servidor"}), 500
 
 
 @api_autorizaciones_controller.route("/deliveries", methods=["GET"])
@@ -246,6 +278,7 @@ def resumen_entregas():
         resultado = autorizaciones_service.obtener_resumen_entregas_service(filtros)
         return jsonify(resultado), 200
     except Exception as e:
+        current_app.logger.error(f"Error al obtener resumen de entregas: {str(e)}")
         return jsonify({"error": str(e)}), 400
 
 
@@ -264,4 +297,5 @@ def resumen_authorizations():
         resultado = autorizaciones_service.resumen_autorizaciones_service(filtros)
         return jsonify(resultado), 200
     except Exception as e:
+        current_app.logger.error(f"Error al obtener resumen de autorizaciones: {str(e)}")
         return jsonify({"error": str(e)}), 400
