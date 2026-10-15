@@ -33,6 +33,7 @@ def listar_pedidos_autorizacion(
 
     stmt = select(Pedido).join(Solicitud, Pedido.idPedido == Solicitud.idPedido)
 
+    # Aplico filtros de forma dinamica
     if fecha_desde:
         stmt = stmt.where(Solicitud.fecha_vianda >= fecha_desde)
     if fecha_hasta:
@@ -57,6 +58,7 @@ def calcular_totales_pedido(id_pedido: int):
     cantidad_pedida = len(solicitudes)
     cantidad_autorizada = sum(1 for s in solicitudes if s.estadoAutorizacion == EstadoAutorizacion.AUTORIZADA)
 
+    # Agrupor por comida/menu
     por_comida_y_menu = {}
     for s in solicitudes:
         clave = f"comida_{s.idTipoComida}_menu_{s.idTipoMenu}"
@@ -82,6 +84,7 @@ def calcular_totales_pedido(id_pedido: int):
 def autorizar_solicitudes_pedido(pedido: Pedido, decisiones: dict, id_evaluador: int):
     """Actualiza de forma nominada las solicitudes de un pedido"""
 
+    # Recorro y actualizo 
     for id_sol, nuevo_estado in decisiones.items():
         db.session.execute(
             update(Solicitud)
@@ -95,6 +98,7 @@ def autorizar_solicitudes_pedido(pedido: Pedido, decisiones: dict, id_evaluador:
             )
         )
 
+    # Actualizo el estado general del pedido a autorizado
     db.session.execute(
         update(Pedido)
         .where(Pedido.idPedido == pedido.idPedido)
@@ -112,12 +116,14 @@ def rechazar_pedido_completo(pedido: Pedido, id_evaluador: int | None = None):
     if id_evaluador:
         valores_solicitud["idUserEvaluador"] = id_evaluador
 
+    # Rechazo todas las solicitudes asociadas al pedido
     db.session.execute(
         update(Solicitud)
         .where(Solicitud.idPedido == pedido.idPedido)
         .values(**valores_solicitud)
     )
 
+    # Marco el pedido entero como rechazado
     db.session.execute(
         update(Pedido)
         .where(Pedido.idPedido == pedido.idPedido)
@@ -141,6 +147,7 @@ def buscar_comidas_autorizadas(fecha=None, dni=None, nya=None, id_sector=None, i
         )
     )
 
+    # Agrego filtros de busqueda
     if fecha:
         stmt = stmt.where(Solicitud.fecha_vianda == fecha)
     if id_sector:
@@ -162,6 +169,7 @@ def buscar_comidas_autorizadas(fecha=None, dni=None, nya=None, id_sector=None, i
     filas = db.session.execute(stmt).all()
     resultados = []
     for solicitud, pedido, personal in filas:
+        # Me fijo si esta comida ya fue retirada fisicamente en el comedor
         entregada = (
             db.session.scalars(
                 select(Entrega).where(Entrega.idSolicitud == solicitud.idSolicitud)
@@ -186,7 +194,8 @@ def buscar_comidas_autorizadas(fecha=None, dni=None, nya=None, id_sector=None, i
 
 
 def obtener_resumen_autorizaciones(fecha_desde=None, fecha_hasta=None, id_sector=None, id_tipo_comida=None, id_tipo_menu=None):
-    """Calcula totales de pedidos vs autorizados con su diferencia."""
+    """Calcula totales de pedidos vs autorizados con su diferencia"""
+
     stmt = select(Solicitud).join(Pedido, Solicitud.idPedido == Pedido.idPedido)
     if fecha_desde:
         stmt = stmt.where(Solicitud.fecha_vianda >= fecha_desde)
@@ -211,7 +220,8 @@ def obtener_resumen_autorizaciones(fecha_desde=None, fecha_hasta=None, id_sector
 
 
 def obtener_resumen_entregas_generales(fecha_desde=None, fecha_hasta=None, id_sector=None, id_tipo_comida=None, id_tipo_menu=None):
-    """Calcula totales autorizados vs entregados con su diferencia para resúmenes generales."""
+    """Calcula totales autorizados vs entregados con su diferencia para resúmenes generales"""
+
     stmt = select(Solicitud, Pedido).join(Pedido, Solicitud.idPedido == Pedido.idPedido).where(Solicitud.estadoAutorizacion == EstadoAutorizacion.AUTORIZADA)
     if fecha_desde:
         stmt = stmt.where(Solicitud.fecha_vianda >= fecha_desde)
@@ -228,6 +238,7 @@ def obtener_resumen_entregas_generales(fecha_desde=None, fecha_hasta=None, id_se
     total_autorizado = len(filas)
     total_entregado = 0
     for solicitud, pedido in filas:
+        # De las autorizadas, cuento cuantas tienen un registro de entrega hecho
         entregada = db.session.scalars(select(Entrega).where(Entrega.idSolicitud == solicitud.idSolicitud)).first() is not None
         if entregada:
             total_entregado += 1

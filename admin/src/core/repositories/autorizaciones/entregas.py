@@ -20,6 +20,7 @@ def registrar_entregas_multiples(id_user: int, ids_solicitudes: list[int], id_pe
     ahora = datetime.now()
     nuevas_entregas = []
 
+    # Recorro cada ID de solicitud y le preparo un registro de entrega
     for id_sol in ids_solicitudes:
         nueva_entrega = Entrega(
             idUser=id_user,
@@ -49,6 +50,7 @@ def listar_entregas(fecha: date | None = None, id_sector: int | None = None, id_
         .join(Pedido, Solicitud.idPedido == Pedido.idPedido)
     )
 
+    # Junto Entrega Solicitud y Pedido y aplico filtros de busqueda
     if fecha:
         stmt = stmt.where(func.date(Entrega.fecha_hora) == fecha)
     if id_sector:
@@ -59,9 +61,11 @@ def listar_entregas(fecha: date | None = None, id_sector: int | None = None, id_
     stmt = stmt.order_by(Entrega.fecha_hora.desc())
     return db.session.execute(stmt).all()
 
+
 def obtener_resumen_autorizados_vs_entregados(fecha: date | None = None, id_tipo_comida: int | None = None, id_sector: int | None = None):
     """Calcula totales de autorizados/entregados por tipo de comida y menu"""
 
+    # Agarro todas las autorizadas
     stmt_aut = (
         select(Solicitud, Pedido)
         .join(Pedido, Solicitud.idPedido == Pedido.idPedido)
@@ -80,14 +84,14 @@ def obtener_resumen_autorizados_vs_entregados(fecha: date | None = None, id_tipo
 
     filas_aut = db.session.execute(stmt_aut).all()
 
-    # Agrupo y cuento autorizadas y entregadas
     resumen = {}
     for solicitud, pedido in filas_aut:
-        # Verificar si esta solicitud específica ya fue entregada
+        # Checkeo si esta solicitud especifica ya cuenta con entrega registrada
         entregada = db.session.scalars(
             select(Entrega).where(Entrega.idSolicitud == solicitud.idSolicitud)
         ).first() is not None
 
+        # Agrupo por tipo de comida y menu
         clave = (solicitud.idTipoComida, solicitud.idTipoMenu)
         if clave not in resumen:
             resumen[clave] = {

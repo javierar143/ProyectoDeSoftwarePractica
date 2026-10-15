@@ -205,7 +205,8 @@ def listar_entregas():
 
 @api_autorizaciones_controller.route("/deliveries/<int:delivery_id>", methods=["GET"])
 def detalle_entrega(delivery_id: int):
-    """Obtiene el detalle de una entrega específica."""
+    """Obtiene el detalle de una entrega específica"""
+    
     entrega = repo_entregas.get_entrega_by_id(delivery_id)
     if not entrega:
         return jsonify({"error": "Entrega no encontrada"}), 404

@@ -41,6 +41,7 @@ def listar_pedidos_para_autorizacion(filtros: dict):
 
     resultado = []
     for p in pedidos:
+        # Calculo los toltales individuales para cada pedido de la lista
         totales = repo_solicitudes.calcular_totales_pedido(p.idPedido)
         resultado.append({
             "idPedido": p.idPedido,
@@ -58,6 +59,7 @@ def listar_pedidos_para_autorizacion(filtros: dict):
 def obtener_detalle_pedido_autorizacion(id_pedido: int):
     """Obtiene el detalle completo de un pedido con cantidades pedidas y autorizadas por separado"""
 
+    # Valido que el pedido exista
     pedido = repo_solicitudes.get_pedido_by_id(id_pedido)
     if not pedido:
         raise RecursoNoEncontradoError("Pedido no encontrado.")
@@ -94,6 +96,7 @@ def autorizar_pedido(id_pedido: int, items_evaluados: list[dict], id_evaluador: 
     if not pedido:
         raise RecursoNoEncontradoError("Pedido no encontrado.")
 
+    # Controlo que el pedido no haya sido procesado antes
     if pedido.estado_general in (EstadoPedido.AUTORIZADO, EstadoPedido.RECHAZADO):
         raise ConflictoEstadoError("El pedido ya fue autorizado o rechazado previamente.")
 
@@ -108,9 +111,11 @@ def autorizar_pedido(id_pedido: int, items_evaluados: list[dict], id_evaluador: 
         id_sol = item.get("idSolicitud")
         estado_txt = (item.get("estado") or "").upper()
 
+        # Checkeo que la solicitud sea de ese pedido
         if id_sol not in ids_validos:
             raise ValueError(f"La solicitud {id_sol} no pertenece al pedido {id_pedido}.")
 
+        # Mapeo texto a Enum
         if estado_txt in ("AUTORIZADA", "AUTORIZADO"):
             decisiones[id_sol] = EstadoAutorizacion.AUTORIZADA
         elif estado_txt in ("NO_AUTORIZADA", "NO AUTORIZADA", "RECHAZADA", "RECHAZADO"):
@@ -118,6 +123,7 @@ def autorizar_pedido(id_pedido: int, items_evaluados: list[dict], id_evaluador: 
         else:
             raise ValueError(f"Estado '{estado_txt}' inválido. Use AUTORIZADA o NO_AUTORIZADA.")
 
+    # Por defecto las solicitudes que no se mencionen se autorizan
     for id_valido in ids_validos:
         if id_valido not in decisiones:
             decisiones[id_valido] = EstadoAutorizacion.AUTORIZADA
@@ -133,6 +139,7 @@ def rechazar_pedido(id_pedido: int, id_evaluador: int | None = None):
     if not pedido:
         raise RecursoNoEncontradoError("Pedido no encontrado.")
 
+    # Checkeo que el pedido no haya sido rechazado previamente
     if pedido.estado_general in (EstadoPedido.AUTORIZADO, EstadoPedido.RECHAZADO):
         raise ConflictoEstadoError("No se puede rechazar un pedido que ya fue autorizado o rechazado.")
 
@@ -145,6 +152,7 @@ def rechazar_pedido(id_pedido: int, id_evaluador: int | None = None):
 def consultar_comidas_autorizadas(filtros: dict):
     """Consulta comidas autorizadas pidiendo al menos un filtro"""
 
+    # Fuerzo al menos 1 filtro
     if not any(filtros.values()):
         raise ValueError("Debe enviar al menos un filtro de búsqueda (fecha, dni, sector o tipo_comida).")
 
@@ -177,6 +185,7 @@ def registrar_entrega_comedor(id_user: int, ids_solicitudes: list[int], id_perso
     if not id_personal_retira:
         raise ValueError("Debe indicar el id_personal responsable del retiro.")
 
+    # Checkeo que el responsable de retirar la vianda exista
     responsable = db.session.get(Personal, id_personal_retira)
     if not responsable:
         raise ValueError("El responsable del retiro indicado no existe en el padrón de personal.")
@@ -186,13 +195,16 @@ def registrar_entrega_comedor(id_user: int, ids_solicitudes: list[int], id_perso
         if not solicitud:
             raise ValueError(f"La solicitud {id_sol} no existe.")
 
+        # Valido que la solicitud este autorizada
         if solicitud.estadoAutorizacion != EstadoAutorizacion.AUTORIZADA:
             raise ValueError(f"La solicitud {id_sol} no cuenta con autorización vigente.")
 
+        # Evito entregas duplicadas levantando conflicto si ya existe
         if repo_entregas.verificar_entrega_existente(id_sol):
             raise ConflictoEstadoError(f"La comida de la solicitud {id_sol} ya fue entregada anteriormente.")
 
     return repo_entregas.registrar_entregas_multiples(id_user, ids_solicitudes, id_personal_retira)
+
 
 # <------ Resumenes ------>
 
@@ -218,6 +230,7 @@ def obtener_resumen_entregas_service(filtros: dict):
         "desglose": desglose,
     }
 
+
 def _forzar_sector_jefe_servicio(filtros: dict):
     """Fuerza el sector si el usuario autenticado es Jefe de Servicio"""
 
@@ -228,6 +241,7 @@ def _forzar_sector_jefe_servicio(filtros: dict):
     elif "id_sector" in session:
         usuario_sector = session["id_sector"]
 
+    # Si es JS, superpongo el sector con el suyo
     if usuario_sector:
         filtros["sector"] = usuario_sector
     return filtros
