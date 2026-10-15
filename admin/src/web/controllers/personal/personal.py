@@ -9,17 +9,60 @@ from flask import (
     flash,
 )
 from src.core.services.personal import personal as service_personal
+from src.core.services import configuracion as service_config
 
 personal_bp = Blueprint("personal", __name__, url_prefix="/personal")
 
-
 @personal_bp.get("")
 def index():
-    """Listado general de personal."""
-    lista_personal = service_personal.get_all()
-    for p in lista_personal:
-        p.sector_asignado = service_personal.get_sector_asignado(p.idPersonal)
-    return render_template("personal/index.html", personal=lista_personal)
+    """Listado general de personal con filtros, orden y paginación."""
+    # configuración de paginado del sistema
+    config = service_config.obtener_configuracion()
+    per_page = config.elementos_por_pagina
+
+    # lectura de parametros de busqueda y filtros
+    texto_busqueda = request.args.get("q", "").strip() or None
+    dni = request.args.get("dni", "").strip() or None
+    id_tipo_personal = request.args.get("id_tipo_personal", type=int)
+    id_sector = request.args.get("id_sector", type=int)
+    estado = request.args.get("estado", "activos")
+    ordenar_por = request.args.get("ordenar_por", "nombre_apellido")
+    direccion = request.args.get("direccion", "asc")
+    page = request.args.get("page", 1, type=int)
+
+    # consulta al servicio
+    resultado_paginado = service_personal.search(
+        texto_busqueda=texto_busqueda,
+        dni=dni,
+        id_tipo_personal=id_tipo_personal,
+        id_sector=id_sector,
+        estado=estado,
+        ordenar_por=ordenar_por,
+        direccion=direccion,
+        page=page,
+        per_page=per_page,
+    )
+
+    # catalogos para los selectores del formulario de filtros
+    tipos_personal = service_personal.get_tipos_personal()
+    sectores = service_personal.get_sectores()
+
+    return render_template(
+        "personal/index.html",
+        personal_paginado=resultado_paginado,
+        personal=resultado_paginado["items"],
+        tipos_personal=tipos_personal,
+        sectores=sectores,
+        filtros={
+            "q": texto_busqueda or "",
+            "dni": dni or "",
+            "id_tipo_personal": id_tipo_personal,
+            "id_sector": id_sector,
+            "estado": estado,
+            "ordenar_por": ordenar_por,
+            "direccion": direccion,
+        },
+    )
 
 
 @personal_bp.get("/nuevo")
