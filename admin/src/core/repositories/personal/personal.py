@@ -10,11 +10,13 @@ from src.core.models.TipoPersonal import TipoPersonal
 from src.core.models.TipoMenu import TipoMenu
 from src.core.models.SectorCompuestoPorPersonal import SectorCompuestoPorPersonal
 from src.core.models.Sector import Sector
+from src.core.models.Solicitud import Solicitud
+from src.core.models.Entrega import Entrega
 
 
 def get_all(solo_activos: bool = False) -> list[Personal]:
     """Obtiene todo el personal ordenado por apellido y nombre."""
-    statement = select(Personal).order_by(Personal.apellido, Personal.nombre)
+    statement = select(Personal).where(Personal.is_deleted.is_(False)).order_by(Personal.apellido, Personal.nombre)
     if solo_activos:
         statement = statement.where(Personal.isActive.is_(True))
     return db.session.execute(statement).scalars().all()
@@ -22,13 +24,19 @@ def get_all(solo_activos: bool = False) -> list[Personal]:
 
 def get_by_id(id_personal: int) -> Personal | None:
     """Obtiene un personal a partir de su identificador."""
-    statement = select(Personal).where(Personal.idPersonal == id_personal)
+    statement = select(Personal).where(
+        Personal.idPersonal == id_personal,
+        Personal.is_deleted.is_(False)
+    )
     return db.session.execute(statement).scalar_one_or_none()
 
 
 def get_by_dni(dni: str) -> Personal | None:
     """Obtiene un personal a partir de su DNI para validar duplicados."""
-    statement = select(Personal).where(Personal.dni == dni)
+    statement = select(Personal).where(
+        Personal.dni == dni,
+        Personal.is_deleted.is_(False)
+    )
     return db.session.execute(statement).scalar_one_or_none()
 
 
@@ -52,6 +60,12 @@ def deactivate(personal: Personal) -> Personal:
     personal.updated_at = datetime.now()
     db.session.commit()
     return personal
+
+def eliminar(personal: Personal) -> None:
+    """Simula un borrado físico ocultando permanentemente el registro."""
+    personal.is_deleted = True
+    personal.updated_at = datetime.now()
+    db.session.commit()
 
 
 def get_tipos_personal() -> list[TipoPersonal]:
@@ -120,6 +134,7 @@ def search(
     statement = (
         select(Personal)
         .outerjoin(SectorCompuestoPorPersonal, SectorCompuestoPorPersonal.idPersonal == Personal.idPersonal)
+        .where(Personal.is_deleted.is_(False))
         .distinct()
     )
 
@@ -175,3 +190,24 @@ def search(
 
     elementos = list(db.session.execute(statement).scalars().all())
     return elementos, total
+
+def tiene_historial(id_personal: int) -> bool:
+    """Verifica si una persona tiene solicitudes o entregas asociadas.
+    Retorna True si tiene historial, False en caso contrario. """
+    # buscamos si tiene al menos una solicitud
+    solicitud = db.session.execute(
+        select(Solicitud).where(Solicitud.idPersonal == id_personal)
+    ).scalar_one_or_none()
+    
+    if solicitud is not None:
+        return True
+        
+    # buscamos si tiene al menos una entrega
+    entrega = db.session.execute(
+        select(Entrega).where(Entrega.idPersonal == id_personal)
+    ).scalar_one_or_none()
+    
+    if entrega is not None:
+        return True
+        
+    return False

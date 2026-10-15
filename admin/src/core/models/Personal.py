@@ -22,6 +22,7 @@ class Personal(BaseModel):
     isActive: Mapped[bool]
     inserted_at: Mapped[datetime]
     updated_at: Mapped[datetime]
+    is_deleted: Mapped[bool] = mapped_column(default=False)
     idTipoPersonal: Mapped[int] = mapped_column(
         ForeignKey("TipoPersonal.idTipoPersonal")
     )

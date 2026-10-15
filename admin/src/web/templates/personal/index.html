@@ -130,12 +130,14 @@
                         <td style="border: 1px solid #ccc; padding: 0.5rem; text-align: right;">
                             <a href="{{ url_for('personal.editar_form', id=p.idPersonal) }}">Editar</a>
                             {% if p.isActive %}
-                                <form action="{{ url_for('personal.desactivar', id=p.idPersonal) }}" method="POST" style="display: inline;" onsubmit="return confirm('¿Confirmar la desactivación?');">
+                                <!-- Botón de Eliminar (Baja logica) -->
+                                <form action="{{ url_for('personal.eliminar', id=p.idPersonal) }}" method="POST" style="display: inline;" onsubmit="return confirm('¿Confirmar la eliminación del personal?');">
                                     <button type="submit" style="background: none; border: none; color: #b91c1c; cursor: pointer; text-decoration: underline;">
-                                        Desactivar
+                                        Eliminar
                                     </button>
                                 </form>
                             {% else %}
+                               <!-- Botón de Activar (Se mantiene igual) -->
                                 <form action="{{ url_for('personal.activar', id=p.idPersonal) }}" method="POST" style="display: inline;" onsubmit="return confirm('¿Confirmar la reactivación?');">
                                     <button type="submit" style="background: none; border: none; color: #16a34a; cursor: pointer; text-decoration: underline;">
                                         Activar
@@ -147,7 +149,6 @@
                 {% endfor %}
             </tbody>
         </table>
-
         <!-- Paginador -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
             <span>

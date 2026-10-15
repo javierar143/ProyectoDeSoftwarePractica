@@ -212,16 +212,21 @@ def editar(id: int):
     return redirect(url_for("personal.index"), code=303)
 
 
-@personal_bp.post("/<int:id>/desactivar")
-def desactivar(id: int):
-    """Baja lógica delegada al servicio."""
-    exito = service_personal.set_active(id_personal=id, is_active=False)
+@personal_bp.post("/<int:id>/eliminar")
+def eliminar(id: int):
+    """Elimina al personal o lo desactiva si tiene historial asociado."""
+    exito, accion = service_personal.eliminar_personal(id)
+    
     if exito:
-        flash("Se desactivó al personal correctamente.", "info")
+        if accion == "eliminado":
+            flash("Personal eliminado correctamente.", "success")
+        elif accion == "inactivado":
+            flash("El personal no pudo eliminarse porque tiene historial de viandas. Fue marcado como inactivo.", "warning")
     else:
-        flash("No se encontró el registro.", "danger")
+        flash("No se encontró el registro solicitado.", "danger")
 
     return redirect(url_for("personal.index"), code=303)
+
 
 @personal_bp.post("/<int:id>/activar")
 def activar(id: int):

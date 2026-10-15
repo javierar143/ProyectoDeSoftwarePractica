@@ -179,3 +179,21 @@ def search(
         "prev_num": page - 1 if page > 1 else None,
         "next_num": page + 1 if page < total_paginas else None,
     }
+
+def eliminar_personal(id_personal: int) -> tuple[bool, str]:
+    """
+    Aplica la regla de negocio para la eliminación:
+    Si tiene historial (solicitudes o entregas), se desactiva (baja lógica).
+    Si no tiene historial, se elimina "físicamente" (soft delete oculto).
+    Retorna (éxito, accion_realizada).
+    """
+    persona = repo_personal.get_by_id(id_personal)
+    if not persona:
+        return False, "no_encontrado"
+
+    if repo_personal.tiene_historial(id_personal):
+        repo_personal.deactivate(persona)
+        return True, "inactivado"
+    else:
+        repo_personal.eliminar(persona)
+        return True, "eliminado"
