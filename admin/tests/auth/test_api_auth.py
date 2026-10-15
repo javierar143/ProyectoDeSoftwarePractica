@@ -28,52 +28,17 @@ def app():
         yield app
 
 
+
 @pytest.fixture(scope="module")
 def usuario(app):
-    """Crea el usuario utilizado por las pruebas de autenticación API."""
-    rol = Rol(
-        idRol=1,
-        nombre="Administrador",
-    )
+    """Obtiene el usuario administrador creado por los datos iniciales."""
+    from src.core.repositories.usuarios import usuario as usuario_repo
 
-    tipo_p = TipoPersonal(idTipoPersonal=1, nombre="Fijo")
-    tipo_m = TipoMenu(idTipoMenu=1, nombre="General")
-    personal = Personal(
-        idPersonal=1,
-        dni="12345678",
-        nombre="Test",
-        apellido="Usuario",
-        isActive=True,
-        idTipoPersonal=1,
-        idTipoMenu=1,
-        inserted_at=datetime.now(),
-        updated_at=datetime.now(),
-    )          
+    usuario_existente = usuario_repo.get_by_email("admin@temporal.com")
 
-    usuario = Usuario(
-        id_user=1,
-        email="api@test.com",
-        alias="api_test",
-        password_hash=hash_password("Test1234"),
-        isSystemAdmin=True,
-        isActive=True,
-        updated_at=datetime.now(),
-        inserted_at=datetime.now(),
-        idRol=1,
-        idPersonal=1,
-    )
+    assert usuario_existente is not None
+    return usuario_existente
 
-    db.session.add(rol)
-    db.session.add(tipo_p)
-    db.session.add(tipo_m)
-    db.session.flush()
-    db.session.add(personal)
-    db.session.flush()
-
-    db.session.add(usuario)
-    db.session.commit()
-
-    return usuario
 
 
 def test_api_login(app, usuario):
@@ -83,8 +48,8 @@ def test_api_login(app, usuario):
     response = client.post(
         "/api/auth/login",
         json={
-            "email": "api@test.com",
-            "password": "Test1234",
+            "email": "admin@temporal.com",
+            "password": "1234",
         },
     )
 
@@ -114,8 +79,8 @@ def test_api_me(app, usuario):
     login_response = client.post(
         "/api/auth/login",
         json={
-            "email": "api@test.com",
-            "password": "Test1234",
+            "email": "admin@temporal.com",
+            "password": "1234",
         },
     )
 
@@ -127,8 +92,8 @@ def test_api_me(app, usuario):
     )
 
     assert response.status_code == 200
-    assert response.json["id"] == 1
-    assert response.json["email"] == "api@test.com"
+    assert response.json["id"] == usuario.id_user
+    assert response.json["email"] == usuario.email
 
 
 def test_api_me_sin_token(app):
@@ -147,8 +112,8 @@ def test_api_logout(app, usuario):
     login_response = client.post(
         "/api/auth/login",
         json={
-            "email": "api@test.com",
-            "password": "Test1234",
+            "email": "admin@temporal.com",
+            "password": "1234",
         },
     )
 
