@@ -10,6 +10,7 @@ from flask import (
 )
 from src.core.services.personal import personal as service_personal
 from src.core.services import configuracion as service_config
+from src.web.validators.personal.personal import validar_datos_personal
 
 personal_bp = Blueprint("personal", __name__, url_prefix="/personal")
 
@@ -83,33 +84,15 @@ def nuevo_form():
 @personal_bp.post("/nuevo")
 def nuevo():
     """Procesa el formulario y da de alta a la persona mediante el servicio."""
-    dni = request.form.get("dni", "").strip()
-    nombre = request.form.get("nombre", "").strip()
-    apellido = request.form.get("apellido", "").strip()
-    id_tipo_personal = request.form.get("idTipoPersonal")
-    id_tipo_menu = request.form.get("idTipoMenu")
-    id_sector = request.form.get("idSector")
-
-    errores = []
-    if not dni or not dni.isdigit():
-        errores.append("El DNI es obligatorio y debe contener solo números.")
-    if not nombre:
-        errores.append("El nombre es obligatorio.")
-    if not apellido:
-        errores.append("El apellido es obligatorio.")
-    if not id_tipo_personal:
-        errores.append("Debe seleccionar un tipo de personal.")
-    if not id_tipo_menu:
-        errores.append("Debe seleccionar un tipo de menú.")
-
     tipos_personal = service_personal.get_tipos_personal()
+    
+    # validacion delegada al modulo correspondiente
+    errores = validar_datos_personal(request.form, tipos_personal)
+
     tipos_menu = service_personal.get_tipos_menu()
     sectores = service_personal.get_sectores()
 
-    tipo_sel = next((t for t in tipos_personal if str(t.idTipoPersonal) == id_tipo_personal), None)
-    if tipo_sel and "fijo" in tipo_sel.nombre.lower() and not id_sector:
-        errores.append("Debe seleccionar un sector para el personal fijo.")
-
+    # si hay errores de validacion, volvemos al formulario
     if errores:
         return render_template(
             "personal/form.html",
@@ -121,12 +104,14 @@ def nuevo():
             valores=request.form,
         ), 400
 
+    # inserción a traves del servicio
+    id_sector = request.form.get("idSector")
     persona_creada = service_personal.create(
-        dni=dni,
-        nombre=nombre,
-        apellido=apellido,
-        id_tipo_personal=int(id_tipo_personal),
-        id_tipo_menu=int(id_tipo_menu),
+        dni=request.form.get("dni", "").strip(),
+        nombre=request.form.get("nombre", "").strip(),
+        apellido=request.form.get("apellido", "").strip(),
+        id_tipo_personal=int(request.form.get("idTipoPersonal")),
+        id_tipo_menu=int(request.form.get("idTipoMenu")),
         id_sector=int(id_sector) if id_sector else None,
     )
 
@@ -177,35 +162,16 @@ def editar(id: int):
         flash("La persona solicitada no existe.", "danger")
         return redirect(url_for("personal.index"), code=303)
 
-    dni = request.form.get("dni", "").strip()
-    nombre = request.form.get("nombre", "").strip()
-    apellido = request.form.get("apellido", "").strip()
-    id_tipo_personal = request.form.get("idTipoPersonal")
-    id_tipo_menu = request.form.get("idTipoMenu")
-    id_sector = request.form.get("idSector")
-
-    errores = []
-    if not dni or not dni.isdigit():
-        errores.append("El DNI es obligatorio y debe contener solo números.")
-    if not nombre:
-        errores.append("El nombre es obligatorio.")
-    if not apellido:
-        errores.append("El apellido es obligatorio.")
-    if not id_tipo_personal:
-        errores.append("Debe seleccionar un tipo de personal.")
-    if not id_tipo_menu:
-        errores.append("Debe seleccionar un tipo de menú.")
-
     tipos_personal = service_personal.get_tipos_personal()
+    
+    # validacion delegada al modulo aparte
+    errores = validar_datos_personal(request.form, tipos_personal)
+
     tipos_menu = service_personal.get_tipos_menu()
     sectores = service_personal.get_sectores()
-
-    tipo_sel = next((t for t in tipos_personal if str(t.idTipoPersonal) == id_tipo_personal), None)
-    if tipo_sel and "fijo" in tipo_sel.nombre.lower() and not id_sector:
-        errores.append("Debe seleccionar un sector para el personal fijo.")
+    sector_actual = service_personal.get_sector_asignado(id)
 
     if errores:
-        sector_actual = service_personal.get_sector_asignado(id)
         return render_template(
             "personal/form.html",
             persona=persona,
@@ -217,18 +183,19 @@ def editar(id: int):
             valores=request.form,
         ), 400
 
+    # actualizacion a traves del servicio
+    id_sector = request.form.get("idSector")
     persona_actualizada = service_personal.update(
         id_personal=id,
-        dni=dni,
-        nombre=nombre,
-        apellido=apellido,
-        id_tipo_personal=int(id_tipo_personal),
-        id_tipo_menu=int(id_tipo_menu),
+        dni=request.form.get("dni", "").strip(),
+        nombre=request.form.get("nombre", "").strip(),
+        apellido=request.form.get("apellido", "").strip(),
+        id_tipo_personal=int(request.form.get("idTipoPersonal")),
+        id_tipo_menu=int(request.form.get("idTipoMenu")),
         id_sector=int(id_sector) if id_sector else None
     )
 
     if persona_actualizada is None:
-        sector_actual = service_personal.get_sector_asignado(id)
         errores.append("El DNI ingresado ya pertenece a otra persona.")
         return render_template(
             "personal/form.html",
