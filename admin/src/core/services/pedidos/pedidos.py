@@ -1,10 +1,6 @@
 """Servicios para la creación, actualización, consulta y eliminación de pedidos."""
 
 from datetime import date
-
-from sqlalchemy import select, exists
-
-from src.core.models import SectorCompuestoPorPersonal
 from src.core.database import db
 from src.core.models.enums import (
     CondicionCupo,
@@ -19,6 +15,7 @@ from src.core.models.TipoPersonal import TipoPersonal
 from src.core.repositories.pedidos import pedidos as repo_pedidos
 from src.core.services.configuracion import obtener_configuracion
 from src.core.services.cupos import cupos
+from src.core.repositories.personal import personal as repo_personal
 
 
 class PedidoForbiddenError(Exception):
@@ -44,31 +41,13 @@ class PedidoConflictError(Exception):
 
     pass
 
-
 def obtener_sector_de_personal(id_personal: int | None) -> int | None:
-    """Obtiene el idSector asignado a una persona según la tabla intermedia, o None si no tiene."""
-
+    """Obtiene el idSector asignado a una persona (usado para saber el sector del Jefe)."""
     if id_personal is None:
         return None
+    sector = repo_personal.get_sector_asignado(id_personal)
 
-    relacion = db.session.scalar(
-        db.select(SectorCompuestoPorPersonal).filter_by(idPersonal=id_personal)
-    )
-    if relacion is not None:
-        return relacion.idSector
-
-    return None
-
-
-def pertenece_a_sector(id_personal: int, id_sector: int) -> bool:
-    """Consulta en la tabla intermedia si el personal fijo pertenece al sector indicado."""
-    stmt = select(
-        exists().where(
-            SectorCompuestoPorPersonal.idPersonal == id_personal,
-            SectorCompuestoPorPersonal.idSector == id_sector,
-        )
-    )
-    return bool(db.session.scalar(stmt))
+    return sector.idSector if sector else None
 
 
 def validar_sector_personal(persona: Personal, id_sector_jefe: int) -> None:
@@ -81,7 +60,7 @@ def validar_sector_personal(persona: Personal, id_sector_jefe: int) -> None:
     if (
         tipo_personal
         and "fijo" in tipo_personal.nombre.strip().lower()
-        and not pertenece_a_sector(persona.idPersonal, id_sector_jefe)
+            and not repo_personal.pertenece_a_sector(persona.idPersonal, id_sector_jefe)
     ):
         raise PedidoValidationError(
             f"La persona con ID {persona.idPersonal} es personal fijo y no pertenece al sector del Jefe de Servicio."

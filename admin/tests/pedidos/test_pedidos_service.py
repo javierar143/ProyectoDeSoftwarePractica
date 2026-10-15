@@ -104,7 +104,7 @@ def test_calculo_regular_y_excepcion(
     assert solicitudes_generadas[2].condicionCupo == CondicionCupo.EXCEPCION
 
 
-@patch("src.core.services.pedidos.pedidos.pertenece_a_sector")
+@patch("src.core.services.pedidos.pedidos.repo_personal.pertenece_a_sector")
 @patch("src.core.services.pedidos.pedidos.db")
 def test_regla_residente_vs_personal_fijo(mock_db, mock_pertenece):
     """Verifica que un Residente se acepte en cualquier sector y un Fijo de otro sector falle."""
