@@ -1,4 +1,4 @@
-```python
+
 """Pruebas de los endpoints REST de autorizaciones."""
 
 import pytest
@@ -26,15 +26,17 @@ def client():
 
         db.session.execute(
             text("""
-                INSERT INTO "Personal"
-                    ("idPersonal", dni, nombre, apellido)
-                VALUES
-                    (1, '11111111', 'Administrador', 'Prueba')
-                ON CONFLICT ("idPersonal") DO UPDATE SET
-                    dni = EXCLUDED.dni,
-                    nombre = EXCLUDED.nombre,
-                    apellido = EXCLUDED.apellido;
-            """)
+                 INSERT INTO "Personal"
+                 ("idPersonal", dni, nombre, apellido, "isActive",
+                  inserted_at, updated_at, "idTipoPersonal", "idTipoMenu")
+                 VALUES (1, '11111111', 'Administrador', 'Prueba', true,
+                         NOW(), NOW(), 1, 1) ON CONFLICT ("idPersonal") DO
+                 UPDATE SET
+                     dni = EXCLUDED.dni,
+                     nombre = EXCLUDED.nombre,
+                     apellido = EXCLUDED.apellido,
+                     "isActive" = EXCLUDED."isActive";
+                 """)
         )
 
         db.session.execute(
@@ -194,4 +196,3 @@ def test_post_registrar_entrega(client):
     )
 
     assert response.status_code in (201, 409)
-```

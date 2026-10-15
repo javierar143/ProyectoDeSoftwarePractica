@@ -7,8 +7,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core.database import BaseModel
 
-"""Cantidad máxima de solicitudes regulares de un sector para una comida."""
+
 class Cupo(BaseModel):
+    """Cantidad máxima de solicitudes regulares de un sector para una comida."""
+
     __tablename__ = "Cupo"
     __table_args__ = (
         UniqueConstraint("idSector", "idTipoComida", name="uq_cupo_sector_comida"),
@@ -16,8 +18,14 @@ class Cupo(BaseModel):
     )
 
     idCupo: Mapped[int] = mapped_column(primary_key=True)
-    cantComensales: Mapped[int]
-    idTipoComida: Mapped[int] = mapped_column(ForeignKey("TipoComida.idTipoComida"))
-    idSector: Mapped[int] = mapped_column(ForeignKey("Sector.idSector"))
+    cantComensales: Mapped[int] = mapped_column(nullable=False)
+    idTipoComida: Mapped[int] = mapped_column(
+        ForeignKey("TipoComida.idTipoComida"), nullable=False
+    )
+    idSector: Mapped[int] = mapped_column(
+        ForeignKey("Sector.idSector"), nullable=False
+    )
     inserted_at: Mapped[datetime] = mapped_column(default=datetime.now)
-    updated_at: Mapped[datetime] = mapped_column(default=datetime.now, onupdate=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(
+        default=datetime.now, onupdate=datetime.now
+    )

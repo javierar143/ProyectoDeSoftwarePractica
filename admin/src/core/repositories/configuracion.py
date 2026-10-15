@@ -1,9 +1,10 @@
 from src.core.database import db
 from src.core.models.Configuracion import Configuracion
 
+
 def obtener_configuracion():
     """Obtiene la configuracion actual del sistema, caso contrario inicializa una default"""
-    
+
     config = db.session.query(Configuracion).first()
     # Si no existe , la creo con valores default
     if not config:
@@ -11,6 +12,7 @@ def obtener_configuracion():
         db.session.add(config)
         db.session.commit()
     return config
+
 
 def actualizar_configuracion(elementos, mantenimiento):
     """Actualiza la configuracion del sistema y el estado"""

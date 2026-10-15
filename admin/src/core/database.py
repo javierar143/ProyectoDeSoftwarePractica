@@ -19,12 +19,10 @@ class BaseModel(DeclarativeBase):
 def reset_db():
     """Recrea las tablas y carga los datos iniciales de desarrollo."""
 
-    # Importar los modelos para registrar sus tablas en BaseModel.
-    from src.core import models
-
-    # Inicio de código temporal: registra TipoComidaTemporal para resolver las claves foráneas pendientes.
-    from src.core.models import TipoComidaTemporal
-    # Aviso de fin de código temporal.
+    from src.core.models.TipoComida import TipoComida
+    from src.core.models.Solicitud import Solicitud
+    from src.core.models.Pedido import Pedido
+    from src.core.models.Cupo import Cupo
 
     # Recrear la estructura de la base de datos.
     BaseModel.metadata.drop_all(db.engine)

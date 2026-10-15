@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from sqlalchemy import select, delete, or_, asc, desc, func
+from sqlalchemy import select, delete, exists
 
 from src.core.database import db
 from src.core.models.Personal import Personal
@@ -73,6 +74,15 @@ def get_sector_asignado(id_personal: int) -> Sector | None:
     )
     return db.session.execute(statement).scalar_one_or_none()
 
+def pertenece_a_sector(id_personal: int, id_sector: int) -> bool:
+    """Indica si la persona está asociada al sector en la tabla intermedia."""
+    statement = select(
+        exists().where(
+            SectorCompuestoPorPersonal.idPersonal == id_personal,
+            SectorCompuestoPorPersonal.idSector == id_sector,
+        )
+    )
+    return bool(db.session.execute(statement).scalar())
 
 def set_sector(id_personal: int, id_sector: int | None) -> None:
     """Asigna o quita el sector de un personal en SectorCompuestoPorPersonal."""
