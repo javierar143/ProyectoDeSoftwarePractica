@@ -286,3 +286,63 @@ dt {
 	padding: 16px;
 	text-align: center;
 }
+.page-header {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	justify-content: space-between;
+	margin-bottom: 16px;
+}
+
+.filters {
+	display: grid;
+	gap: 12px;
+	grid-template-columns: 1fr;
+	margin-bottom: 16px;
+}
+
+@media (min-width: 768px) {
+	.filters {
+		align-items: end;
+		grid-template-columns: repeat(4, 1fr);
+	}
+}
+
+.table-wrapper {
+	overflow-x: auto;
+}
+
+table {
+	background-color: var(--surface-color);
+	border-collapse: collapse;
+	width: 100%;
+}
+
+th,
+td {
+	border-bottom: 1px solid var(--border-color);
+	padding: 10px;
+	text-align: left;
+}
+
+.actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.pagination {
+	align-items: center;
+	display: flex;
+	gap: 16px;
+	justify-content: center;
+	margin-top: 16px;
+}
+
+.form-actions {
+	display: flex;
+	gap: 12px;
+	justify-content: flex-end;
+	margin-top: 16px;
+}
