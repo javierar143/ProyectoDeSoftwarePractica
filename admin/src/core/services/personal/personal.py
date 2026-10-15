@@ -6,6 +6,7 @@ from src.core.models.Personal import Personal
 from src.core.models.TipoPersonal import TipoPersonal
 from src.core.models.TipoMenu import TipoMenu
 from src.core.repositories.personal import personal as repo_personal
+from src.core.models.Sector import Sector
 
 
 def get_all(solo_activos: bool = False) -> list[Personal]:
@@ -29,12 +30,23 @@ def create(
     apellido: str,
     id_tipo_personal: int,
     id_tipo_menu: int,
+    id_sector: int | None = None,
 ) -> Personal | None:
-    """Crea una persona validando previamente la unicidad del DNI."""
+    """Crea una persona validando previamente la unicidad del DNI y gestionando la asignacion de sector si corresponde."""
     persona_existente = repo_personal.get_by_dni(dni)
     if persona_existente is not None:
         return None
 
+    # si es Residente no debe tener sector asignado
+    tipos = {t.idTipoPersonal: t.nombre.lower() for t in repo_personal.get_tipos_personal()}
+    nombre_tipo = tipos.get(id_tipo_personal, "")
+
+    if "fijo" in nombre_tipo and id_sector is None:
+        raise ValueError("El personal fijo requiere un sector asignado obligatoriamente.")
+
+    if "residente" in nombre_tipo:
+        id_sector = None
+    
     ahora = datetime.now()
     nueva_persona = Personal(
         dni=dni,
@@ -46,7 +58,13 @@ def create(
         inserted_at=ahora,
         updated_at=ahora,
     )
-    return repo_personal.create(nueva_persona)
+    persona_creada = repo_personal.create(nueva_persona)
+
+    # si se proporciono un sector, se asigna al personal creado
+    if id_sector is not None:
+        repo_personal.set_sector(persona_creada.idPersonal, id_sector)
+
+    return persona_creada
 
 
 def update(
@@ -56,8 +74,9 @@ def update(
     apellido: str,
     id_tipo_personal: int,
     id_tipo_menu: int,
+    id_sector: int | None = None,
 ) -> Personal | None:
-    """Modifica los datos de una persona validando que el DNI no pertenezca a otra."""
+    """Modifica los datos de una persona y actualiza su asignacion de sector."""
     persona_actual = repo_personal.get_by_id(id_personal)
     if persona_actual is None:
         return None
@@ -66,6 +85,15 @@ def update(
     if persona_con_mismo_dni is not None and persona_con_mismo_dni.idPersonal != id_personal:
         return None
 
+    tipos = {t.idTipoPersonal: t.nombre.lower() for t in repo_personal.get_tipos_personal()}
+    nombre_tipo = tipos.get(id_tipo_personal, "")
+
+    if "fijo" in nombre_tipo and id_sector is None:
+        raise ValueError("El personal fijo requiere un sector asignado obligatoriamente.")
+
+    if "residente" in nombre_tipo:
+        id_sector = None
+
     persona_actual.dni = dni
     persona_actual.nombre = nombre
     persona_actual.apellido = apellido
@@ -73,7 +101,12 @@ def update(
     persona_actual.idTipoMenu = id_tipo_menu
     persona_actual.updated_at = datetime.now()
 
-    return repo_personal.update(persona_actual)
+    personal_actualizada = repo_personal.update(persona_actual)
+
+    # actualiza la asociacion (si id_sector es None, se elimina la asociacion previa)
+    repo_personal.set_sector(id_personal, id_sector)
+
+    return personal_actualizada
 
 
 def set_active(id_personal: int, is_active: bool) -> Personal | None:
@@ -95,3 +128,12 @@ def get_tipos_personal() -> list[TipoPersonal]:
 def get_tipos_menu() -> list[TipoMenu]:
     """Obtiene las opciones predefinidas de tipos de menú."""
     return repo_personal.get_tipos_menu()
+
+def get_sector_asignado(id_personal: int) -> Sector | None:
+    """Obtiene el sector asignado al personal."""
+    return repo_personal.get_sector_asignado(id_personal)
+
+
+def get_sectores() -> list[Sector]:
+    """Obtiene el listado de sectores disponibles."""
+    return repo_personal.get_sectores()

@@ -41,7 +41,7 @@ def actualizar_configuracion(elementos: int, mantenimiento: bool, mensaje: str =
         mensaje: Texto descriptivo que se mostrará durante el mantenimiento.
 
     Raises:
-        ValueError: Si la cantidad no es un entero entre 1 y 25.
+        ValueError: Si la cantidad no es un entero entre 1 y 25 o el mensaje supera los 255 caracteres.
     """
     if (
         not isinstance(elementos, int)
