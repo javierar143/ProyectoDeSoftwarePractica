@@ -1,10 +1,10 @@
 """Servicio de lógica de negocio para la administración de cupos por sector."""
 
 from src.core.database import db
+from src.core.services.configuracion import obtener_configuracion
 from src.core.models.Cupo import Cupo
 from src.core.repositories.cupos import cupos as repo_cupos
-from src.core.services.configuracion import obtener_configuracion
-
+from src.core.repositories.sectores import sector as repo_sector
 
 class CupoServiceError(Exception):
     """Excepción de validación para errores de negocio de cupos (HTTP 400)."""
@@ -33,11 +33,9 @@ def validar_datos_cupo(
     if cantidad <= 0:
         raise CupoServiceError("La cantidad de comensales debe ser mayor a cero.")
 
-    # TODO: Descomentar cuando Santi suba el modelo y repositorio de Sector
-    # from src.core.repositories import sectores as repo_sectores
-    # sector = repo_sectores.get_by_id(id_sector)
-    # if not sector or not sector.isActive:
-    #     raise CupoServiceError("El sector no existe o está inactivo.")
+    sector = repo_sector.get_by_id(id_sector)
+    if not sector or not sector.isActive:
+        raise CupoServiceError("El sector no existe o está inactivo.")
 
     existente = repo_cupos.get_by_sector_y_comida(id_sector, id_tipo_comida)
     if existente and existente.idCupo != id_cupo_actual:

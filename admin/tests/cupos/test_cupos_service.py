@@ -11,10 +11,15 @@ from src.core.services.cupos import cupos
 from src.core.services.cupos.cupos import CupoNotFoundError, CupoServiceError
 
 
+from types import SimpleNamespace
+
+
+@patch("src.core.services.cupos.cupos.repo_sector.get_by_id")
 @patch("src.core.services.cupos.cupos.repo_cupos.create")
 @patch("src.core.services.cupos.cupos.repo_cupos.get_by_sector_y_comida")
-def test_crear_cupo_exitoso(mock_get_existente, mock_repo_create):
+def test_crear_cupo_exitoso(mock_get_existente, mock_repo_create, mock_get_sector):
     """Verifica que se cree un cupo cuando los datos son válidos."""
+    mock_get_sector.return_value = SimpleNamespace(isActive=True)
     mock_get_existente.return_value = None
     mock_repo_create.side_effect = lambda nuevo_cupo: nuevo_cupo
 
@@ -23,6 +28,30 @@ def test_crear_cupo_exitoso(mock_get_existente, mock_repo_create):
     assert cupo.cantComensales == 10
     assert cupo.idSector == 1
     assert cupo.idTipoComida == 1
+
+
+@patch("src.core.services.cupos.cupos.repo_sector.get_by_id")
+@patch("src.core.services.cupos.cupos.repo_cupos.get_by_sector_y_comida")
+def test_crear_cupo_duplicado(mock_get_existente, mock_get_sector):
+    """Verifica que rechace crear un cupo si ya existe para ese sector y comida."""
+    mock_get_sector.return_value = SimpleNamespace(isActive=True)
+
+    class MockCupo:
+        idCupo = 99
+
+    mock_get_existente.return_value = MockCupo()
+
+    with pytest.raises(CupoServiceError, match="Ya existe un cupo vigente"):
+        cupos.create(id_sector=1, id_tipo_comida=1, cant_comensales=10)
+
+
+@patch("src.core.services.cupos.cupos.repo_sector.get_by_id")
+def test_crear_cupo_sector_inactivo(mock_get_sector):
+    """Verifica que rechace crear un cupo para un sector inexistente o inactivo."""
+    mock_get_sector.return_value = SimpleNamespace(isActive=False)
+
+    with pytest.raises(CupoServiceError, match="inactivo"):
+        cupos.create(id_sector=1, id_tipo_comida=1, cant_comensales=10)
 
 
 def test_crear_cupo_cantidad_invalida():
