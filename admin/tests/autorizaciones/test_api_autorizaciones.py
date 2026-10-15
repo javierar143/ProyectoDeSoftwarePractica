@@ -1,4 +1,4 @@
-```python
+
 """Pruebas de los endpoints REST de autorizaciones."""
 
 import pytest
@@ -194,4 +194,3 @@ def test_post_registrar_entrega(client):
     )
 
     assert response.status_code in (201, 409)
-```
