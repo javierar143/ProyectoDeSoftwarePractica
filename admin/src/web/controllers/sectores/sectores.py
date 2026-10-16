@@ -47,8 +47,9 @@ def _leer_formulario():
     nombre = request.form.get("nombre", "").strip()
     descripcion = request.form.get("descripcion", "").strip()
     ids_jefes, errores = validate_jefes_ids(request.form.getlist("jefes"))
+    jefes_seleccionados = ids_jefes  # lista de int, vacía en el GET
     errores += validate_sector_data(nombre, descripcion)
-    return nombre, descripcion, ids_jefes, errores
+    return nombre, descripcion, jefes_seleccionados, errores
 
 
 @sectores_bp.get("")
