@@ -1,21 +1,11 @@
 """Servicio de lógica de negocio para la administración de cupos por sector."""
 
+from flask import abort
+
 from src.core.models.Cupo import Cupo
 from src.core.repositories.cupos import cupos as repo_cupos
 from src.core.repositories.sectores import sector as repo_sector
 from src.core.services.configuracion import obtener_configuracion
-
-
-class CupoServiceError(Exception):
-    """Excepción de validación para errores de negocio de cupos (HTTP 400)."""
-
-    pass
-
-
-class CupoNotFoundError(Exception):
-    """Excepción para cuando el cupo solicitado no existe o fue dado de baja (HTTP 404)."""
-
-    pass
 
 
 def validar_reglas_negocio_cupo(
@@ -30,17 +20,27 @@ def validar_reglas_negocio_cupo(
     """
     sector = repo_sector.get_by_id(id_sector)
     if not sector or not sector.isActive:
-        raise CupoServiceError("El sector no existe o está inactivo.")
+        abort(400, description="El sector no existe o está inactivo.")
 
     existente = repo_cupos.get_by_sector_y_comida(id_sector, id_tipo_comida)
     if existente and existente.idCupo != id_cupo_actual:
-        raise CupoServiceError(
-            "Ya existe un cupo vigente para ese sector y tipo de comida."
+        abort(
+            400,
+            description="Ya existe un cupo vigente para ese sector y tipo de comida.",
         )
 
 
 def create(id_sector: int, id_tipo_comida: int, cant_comensales: int) -> Cupo:
     """Valida las reglas de negocio y coordina la creación de un nuevo cupo vigente."""
+    if (
+        not isinstance(cant_comensales, int)
+        or isinstance(cant_comensales, bool)
+        or cant_comensales <= 0
+    ):
+        abort(
+            400, description="La cantidad de comensales debe ser mayor a cero."
+        )
+
     validar_reglas_negocio_cupo(id_sector, id_tipo_comida)
 
     nuevo_cupo = Cupo(
@@ -82,10 +82,10 @@ def listar(
 
 
 def obtener_por_id(id_cupo: int) -> Cupo:
-    """Busca un cupo vigente por su ID o lanza CupoNotFoundError si no existe."""
+    """Busca un cupo vigente por su ID o aborta con 404 si no existe."""
     cupo = repo_cupos.get_by_id(id_cupo)
     if not cupo:
-        raise CupoNotFoundError(f"El cupo con ID {id_cupo} no existe.")
+        abort(404, description=f"El cupo con ID {id_cupo} no existe.")
     return cupo
 
 
@@ -96,9 +96,22 @@ def actualizar(
     cant_comensales: int,
 ) -> Cupo:
     """Actualiza un cupo existente sin alterar retroactivamente pedidos ya registrados."""
+    if (
+        not isinstance(cant_comensales, int)
+        or isinstance(cant_comensales, bool)
+        or cant_comensales <= 0
+    ):
+        abort(
+            400, description="La cantidad de comensales debe ser mayor a cero."
+        )
+
     cupo = obtener_por_id(id_cupo)
 
-    validar_reglas_negocio_cupo(id_sector=id_sector, id_tipo_comida=id_tipo_comida, id_cupo_actual=id_cupo)
+    validar_reglas_negocio_cupo(
+        id_sector=id_sector,
+        id_tipo_comida=id_tipo_comida,
+        id_cupo_actual=id_cupo,
+    )
 
     cupo.idSector = id_sector
     cupo.idTipoComida = id_tipo_comida
