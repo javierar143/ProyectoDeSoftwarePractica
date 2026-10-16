@@ -29,9 +29,10 @@ def require_admin():
         abort(403)
 
 
-def _render_form(sector, errores=None, valores=None, status=200):
-    """Renderiza el formulario de sector con sus datos auxiliares."""
+def _render_form(sector, errores=None, valores=None, jefes_seleccionados=None, status=200):
     jefes_actuales = sector_service.get_jefes(sector.idSector) if sector else []
+    if jefes_seleccionados is None:
+        jefes_seleccionados = [j.id_user for j in jefes_actuales]
     return render_template(
         "sectores/form.html",
         sector=sector,
@@ -39,6 +40,7 @@ def _render_form(sector, errores=None, valores=None, status=200):
         valores=valores or {},
         jefes_actuales=jefes_actuales,
         jefes_disponibles=sector_service.get_jefes_disponibles(),
+        jefes_seleccionados=jefes_seleccionados,
     ), status
 
 
@@ -86,12 +88,12 @@ def nuevo():
     """Procesa el alta de un sector."""
     nombre, descripcion, ids_jefes, errores = _leer_formulario()
     if errores:
-        return _render_form(None, errores, request.form, 400)
+        return _render_form(sector=None, errores=errores, valores=request.form, jefes_seleccionados=None, status=200)
 
     try:
         sector_service.create(nombre, descripcion, ids_jefes)
     except SectorError as error:
-        return _render_form(None, [str(error)], request.form, 400)
+        return _render_form(sector=None, errores=[str(error)], valores=request.form, jefes_seleccionados=None, status=400)
 
     flash("Sector creado correctamente.", "success")
     return redirect(url_for("sectores.index"), code=303)
