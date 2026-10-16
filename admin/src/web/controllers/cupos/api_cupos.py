@@ -1,12 +1,12 @@
 """Controlador API para la gestión y consulta de cupos por sector."""
 
 from flask import Blueprint, abort, jsonify, request
+from werkzeug.exceptions import HTTPException
 
 from src.core.database import db
 from src.core.models.Rol import Rol
 from src.core.services.auth import api_auth
 from src.core.services.cupos import cupos
-from src.core.services.cupos.cupos import CupoNotFoundError, CupoServiceError
 from src.core.services.pedidos.pedidos import obtener_sector_de_personal
 from src.web.validators.cupos.cupos_validator import (
     validar_entrada_cupo,
@@ -36,7 +36,9 @@ def _autenticar_y_obtener_rol():
 
 def _obtener_sector_jefe(user) -> int | None:
     """Obtiene el idSector del Jefe de Servicio."""
-    sector_personal = obtener_sector_de_personal(getattr(user, "idPersonal", None))
+    sector_personal = obtener_sector_de_personal(
+        getattr(user, "idPersonal", None)
+    )
     if sector_personal is not None:
         return sector_personal
     return getattr(user, "idSector", None)
@@ -66,7 +68,10 @@ def listar_cupos():
         if sector_jefe is None:
             abort(403, description="El usuario no tiene un sector asignado")
         if id_sector_param is not None and id_sector_param != sector_jefe:
-            abort(403, description="Un Jefe de Servicio solo puede consultar cupos de su propio sector")
+            abort(
+                403,
+                description="Un Jefe de Servicio solo puede consultar cupos de su propio sector",
+            )
         id_sector_filtro = sector_jefe
     else:
         id_sector_filtro = id_sector_param
@@ -112,31 +117,28 @@ def obtener_cupo(quota_id: int):
     if not (es_jefe or es_alimentacion or es_comedor):
         abort(403, description="No tiene permisos para consultar cupos")
 
-    try:
-        cupo = cupos.obtener_por_id(quota_id)
+    cupo = cupos.obtener_por_id(quota_id)
 
-        if es_jefe:
-            sector_jefe = _obtener_sector_jefe(user)
-            if cupo.idSector != sector_jefe:
-                abort(
-                    403,
-                    description="No tiene permisos para consultar un cupo de otro sector",
-                )
+    if es_jefe:
+        sector_jefe = _obtener_sector_jefe(user)
+        if cupo.idSector != sector_jefe:
+            abort(
+                403,
+                description="No tiene permisos para consultar un cupo de otro sector",
+            )
 
-        return (
-            jsonify(
-                {
-                    "idCupo": cupo.idCupo,
-                    "idSector": cupo.idSector,
-                    "idTipoComida": cupo.idTipoComida,
-                    "cantComensales": cupo.cantComensales,
-                    "activo": cupo.activo,
-                }
-            ),
-            200,
-        )
-    except CupoNotFoundError as e:
-        abort(404, description=str(e))
+    return (
+        jsonify(
+            {
+                "idCupo": cupo.idCupo,
+                "idSector": cupo.idSector,
+                "idTipoComida": cupo.idTipoComida,
+                "cantComensales": cupo.cantComensales,
+                "activo": cupo.activo,
+            }
+        ),
+        200,
+    )
 
 
 @bp_cupos.route("", methods=["POST"])
@@ -176,9 +178,9 @@ def crear_nuevo_cupo():
             ),
             201,
         )
-    except CupoServiceError as e:
+    except HTTPException:
         db.session.rollback()
-        abort(400, description=str(e))
+        raise
     except Exception:
         db.session.rollback()
         abort(500)
@@ -222,12 +224,9 @@ def modificar_cupo(quota_id: int):
             ),
             200,
         )
-    except CupoNotFoundError as e:
+    except HTTPException:
         db.session.rollback()
-        abort(404, description=str(e))
-    except CupoServiceError as e:
-        db.session.rollback()
-        abort(400, description=str(e))
+        raise
     except Exception:
         db.session.rollback()
         abort(500)
@@ -257,9 +256,9 @@ def eliminar_cupo(quota_id: int):
             ),
             200,
         )
-    except CupoNotFoundError as e:
+    except HTTPException:
         db.session.rollback()
-        abort(404, description=str(e))
+        raise
     except Exception:
         db.session.rollback()
         abort(500)
