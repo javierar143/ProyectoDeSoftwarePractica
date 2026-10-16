@@ -46,8 +46,12 @@ def _construir_condiciones(filtros: dict) -> list:
         condiciones.append(Usuario.idRol == filtros["rol_id"])
 
     if filtros.get("sector_id") is not None:
+        sector_buscado = filtros["sector_id"]
         condiciones.append(
-            UsuarioEsJefeSector.idSector == filtros["sector_id"]
+            or_(
+                Usuario.idSector == sector_buscado,
+                UsuarioEsJefeSector.idSector == sector_buscado,
+            )
         )
 
     return condiciones
@@ -60,7 +64,7 @@ def _aplicar_filtros(consulta, filtros: dict):
     )
 
     if filtros.get("sector_id") is not None:
-        consulta = consulta.join(
+        consulta = consulta.outerjoin(
             UsuarioEsJefeSector,
             UsuarioEsJefeSector.idUser == Usuario.id_user,
         )
