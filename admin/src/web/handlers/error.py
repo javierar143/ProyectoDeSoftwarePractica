@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from flask import jsonify, render_template, request
+from flask import current_app,jsonify, render_template, request
 
 
 @dataclass
@@ -24,6 +24,15 @@ def _obtener_descripcion(error, default_text: str) -> str:
 
 def _responder(error_data: HTTPError):
     """Devuelve JSON para los endpoints de la API (/api/*) o renderiza error.html para vistas web."""
+    if error_data.code >= 500:
+        current_app.logger.error(
+            f"Error HTTP {error_data.code} en {request.method} {request.path}: {error_data.description}"
+        )
+    else:
+        current_app.logger.warning(
+            f"Advertencia HTTP {error_data.code} en {request.method} {request.path}: {error_data.description}"
+        )
+
     if request.path.startswith("/api/"):
         return (
             jsonify(

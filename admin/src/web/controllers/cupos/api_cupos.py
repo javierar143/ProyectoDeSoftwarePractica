@@ -1,7 +1,6 @@
 """Controlador API para la gestión y consulta de cupos por sector."""
 
-from flask import Blueprint, abort, jsonify, request
-from werkzeug.exceptions import HTTPException
+from flask import Blueprint, abort, current_app, jsonify, request
 
 from src.core.database import db
 from src.core.models.Rol import Rol
@@ -20,12 +19,18 @@ def _autenticar_y_obtener_rol():
     """Valida el Bearer token con el servicio de Javi y obtiene el rol del usuario."""
     authorization = request.headers.get("Authorization")
     if authorization is None or not authorization.startswith("Bearer "):
+        current_app.logger.warning(
+            "Intento de acceso a /api/quotas sin token de autenticación"
+        )
         abort(401, description="Token de autenticación requerido")
 
     token = authorization[7:].strip()
     user = api_auth.get_authenticated_user(token)
 
     if user is None or not user.isActive:
+        current_app.logger.warning(
+            "Intento de acceso a /api/quotas con token inválido o usuario inactivo"
+        )
         abort(401, description="Token inválido o expirado")
 
     rol = db.session.get(Rol, user.idRol)
@@ -54,10 +59,16 @@ def listar_cupos():
     es_comedor = "comedor" in nombre_rol
 
     if not (es_jefe or es_alimentacion or es_comedor):
+        current_app.logger.warning(
+            f"Usuario ID {user.id_user} con rol '{nombre_rol}' intentó listar cupos sin permisos"
+        )
         abort(403, description="No tiene permisos para consultar cupos")
 
     es_valido, resultado = validar_filtros_listado_cupos(request.args)
     if not es_valido:
+        current_app.logger.warning(
+            f"Filtros inválidos al listar cupos: {resultado}"
+        )
         abort(400, description=str(resultado))
 
     filtros = resultado  # type: ignore[assignment]
@@ -66,8 +77,14 @@ def listar_cupos():
     if es_jefe:
         sector_jefe = _obtener_sector_jefe(user)
         if sector_jefe is None:
+            current_app.logger.warning(
+                f"Jefe de Servicio ID {user.id_user} sin sector asignado intentó consultar cupos"
+            )
             abort(403, description="El usuario no tiene un sector asignado")
         if id_sector_param is not None and id_sector_param != sector_jefe:
+            current_app.logger.warning(
+                f"Jefe de Servicio ID {user.id_user} (sector {sector_jefe}) intentó consultar cupos del sector {id_sector_param}"
+            )
             abort(
                 403,
                 description="Un Jefe de Servicio solo puede consultar cupos de su propio sector",
@@ -115,6 +132,9 @@ def obtener_cupo(quota_id: int):
     es_comedor = "comedor" in nombre_rol
 
     if not (es_jefe or es_alimentacion or es_comedor):
+        current_app.logger.warning(
+            f"Usuario ID {user.id_user} sin permisos intentó consultar cupo ID {quota_id}"
+        )
         abort(403, description="No tiene permisos para consultar cupos")
 
     cupo = cupos.obtener_por_id(quota_id)
@@ -122,6 +142,9 @@ def obtener_cupo(quota_id: int):
     if es_jefe:
         sector_jefe = _obtener_sector_jefe(user)
         if cupo.idSector != sector_jefe:
+            current_app.logger.warning(
+                f"Jefe ID {user.id_user} (sector {sector_jefe}) intentó ver cupo ID {quota_id} del sector {cupo.idSector}"
+            )
             abort(
                 403,
                 description="No tiene permisos para consultar un cupo de otro sector",
@@ -144,9 +167,12 @@ def obtener_cupo(quota_id: int):
 @bp_cupos.route("", methods=["POST"])
 def crear_nuevo_cupo():
     """Endpoint para crear un cupo (Exclusivo rol Servicio de Alimentación)."""
-    _, nombre_rol = _autenticar_y_obtener_rol()
+    user, nombre_rol = _autenticar_y_obtener_rol()
 
     if "alimenta" not in nombre_rol:
+        current_app.logger.warning(
+            f"Usuario ID {user.id_user} con rol '{nombre_rol}' intentó crear un cupo sin permisos"
+        )
         abort(
             403,
             description="Solo el Servicio de Alimentación puede crear cupos",
@@ -154,6 +180,9 @@ def crear_nuevo_cupo():
 
     es_valido, resultado = validar_entrada_cupo(request.get_json(silent=True))
     if not es_valido:
+        current_app.logger.warning(
+            f"Datos inválidos al intentar crear cupo: {resultado}"
+        )
         abort(400, description=str(resultado))
 
     datos = resultado  # type: ignore[assignment]
@@ -165,6 +194,9 @@ def crear_nuevo_cupo():
             cant_comensales=datos["cant_comensales"],
         )
         db.session.commit()
+        current_app.logger.info(
+            f"Cupo creado exitosamente ID {nuevo_cupo.idCupo} para sector ID {nuevo_cupo.idSector} por usuario ID {user.id_user}"
+        )
         return (
             jsonify(
                 {
@@ -178,20 +210,23 @@ def crear_nuevo_cupo():
             ),
             201,
         )
-    except HTTPException:
+    except Exception as e:
         db.session.rollback()
-        raise
-    except Exception:
-        db.session.rollback()
+        if hasattr(e, "code"):
+            raise
+        current_app.logger.error(f"Error inesperado al crear cupo: {str(e)}")
         abort(500)
 
 
 @bp_cupos.route("/<int:quota_id>", methods=["PUT"])
 def modificar_cupo(quota_id: int):
     """Endpoint para modificar un cupo existente (Exclusivo rol Servicio de Alimentación)."""
-    _, nombre_rol = _autenticar_y_obtener_rol()
+    user, nombre_rol = _autenticar_y_obtener_rol()
 
     if "alimenta" not in nombre_rol:
+        current_app.logger.warning(
+            f"Usuario ID {user.id_user} con rol '{nombre_rol}' intentó modificar cupo ID {quota_id}"
+        )
         abort(
             403,
             description="Solo el Servicio de Alimentación puede modificar cupos",
@@ -199,6 +234,9 @@ def modificar_cupo(quota_id: int):
 
     es_valido, resultado = validar_entrada_cupo(request.get_json(silent=True))
     if not es_valido:
+        current_app.logger.warning(
+            f"Datos inválidos al modificar cupo ID {quota_id}: {resultado}"
+        )
         abort(400, description=str(resultado))
 
     datos = resultado  # type: ignore[assignment]
@@ -211,6 +249,9 @@ def modificar_cupo(quota_id: int):
             cant_comensales=datos["cant_comensales"],
         )
         db.session.commit()
+        current_app.logger.info(
+            f"Cupo ID {quota_id} actualizado a {cupo_actualizado.cantComensales} comensales por usuario ID {user.id_user}"
+        )
         return (
             jsonify(
                 {
@@ -224,20 +265,25 @@ def modificar_cupo(quota_id: int):
             ),
             200,
         )
-    except HTTPException:
+    except Exception as e:
         db.session.rollback()
-        raise
-    except Exception:
-        db.session.rollback()
+        if hasattr(e, "code"):
+            raise
+        current_app.logger.error(
+            f"Error inesperado al modificar cupo ID {quota_id}: {str(e)}"
+        )
         abort(500)
 
 
 @bp_cupos.route("/<int:quota_id>", methods=["DELETE"])
 def eliminar_cupo(quota_id: int):
     """Endpoint para dar de baja lógica un cupo (Exclusivo rol Servicio de Alimentación)."""
-    _, nombre_rol = _autenticar_y_obtener_rol()
+    user, nombre_rol = _autenticar_y_obtener_rol()
 
     if "alimenta" not in nombre_rol:
+        current_app.logger.warning(
+            f"Usuario ID {user.id_user} con rol '{nombre_rol}' intentó eliminar cupo ID {quota_id}"
+        )
         abort(
             403,
             description="Solo el Servicio de Alimentación puede eliminar cupos",
@@ -246,6 +292,9 @@ def eliminar_cupo(quota_id: int):
     try:
         cupo_inactivado = cupos.eliminar(quota_id)
         db.session.commit()
+        current_app.logger.info(
+            f"Baja lógica de cupo ID {quota_id} realizada por usuario ID {user.id_user}"
+        )
         return (
             jsonify(
                 {
@@ -256,9 +305,11 @@ def eliminar_cupo(quota_id: int):
             ),
             200,
         )
-    except HTTPException:
+    except Exception as e:
         db.session.rollback()
-        raise
-    except Exception:
-        db.session.rollback()
+        if hasattr(e, "code"):
+            raise
+        current_app.logger.error(
+            f"Error inesperado al eliminar cupo ID {quota_id}: {str(e)}"
+        )
         abort(500)

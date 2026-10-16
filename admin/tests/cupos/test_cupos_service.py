@@ -7,7 +7,6 @@ load_dotenv()
 from types import SimpleNamespace
 from unittest.mock import patch
 import pytest
-from werkzeug.exceptions import HTTPException
 
 from src.core.services.cupos import cupos
 
@@ -42,10 +41,10 @@ def test_crear_cupo_duplicado(mock_get_existente, mock_get_sector):
 
     mock_get_existente.return_value = MockCupo()
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(Exception) as exc_info:
         cupos.create(id_sector=1, id_tipo_comida=1, cant_comensales=10)
 
-    assert exc_info.value.code == 400
+    assert getattr(exc_info.value, "code", None) == 400
     assert "Ya existe un cupo vigente" in str(exc_info.value.description)
 
 
@@ -54,19 +53,19 @@ def test_crear_cupo_sector_inactivo(mock_get_sector):
     """Verifica que rechace con 400 crear un cupo para un sector inexistente o inactivo."""
     mock_get_sector.return_value = SimpleNamespace(isActive=False)
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(Exception) as exc_info:
         cupos.create(id_sector=1, id_tipo_comida=1, cant_comensales=10)
 
-    assert exc_info.value.code == 400
+    assert getattr(exc_info.value, "code", None) == 400
     assert "inactivo" in str(exc_info.value.description)
 
 
 def test_crear_cupo_cantidad_invalida():
     """Verifica que rechace con 400 cantidades menores o iguales a cero."""
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(Exception) as exc_info:
         cupos.create(id_sector=1, id_tipo_comida=1, cant_comensales=-5)
 
-    assert exc_info.value.code == 400
+    assert getattr(exc_info.value, "code", None) == 400
     assert "mayor a cero" in str(exc_info.value.description)
 
 
@@ -94,10 +93,10 @@ def test_obtener_cupo_inexistente(mock_get_by_id):
     """Verifica que aborte con 404 si el cupo no existe."""
     mock_get_by_id.return_value = None
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(Exception) as exc_info:
         cupos.obtener_por_id(999)
 
-    assert exc_info.value.code == 404
+    assert getattr(exc_info.value, "code", None) == 404
 
 
 @patch("src.core.services.cupos.cupos.repo_cupos.soft_delete")

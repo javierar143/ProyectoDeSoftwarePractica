@@ -8,7 +8,6 @@ from datetime import date, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 import pytest
-from werkzeug.exceptions import HTTPException
 
 from src.core.models.enums import CondicionCupo, EstadoPedido
 from src.core.services.pedidos import pedidos
@@ -21,7 +20,7 @@ def test_crear_pedido_duplicado_por_fecha(mock_existe, mock_repo_create):
     mock_existe.return_value = True
     fecha_futura = date.today() + timedelta(days=5)
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(Exception) as exc_info:
         pedidos.crear_pedido(
             id_jefe=1,
             id_sector=1,
@@ -30,7 +29,7 @@ def test_crear_pedido_duplicado_por_fecha(mock_existe, mock_repo_create):
             comidas={"1": [1, 2]},
         )
 
-    assert exc_info.value.code == 409
+    assert getattr(exc_info.value, "code", None) == 409
     assert "Ya existe un pedido registrado" in str(exc_info.value.description)
     mock_repo_create.assert_not_called()
 
@@ -45,10 +44,10 @@ def test_borrar_pedido_autorizado_falla_409(mock_get_pedido, mock_eliminar):
         estado_general=EstadoPedido.AUTORIZADO,
     )
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(Exception) as exc_info:
         pedidos.borrar_pedido(id_pedido=1, id_sector_jefe=1)
 
-    assert exc_info.value.code == 409
+    assert getattr(exc_info.value, "code", None) == 409
     assert "No se puede eliminar un pedido" in str(exc_info.value.description)
     mock_eliminar.assert_not_called()
 
@@ -63,10 +62,10 @@ def test_borrar_pedido_otro_sector_403(mock_get_pedido, mock_eliminar):
         estado_general=EstadoPedido.CONFIRMADO,
     )
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(Exception) as exc_info:
         pedidos.borrar_pedido(id_pedido=1, id_sector_jefe=5)
 
-    assert exc_info.value.code == 403
+    assert getattr(exc_info.value, "code", None) == 403
     mock_eliminar.assert_not_called()
 
 
@@ -248,8 +247,8 @@ def test_regla_residente_vs_personal_fijo(mock_get_tipo, mock_pertenece):
 
     mock_get_tipo.return_value = SimpleNamespace(nombre="Personal Fijo")
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(Exception) as exc_info:
         validar_sector_personal(persona_mock, id_sector_jefe=1)
 
-    assert exc_info.value.code == 400
+    assert getattr(exc_info.value, "code", None) == 400
     assert "personal fijo" in str(exc_info.value.description)

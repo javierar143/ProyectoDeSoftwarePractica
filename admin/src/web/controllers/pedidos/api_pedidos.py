@@ -1,7 +1,6 @@
 """Controlador API para la gestión de pedidos de comidas."""
 
-from flask import Blueprint, abort, jsonify, request
-from werkzeug.exceptions import HTTPException
+from flask import Blueprint, abort, current_app, jsonify, request
 
 from src.core.database import db
 from src.core.models.Rol import Rol
@@ -24,18 +23,27 @@ def _autenticar_jefe():
     """
     authorization = request.headers.get("Authorization")
     if authorization is None or not authorization.startswith("Bearer "):
+        current_app.logger.warning(
+            "Intento de acceso a /api/requests sin token de autenticación"
+        )
         abort(401, description="Token de autenticación requerido")
 
     token = authorization[7:].strip()
     user = api_auth.get_authenticated_user(token)
 
     if user is None or not user.isActive:
+        current_app.logger.warning(
+            "Intento de acceso a /api/requests con token inválido o expirado"
+        )
         abort(401, description="Token inválido o expirado")
 
     rol = db.session.get(Rol, user.idRol)
     nombre_rol = rol.nombre.strip().lower() if rol and rol.nombre else ""
 
     if "jefe" not in nombre_rol:
+        current_app.logger.warning(
+            f"Usuario ID {user.id_user} con rol '{nombre_rol}' intentó gestionar pedidos sin ser Jefe de Servicio"
+        )
         abort(
             403,
             description="Solo un Jefe de Servicio puede gestionar pedidos",
@@ -46,6 +54,9 @@ def _autenticar_jefe():
         id_sector = getattr(user, "idSector", None)
 
     if id_sector is None:
+        current_app.logger.warning(
+            f"Jefe de Servicio ID {user.id_user} sin sector asignado intentó operar en /api/requests"
+        )
         abort(
             403,
             description="El Jefe de Servicio no tiene un sector asignado",
@@ -61,6 +72,9 @@ def listar_pedidos():
 
     es_valido, resultado = validar_filtros_pedidos(request.args)
     if not es_valido:
+        current_app.logger.warning(
+            f"Filtros inválidos al listar pedidos del sector ID {id_sector}: {resultado}"
+        )
         abort(400, description=str(resultado))
 
     filtros = resultado  # type: ignore[assignment]
@@ -107,6 +121,9 @@ def crear_nuevo_pedido():
         request.get_json(silent=True)
     )
     if not es_valido:
+        current_app.logger.warning(
+            f"Datos inválidos al crear pedido en sector ID {id_sector}: {resultado}"
+        )
         abort(400, description=str(resultado))
 
     datos = resultado  # type: ignore[assignment]
@@ -127,6 +144,9 @@ def crear_nuevo_pedido():
         )
 
         db.session.commit()
+        current_app.logger.info(
+            f"Pedido creado exitosamente ID {nuevo_pedido.idPedido} para sector ID {id_sector} por Jefe ID {user.id_user}"
+        )
 
         return (
             jsonify(
@@ -138,23 +158,28 @@ def crear_nuevo_pedido():
             ),
             201,
         )
-    except HTTPException:
+    except Exception as e:
         db.session.rollback()
-        raise
-    except Exception:
-        db.session.rollback()
+        if hasattr(e, "code"):
+            raise
+        current_app.logger.error(
+            f"Error inesperado al crear pedido para sector ID {id_sector}: {str(e)}"
+        )
         abort(500)
 
 
 @bp_pedidos.route("/<int:request_id>", methods=["PUT"])
 def actualizar_pedido_existente(request_id: int):
     """Endpoint para editar un pedido si aún no fue autorizado/rechazado."""
-    _, id_sector = _autenticar_jefe()
+    user, id_sector = _autenticar_jefe()
 
     es_valido, resultado = validar_actualizacion_pedido(
         request.get_json(silent=True)
     )
     if not es_valido:
+        current_app.logger.warning(
+            f"Datos inválidos al actualizar pedido ID {request_id}: {resultado}"
+        )
         abort(400, description=str(resultado))
 
     datos = resultado  # type: ignore[assignment]
@@ -167,6 +192,9 @@ def actualizar_pedido_existente(request_id: int):
         )
 
         db.session.commit()
+        current_app.logger.info(
+            f"Pedido ID {request_id} actualizado exitosamente por Jefe ID {user.id_user}"
+        )
 
         return (
             jsonify(
@@ -178,26 +206,33 @@ def actualizar_pedido_existente(request_id: int):
             ),
             200,
         )
-    except HTTPException:
+    except Exception as e:
         db.session.rollback()
-        raise
-    except Exception:
-        db.session.rollback()
+        if hasattr(e, "code"):
+            raise
+        current_app.logger.error(
+            f"Error inesperado al actualizar pedido ID {request_id}: {str(e)}"
+        )
         abort(500)
 
 
 @bp_pedidos.route("/<int:request_id>", methods=["DELETE"])
 def eliminar_pedido_existente(request_id: int):
     """Endpoint para dar de baja lógica un pedido confirmado."""
-    _, id_sector = _autenticar_jefe()
+    user, id_sector = _autenticar_jefe()
 
     try:
         pedidos.borrar_pedido(request_id, id_sector_jefe=id_sector)
         db.session.commit()
+        current_app.logger.info(
+            f"Baja lógica de pedido ID {request_id} realizada por Jefe ID {user.id_user}"
+        )
         return "", 204
-    except HTTPException:
+    except Exception as e:
         db.session.rollback()
-        raise
-    except Exception:
-        db.session.rollback()
+        if hasattr(e, "code"):
+            raise
+        current_app.logger.error(
+            f"Error inesperado al eliminar pedido ID {request_id}: {str(e)}"
+        )
         abort(500)
