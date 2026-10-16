@@ -1,8 +1,8 @@
-"""Manejadores centralizados de errores HTTP de la aplicación web."""
+"""Manejadores centralizados de errores HTTP de la aplicación web y API."""
 
 from dataclasses import dataclass
 
-from flask import render_template
+from flask import jsonify, render_template, request
 
 
 @dataclass
@@ -14,70 +14,98 @@ class HTTPError:
     description: str
 
 
-def not_found(error):
-    """Renderiza la página correspondiente a un error HTTP 404."""
-    error_data = HTTPError(
-        code=404,
-        message="Página no encontrada",
-        description="Lo sentimos, la página que estás buscando no existe.",
-    )
+def _obtener_descripcion(error, default_text: str) -> str:
+    """Obtiene la descripción personalizada pasada a abort() o usa el texto por defecto."""
+    descripcion = getattr(error, "description", None)
+    if descripcion:
+        return str(descripcion)
+    return default_text
 
-    return render_template("error.html", error=error_data), 404
+
+def _responder(error_data: HTTPError):
+    """Devuelve JSON para los endpoints de la API (/api/*) o renderiza error.html para vistas web."""
+    if request.path.startswith("/api/"):
+        return (
+            jsonify(
+                {
+                    "error": error_data.description,
+                    "message": error_data.message,
+                    "code": error_data.code,
+                }
+            ),
+            error_data.code,
+        )
+    return render_template("error.html", error=error_data), error_data.code
+
+
+def bad_request(error):
+    """Renderiza la respuesta correspondiente a un error HTTP 400."""
+    error_data = HTTPError(
+        code=400,
+        message="Solicitud incorrecta",
+        description=_obtener_descripcion(
+            error, "Los datos enviados no son válidos."
+        ),
+    )
+    return _responder(error_data)
 
 
 def unauthorized(error):
-    """Renderiza la página correspondiente a un error HTTP 401."""
+    """Renderiza la respuesta correspondiente a un error HTTP 401."""
     error_data = HTTPError(
         code=401,
         message="Acceso no autorizado",
-        description="No estás autorizado para ver este contenido. Por favor, inicia sesión.",
+        description=_obtener_descripcion(
+            error,
+            "No estás autorizado para ver este contenido. Por favor, inicia sesión.",
+        ),
     )
-
-    return render_template("error.html", error=error_data), 401
+    return _responder(error_data)
 
 
 def forbidden(error):
-    """Renderiza la página correspondiente a un error HTTP 403."""
+    """Renderiza la respuesta correspondiente a un error HTTP 403."""
     error_data = HTTPError(
         code=403,
         message="Acceso prohibido",
-        description="No tenés permisos suficientes para acceder a este contenido.",
+        description=_obtener_descripcion(
+            error,
+            "No tenés permisos suficientes para acceder a este contenido.",
+        ),
     )
+    return _responder(error_data)
 
-    return render_template("error.html", error=error_data), 403
+
+def not_found(error):
+    """Renderiza la respuesta correspondiente a un error HTTP 404."""
+    error_data = HTTPError(
+        code=404,
+        message="Página no encontrada",
+        description=_obtener_descripcion(
+            error, "Lo sentimos, la página que estás buscando no existe."
+        ),
+    )
+    return _responder(error_data)
+
+
+def conflict(error):
+    """Renderiza la respuesta correspondiente a un error HTTP 409."""
+    error_data = HTTPError(
+        code=409,
+        message="Conflicto en la solicitud",
+        description=_obtener_descripcion(
+            error,
+            "La operación genera un conflicto con el estado actual del recurso.",
+        ),
+    )
+    return _responder(error_data)
 
 
 def internal_server_error(error):
-    """Renderiza la página correspondiente a un error HTTP 500."""
+    """Renderiza la respuesta correspondiente a un error HTTP 500."""
     error_data = HTTPError(
         code=500,
         message="Internal Server Error",
         description="Ocurrió un error en el servidor. Inténtelo más tarde.",
     )
-
-    return render_template("error.html", error=error_data), 500
-
-def bad_request(error):
-    """Renderiza la página correspondiente a un error HTTP 400."""
-    error_data = HTTPError(
-        code=400,
-        message="Solicitud incorrecta",
-        description="Los datos enviados no son válidos.",
-    )
-
-    return render_template("error.html", error=error_data), 400
-
-
-def conflict(error):
-    """Renderiza la página o respuesta JSON correspondiente a un error HTTP 409."""
-    descripcion = getattr(
-        error,
-        "description",
-        "La operación genera un conflicto con el estado actual del recurso.",
-    )
-    error_data = HTTPError(
-        code=409,
-        message="Conflicto en la solicitud",
-        description=str(descripcion),
-    )
-    return render_template("error.html", error=error_data), 409
+    return _responder(error_data)
