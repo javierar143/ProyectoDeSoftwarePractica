@@ -6,7 +6,6 @@ from sqlalchemy import func, select, update
 
 from src.core.database import db
 from src.core.models.Pedido import Pedido
-from src.core.models.Personal import Personal
 from src.core.models.Solicitud import Solicitud
 from src.core.models.TipoPersonal import TipoPersonal
 from src.core.models.enums import EstadoPedido
@@ -17,7 +16,6 @@ def create_pedido_con_solicitudes(
 ) -> Pedido:
     """
     Guarda la cabecera (Pedido) y sus detalles (Solicitudes) en una misma transacción.
-    No hace commit, solo prepara la unidad de trabajo.
     """
     db.session.add(nuevo_pedido)
     db.session.flush()
@@ -26,7 +24,7 @@ def create_pedido_con_solicitudes(
         solicitud.idPedido = nuevo_pedido.idPedido
         db.session.add(solicitud)
 
-    db.session.flush()
+    db.session.commit()
     return nuevo_pedido
 
 
@@ -68,7 +66,7 @@ def guardar_nuevas_solicitudes(
         sol.activo = True
         db.session.add(sol)
 
-    db.session.flush()
+    db.session.commit()
     return pedido
 
 
@@ -93,7 +91,7 @@ def eliminar_pedido(pedido: Pedido) -> Pedido:
     pedido.deleted_at = ahora
     pedido.updated_at = ahora
     db.session.add(pedido)
-    db.session.flush()
+    db.session.commit()
     return pedido
 
 
@@ -149,25 +147,19 @@ def existe_solicitud_duplicada(
     return db.session.scalar(stmt) is not None
 
 
-def get_personal_by_id(id_personal: int) -> Personal | None:
-    """Recupera una persona por su ID desde la base de datos."""
-    return db.session.get(Personal, id_personal)
-
-
 def get_tipo_personal_by_id(id_tipo_personal: int) -> TipoPersonal | None:
     """Recupera un tipo de personal por su ID desde la base de datos."""
     return db.session.get(TipoPersonal, id_tipo_personal)
 
-
 def list_pedidos_by_sector(
+    page: int,
+    per_page: int,
     id_sector: int | None = None,
     fecha_desde: date | None = None,
     fecha_hasta: date | None = None,
     estado: EstadoPedido | None = None,
     id_tipo_comida: int | None = None,
     id_tipo_menu: int | None = None,
-    page: int = 1,
-    per_page: int = 10,
 ) -> tuple[list[Pedido], int]:
     """
     Lista los pedidos vigentes filtrando por sector y criterios opcionales,
@@ -206,3 +198,37 @@ def list_pedidos_by_sector(
 
     items = list(db.session.scalars(stmt).all())
     return items, total
+
+
+def obtener_solicitudes_para_resumen(
+    id_sector: int | None = None,
+    fecha_desde: date | None = None,
+    fecha_hasta: date | None = None,
+    id_tipo_comida: int | None = None,
+    id_tipo_menu: int | None = None,
+) -> list[tuple[Solicitud, int]]:
+    """
+    Recupera las solicitudes vigentes junto con el idSector de su pedido
+    para construir el resumen estadístico de comidas pedidas.
+    """
+    stmt = (
+        select(Solicitud, Pedido.idSector)
+        .join(Pedido, Solicitud.idPedido == Pedido.idPedido)
+        .where(
+            Pedido.activo.is_(True),
+            Solicitud.activo.is_(True),
+        )
+    )
+
+    if id_sector is not None:
+        stmt = stmt.where(Pedido.idSector == id_sector)
+    if fecha_desde is not None:
+        stmt = stmt.where(Solicitud.fecha_vianda >= fecha_desde)
+    if fecha_hasta is not None:
+        stmt = stmt.where(Solicitud.fecha_vianda <= fecha_hasta)
+    if id_tipo_comida is not None:
+        stmt = stmt.where(Solicitud.idTipoComida == id_tipo_comida)
+    if id_tipo_menu is not None:
+        stmt = stmt.where(Solicitud.idTipoMenu == id_tipo_menu)
+
+    return list(db.session.execute(stmt).all())
