@@ -31,15 +31,20 @@ def require_admin():
 
 def _render_form(sector, errores=None, valores=None, jefes_seleccionados=None, status=200):
     jefes_actuales = sector_service.get_jefes(sector.idSector) if sector else []
+    jefes_disponibles = sector_service.get_jefes_disponibles()
+
+    # Para el select: actuales + sin sector (sin duplicar)
+    jefes_para_select = list(jefes_actuales) + list(jefes_disponibles)
+
     if jefes_seleccionados is None:
         jefes_seleccionados = [j.id_user for j in jefes_actuales]
+
     return render_template(
         "sectores/form.html",
         sector=sector,
         errores=errores or [],
         valores=valores or {},
-        jefes_actuales=jefes_actuales,
-        jefes_disponibles=sector_service.get_jefes_disponibles(),
+        jefes_para_select=jefes_para_select,
         jefes_seleccionados=jefes_seleccionados,
     ), status
 
@@ -88,12 +93,23 @@ def nuevo():
     """Procesa el alta de un sector."""
     nombre, descripcion, ids_jefes, errores = _leer_formulario()
     if errores:
-        return _render_form(sector=None, errores=errores, valores=request.form, jefes_seleccionados=None, status=200)
-
+        return _render_form(
+                None,
+                [str(error)],
+                request.form,
+                jefes_seleccionados=ids_jefes,
+                status=400,
+            )
     try:
         sector_service.create(nombre, descripcion, ids_jefes)
     except SectorError as error:
-        return _render_form(sector=None, errores=[str(error)], valores=request.form, jefes_seleccionados=None, status=400)
+        return _render_form(
+                None,
+                [str(error)],
+                request.form,
+                jefes_seleccionados=ids_jefes,
+                status=400,
+            )
 
     flash("Sector creado correctamente.", "success")
     return redirect(url_for("sectores.index"), code=303)
@@ -117,12 +133,24 @@ def editar(id: int):
 
     nombre, descripcion, ids_jefes, errores = _leer_formulario()
     if errores:
-        return _render_form(sector, errores, request.form, 400)
+        return _render_form(
+                sector,
+                errores,
+                request.form,
+                jefes_seleccionados=ids_jefes,
+                status=400,
+            )
 
     try:
         sector_service.update(id, nombre, descripcion, ids_jefes)
     except SectorError as error:
-        return _render_form(sector, [str(error)], request.form, 400)
+        return _render_form(
+                    sector,
+                    [str(error)],
+                    request.form,
+                    jefes_seleccionados=ids_jefes,
+                    status=400,
+                )
 
     flash("Sector actualizado correctamente.", "success")
     return redirect(url_for("sectores.index"), code=303)
