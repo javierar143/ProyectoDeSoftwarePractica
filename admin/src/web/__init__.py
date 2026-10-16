@@ -41,6 +41,10 @@ def create_app(
     Session(app)
     database.init_app(app)
 
+    if not app.config.get("TESTING"):
+        with app.app_context():
+            database.ensure_db_initialized()
+
     @app.context_processor
     def inject_current_user():
         """Expone el usuario autenticado y su personal asociado a todas las plantillas."""
@@ -60,6 +64,7 @@ def create_app(
         try:
             cfg = config_service.obtener_configuracion()
         except Exception:
+            database.db.session.rollback()
             return None
 
         # Si no está en mantenimiento, permitimos el flujo normal
