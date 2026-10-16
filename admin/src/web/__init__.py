@@ -55,6 +55,8 @@ def create_app(
     app.register_error_handler(403, error.forbidden)
     app.register_error_handler(404, error.not_found)
     app.register_error_handler(500, error.internal_server_error)
+    app.register_error_handler(409, error.conflict)
+
 
     @app.cli.command("reset-db")
     def reset_db():
