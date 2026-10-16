@@ -2,18 +2,31 @@
 
 from flask import Blueprint, abort, current_app, jsonify, request
 
-from src.core.database import db
-from src.core.models.Rol import Rol
 from src.core.services.auth import api_auth
 from src.core.services.pedidos import pedidos
-from src.core.services.pedidos.pedidos import obtener_sector_de_personal
+from src.core.services.personal.personal import get_sector_asignado
+from src.core.services.usuarios.rol import get_by_id
 from src.web.validators.pedidos.pedidos_validator import (
     validar_actualizacion_pedido,
     validar_creacion_pedido,
     validar_filtros_pedidos,
+    validar_filtros_resumen_pedidos,
 )
 
 bp_pedidos = Blueprint("pedidos", __name__, url_prefix="/api/requests")
+bp_resumen_pedidos = Blueprint(
+    "resumen_pedidos", __name__, url_prefix="/api/summaries"
+)
+
+
+def _obtener_id_sector_jefe(user) -> int | None:
+    """Obtiene el idSector asignado al Jefe desde el servicio de personal o desde su usuario."""
+    id_personal = getattr(user, "idPersonal", None)
+    if id_personal is not None:
+        sector = get_sector_asignado(id_personal)
+        if sector is not None:
+            return getattr(sector, "idSector", sector)
+    return getattr(user, "idSector", None)
 
 
 def _autenticar_jefe():
@@ -37,7 +50,7 @@ def _autenticar_jefe():
         )
         abort(401, description="Token inválido o expirado")
 
-    rol = db.session.get(Rol, user.idRol)
+    rol = get_by_id(user.idRol)
     nombre_rol = rol.nombre.strip().lower() if rol and rol.nombre else ""
 
     if "jefe" not in nombre_rol:
@@ -49,9 +62,7 @@ def _autenticar_jefe():
             description="Solo un Jefe de Servicio puede gestionar pedidos",
         )
 
-    id_sector = obtener_sector_de_personal(getattr(user, "idPersonal", None))
-    if id_sector is None:
-        id_sector = getattr(user, "idSector", None)
+    id_sector = _obtener_id_sector_jefe(user)
 
     if id_sector is None:
         current_app.logger.warning(
@@ -128,44 +139,34 @@ def crear_nuevo_pedido():
 
     datos = resultado  # type: ignore[assignment]
 
-    try:
-        kwargs_extra = (
-            {"fecha_hasta": datos["fecha_hasta"]}
-            if datos.get("fecha_hasta") is not None
-            else {}
-        )
-        nuevo_pedido = pedidos.crear_pedido(
-            id_jefe=user.id_user,
-            id_sector=id_sector,
-            fecha_desde=datos["fecha_desde"],
-            periodicidad=datos["periodicidad"],
-            comidas=datos["comidas"],
-            **kwargs_extra,
-        )
+    kwargs_extra = (
+        {"fecha_hasta": datos["fecha_hasta"]}
+        if datos.get("fecha_hasta") is not None
+        else {}
+    )
+    nuevo_pedido = pedidos.crear_pedido(
+        id_jefe=user.id_user,
+        id_sector=id_sector,
+        fecha_desde=datos["fecha_desde"],
+        periodicidad=datos["periodicidad"],
+        comidas=datos["comidas"],
+        **kwargs_extra,
+    )
 
-        db.session.commit()
-        current_app.logger.info(
-            f"Pedido creado exitosamente ID {nuevo_pedido.idPedido} para sector ID {id_sector} por Jefe ID {user.id_user}"
-        )
+    current_app.logger.info(
+        f"Pedido creado exitosamente ID {nuevo_pedido.idPedido} para sector ID {id_sector} por Jefe ID {user.id_user}"
+    )
 
-        return (
-            jsonify(
-                {
-                    "mensaje": "Pedido creado exitosamente",
-                    "idPedido": nuevo_pedido.idPedido,
-                    "estado": nuevo_pedido.estado_general.value,
-                }
-            ),
-            201,
-        )
-    except Exception as e:
-        db.session.rollback()
-        if hasattr(e, "code"):
-            raise
-        current_app.logger.error(
-            f"Error inesperado al crear pedido para sector ID {id_sector}: {str(e)}"
-        )
-        abort(500)
+    return (
+        jsonify(
+            {
+                "mensaje": "Pedido creado exitosamente",
+                "idPedido": nuevo_pedido.idPedido,
+                "estado": nuevo_pedido.estado_general.value,
+            }
+        ),
+        201,
+    )
 
 
 @bp_pedidos.route("/<int:request_id>", methods=["PUT"])
@@ -184,36 +185,32 @@ def actualizar_pedido_existente(request_id: int):
 
     datos = resultado  # type: ignore[assignment]
 
-    try:
-        pedido_actualizado = pedidos.actualizar_pedido(
-            id_pedido=request_id,
-            comidas=datos["comidas"],
-            id_sector_jefe=id_sector,
-        )
+    kwargs_extra = {}
+    for campo in ("fecha_desde", "fecha_hasta", "periodicidad"):
+        if datos.get(campo) is not None:
+            kwargs_extra[campo] = datos[campo]
 
-        db.session.commit()
-        current_app.logger.info(
-            f"Pedido ID {request_id} actualizado exitosamente por Jefe ID {user.id_user}"
-        )
+    pedido_actualizado = pedidos.actualizar_pedido(
+        id_pedido=request_id,
+        comidas=datos["comidas"],
+        id_sector_jefe=id_sector,
+        **kwargs_extra,
+    )
 
-        return (
-            jsonify(
-                {
-                    "mensaje": "Pedido actualizado exitosamente",
-                    "idPedido": pedido_actualizado.idPedido,
-                    "estado": pedido_actualizado.estado_general.value,
-                }
-            ),
-            200,
-        )
-    except Exception as e:
-        db.session.rollback()
-        if hasattr(e, "code"):
-            raise
-        current_app.logger.error(
-            f"Error inesperado al actualizar pedido ID {request_id}: {str(e)}"
-        )
-        abort(500)
+    current_app.logger.info(
+        f"Pedido ID {request_id} actualizado exitosamente por Jefe ID {user.id_user}"
+    )
+
+    return (
+        jsonify(
+            {
+                "mensaje": "Pedido actualizado exitosamente",
+                "idPedido": pedido_actualizado.idPedido,
+                "estado": pedido_actualizado.estado_general.value,
+            }
+        ),
+        200,
+    )
 
 
 @bp_pedidos.route("/<int:request_id>", methods=["DELETE"])
@@ -221,18 +218,81 @@ def eliminar_pedido_existente(request_id: int):
     """Endpoint para dar de baja lógica un pedido confirmado."""
     user, id_sector = _autenticar_jefe()
 
-    try:
-        pedidos.borrar_pedido(request_id, id_sector_jefe=id_sector)
-        db.session.commit()
-        current_app.logger.info(
-            f"Baja lógica de pedido ID {request_id} realizada por Jefe ID {user.id_user}"
+    pedidos.borrar_pedido(request_id, id_sector_jefe=id_sector)
+    current_app.logger.info(
+        f"Baja lógica de pedido ID {request_id} realizada por Jefe ID {user.id_user}"
+    )
+    return "", 204
+
+
+@bp_resumen_pedidos.route("/requests", methods=["GET"])
+def resumen_de_pedidos():
+    """
+    Endpoint GET /api/summaries/requests para obtener el resumen de pedidos.
+    Roles permitidos: Servicio de Alimentación y Jefe de Servicio (limitado a su sector).
+    """
+    authorization = request.headers.get("Authorization")
+    if authorization is None or not authorization.startswith("Bearer "):
+        current_app.logger.warning(
+            "Intento de acceso a /api/summaries/requests sin token"
         )
-        return "", 204
-    except Exception as e:
-        db.session.rollback()
-        if hasattr(e, "code"):
-            raise
-        current_app.logger.error(
-            f"Error inesperado al eliminar pedido ID {request_id}: {str(e)}"
+        abort(401, description="Token de autenticación requerido")
+
+    token = authorization[7:].strip()
+    user = api_auth.get_authenticated_user(token)
+    if user is None or not user.isActive:
+        current_app.logger.warning(
+            "Intento de acceso a /api/summaries/requests con token inválido"
         )
-        abort(500)
+        abort(401, description="Token inválido o expirado")
+
+    rol = get_by_id(user.idRol)
+    nombre_rol = rol.nombre.strip().lower() if rol and rol.nombre else ""
+
+    es_jefe = "jefe" in nombre_rol
+    es_alimentacion = "alimenta" in nombre_rol
+
+    if not (es_jefe or es_alimentacion):
+        current_app.logger.warning(
+            f"Usuario ID {user.id_user} con rol '{nombre_rol}' intentó consultar resumen de pedidos sin permisos"
+        )
+        abort(
+            403,
+            description="No tiene permisos para consultar el resumen de pedidos",
+        )
+
+    es_valido, resultado = validar_filtros_resumen_pedidos(request.args)
+    if not es_valido:
+        current_app.logger.warning(
+            f"Filtros inválidos en /api/summaries/requests: {resultado}"
+        )
+        abort(400, description=str(resultado))
+
+    filtros = resultado  # type: ignore[assignment]
+    id_sector_param = filtros["id_sector"]
+
+    if es_jefe:
+        sector_jefe = _obtener_id_sector_jefe(user)
+        if sector_jefe is None:
+            abort(
+                403,
+                description="El Jefe de Servicio no tiene un sector asignado",
+            )
+        if id_sector_param is not None and id_sector_param != sector_jefe:
+            abort(
+                403,
+                description="Un Jefe de Servicio solo puede consultar resúmenes de su propio sector",
+            )
+        id_sector_filtro = sector_jefe
+    else:
+        id_sector_filtro = id_sector_param
+
+    resumen = pedidos.obtener_resumen_pedidos(
+        id_sector=id_sector_filtro,
+        fecha_desde=filtros["fecha_desde"],
+        fecha_hasta=filtros["fecha_hasta"],
+        id_tipo_comida=filtros["id_tipo_comida"],
+        id_tipo_menu=filtros["id_tipo_menu"],
+        agrupamiento=filtros["agrupamiento"],
+    )
+    return jsonify(resumen), 200

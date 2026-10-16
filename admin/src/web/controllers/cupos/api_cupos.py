@@ -2,11 +2,10 @@
 
 from flask import Blueprint, abort, current_app, jsonify, request
 
-from src.core.database import db
-from src.core.models.Rol import Rol
 from src.core.services.auth import api_auth
 from src.core.services.cupos import cupos
-from src.core.services.pedidos.pedidos import obtener_sector_de_personal
+from src.core.services.personal.personal import get_sector_asignado
+from src.core.services.usuarios.rol import get_by_id
 from src.web.validators.cupos.cupos_validator import (
     validar_entrada_cupo,
     validar_filtros_listado_cupos,
@@ -33,19 +32,19 @@ def _autenticar_y_obtener_rol():
         )
         abort(401, description="Token inválido o expirado")
 
-    rol = db.session.get(Rol, user.idRol)
+    rol = get_by_id(user.idRol)
     nombre_rol = rol.nombre.strip().lower() if rol and rol.nombre else ""
 
     return user, nombre_rol
 
 
 def _obtener_sector_jefe(user) -> int | None:
-    """Obtiene el idSector del Jefe de Servicio."""
-    sector_personal = obtener_sector_de_personal(
-        getattr(user, "idPersonal", None)
-    )
-    if sector_personal is not None:
-        return sector_personal
+    """Obtiene el idSector del Jefe de Servicio desde personal o desde su usuario."""
+    id_personal = getattr(user, "idPersonal", None)
+    if id_personal is not None:
+        sector = get_sector_asignado(id_personal)
+        if sector is not None:
+            return getattr(sector, "idSector", sector)
     return getattr(user, "idSector", None)
 
 
@@ -187,35 +186,27 @@ def crear_nuevo_cupo():
 
     datos = resultado  # type: ignore[assignment]
 
-    try:
-        nuevo_cupo = cupos.create(
-            id_sector=datos["id_sector"],
-            id_tipo_comida=datos["id_tipo_comida"],
-            cant_comensales=datos["cant_comensales"],
-        )
-        db.session.commit()
-        current_app.logger.info(
-            f"Cupo creado exitosamente ID {nuevo_cupo.idCupo} para sector ID {nuevo_cupo.idSector} por usuario ID {user.id_user}"
-        )
-        return (
-            jsonify(
-                {
-                    "mensaje": "Cupo creado exitosamente",
-                    "idCupo": nuevo_cupo.idCupo,
-                    "idSector": nuevo_cupo.idSector,
-                    "idTipoComida": nuevo_cupo.idTipoComida,
-                    "cantComensales": nuevo_cupo.cantComensales,
-                    "activo": nuevo_cupo.activo,
-                }
-            ),
-            201,
-        )
-    except Exception as e:
-        db.session.rollback()
-        if hasattr(e, "code"):
-            raise
-        current_app.logger.error(f"Error inesperado al crear cupo: {str(e)}")
-        abort(500)
+    nuevo_cupo = cupos.create(
+        id_sector=datos["id_sector"],
+        id_tipo_comida=datos["id_tipo_comida"],
+        cant_comensales=datos["cant_comensales"],
+    )
+    current_app.logger.info(
+        f"Cupo creado exitosamente ID {nuevo_cupo.idCupo} para sector ID {nuevo_cupo.idSector} por usuario ID {user.id_user}"
+    )
+    return (
+        jsonify(
+            {
+                "mensaje": "Cupo creado exitosamente",
+                "idCupo": nuevo_cupo.idCupo,
+                "idSector": nuevo_cupo.idSector,
+                "idTipoComida": nuevo_cupo.idTipoComida,
+                "cantComensales": nuevo_cupo.cantComensales,
+                "activo": nuevo_cupo.activo,
+            }
+        ),
+        201,
+    )
 
 
 @bp_cupos.route("/<int:quota_id>", methods=["PUT"])
@@ -241,38 +232,28 @@ def modificar_cupo(quota_id: int):
 
     datos = resultado  # type: ignore[assignment]
 
-    try:
-        cupo_actualizado = cupos.actualizar(
-            id_cupo=quota_id,
-            id_sector=datos["id_sector"],
-            id_tipo_comida=datos["id_tipo_comida"],
-            cant_comensales=datos["cant_comensales"],
-        )
-        db.session.commit()
-        current_app.logger.info(
-            f"Cupo ID {quota_id} actualizado a {cupo_actualizado.cantComensales} comensales por usuario ID {user.id_user}"
-        )
-        return (
-            jsonify(
-                {
-                    "mensaje": "Cupo actualizado exitosamente",
-                    "idCupo": cupo_actualizado.idCupo,
-                    "idSector": cupo_actualizado.idSector,
-                    "idTipoComida": cupo_actualizado.idTipoComida,
-                    "cantComensales": cupo_actualizado.cantComensales,
-                    "activo": cupo_actualizado.activo,
-                }
-            ),
-            200,
-        )
-    except Exception as e:
-        db.session.rollback()
-        if hasattr(e, "code"):
-            raise
-        current_app.logger.error(
-            f"Error inesperado al modificar cupo ID {quota_id}: {str(e)}"
-        )
-        abort(500)
+    cupo_actualizado = cupos.actualizar(
+        id_cupo=quota_id,
+        id_sector=datos["id_sector"],
+        id_tipo_comida=datos["id_tipo_comida"],
+        cant_comensales=datos["cant_comensales"],
+    )
+    current_app.logger.info(
+        f"Cupo ID {quota_id} actualizado a {cupo_actualizado.cantComensales} comensales por usuario ID {user.id_user}"
+    )
+    return (
+        jsonify(
+            {
+                "mensaje": "Cupo actualizado exitosamente",
+                "idCupo": cupo_actualizado.idCupo,
+                "idSector": cupo_actualizado.idSector,
+                "idTipoComida": cupo_actualizado.idTipoComida,
+                "cantComensales": cupo_actualizado.cantComensales,
+                "activo": cupo_actualizado.activo,
+            }
+        ),
+        200,
+    )
 
 
 @bp_cupos.route("/<int:quota_id>", methods=["DELETE"])
@@ -289,27 +270,17 @@ def eliminar_cupo(quota_id: int):
             description="Solo el Servicio de Alimentación puede eliminar cupos",
         )
 
-    try:
-        cupo_inactivado = cupos.eliminar(quota_id)
-        db.session.commit()
-        current_app.logger.info(
-            f"Baja lógica de cupo ID {quota_id} realizada por usuario ID {user.id_user}"
-        )
-        return (
-            jsonify(
-                {
-                    "mensaje": "Cupo dado de baja correctamente",
-                    "idCupo": cupo_inactivado.idCupo,
-                    "activo": cupo_inactivado.activo,
-                }
-            ),
-            200,
-        )
-    except Exception as e:
-        db.session.rollback()
-        if hasattr(e, "code"):
-            raise
-        current_app.logger.error(
-            f"Error inesperado al eliminar cupo ID {quota_id}: {str(e)}"
-        )
-        abort(500)
+    cupo_inactivado = cupos.eliminar(quota_id)
+    current_app.logger.info(
+        f"Baja lógica de cupo ID {quota_id} realizada por usuario ID {user.id_user}"
+    )
+    return (
+        jsonify(
+            {
+                "mensaje": "Cupo dado de baja correctamente",
+                "idCupo": cupo_inactivado.idCupo,
+                "activo": cupo_inactivado.activo,
+            }
+        ),
+        200,
+    )

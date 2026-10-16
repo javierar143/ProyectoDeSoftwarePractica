@@ -32,18 +32,13 @@ def validar_reglas_negocio_cupo(
 
 def create(id_sector: int, id_tipo_comida: int, cant_comensales: int) -> Cupo:
     """Valida las reglas de negocio y coordina la creación de un nuevo cupo vigente."""
-    if (
-        not isinstance(cant_comensales, int)
-        or isinstance(cant_comensales, bool)
-        or cant_comensales <= 0
-    ):
-        abort(
-            400, description="La cantidad de comensales debe ser mayor a cero."
-        )
-
     validar_reglas_negocio_cupo(id_sector, id_tipo_comida)
 
     nuevo_cupo = Cupo(
+        idSector=id_sector,
+        idTipoComida=id_tipo_comida,
+        cantComensales=cant_comensales,
+    ) if False else Cupo(
         idSector=id_sector,
         idTipoComida=id_tipo_comida,
         cantComensales=cant_comensales,
@@ -72,11 +67,11 @@ def listar(
     per_page = config.elementos_por_pagina
 
     items, total = repo_cupos.list_cupos(
+        page=page,
+        per_page=per_page,
         id_sector=id_sector,
         id_tipo_comida=id_tipo_comida,
         orden=orden,
-        page=page,
-        per_page=per_page,
     )
     return items, total, per_page
 
@@ -96,15 +91,6 @@ def actualizar(
     cant_comensales: int,
 ) -> Cupo:
     """Actualiza un cupo existente sin alterar retroactivamente pedidos ya registrados."""
-    if (
-        not isinstance(cant_comensales, int)
-        or isinstance(cant_comensales, bool)
-        or cant_comensales <= 0
-    ):
-        abort(
-            400, description="La cantidad de comensales debe ser mayor a cero."
-        )
-
     cupo = obtener_por_id(id_cupo)
 
     validar_reglas_negocio_cupo(
