@@ -4,11 +4,16 @@
 
 {% block content %}
 <section>
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h2 style="margin: 0;">Gestión de Personal</h2>
-        <a href="{{ url_for('personal.nuevo_form') }}">
-            + Registrar Nuevo Personal
-        </a>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Gestión de Personal</h2>
+        <div>
+            <a href="{{ url_for('personal.importar_form') }}" style="margin-right: 15px; color: #2563eb; text-decoration: none; font-weight: bold;">
+                + Importar CSV
+            </a>
+            <a href="{{ url_for('personal.nuevo_form') }}" style="color: #2563eb; text-decoration: none; font-weight: bold;">
+                + Registrar Nuevo Personal
+            </a>
+        </div>
     </div>
 
     <!-- Formulario de Búsqueda y Filtros Combinables -->

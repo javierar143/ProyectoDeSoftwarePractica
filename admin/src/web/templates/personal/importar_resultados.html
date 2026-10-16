@@ -1,0 +1,71 @@
+{% extends "layout.html" %}
+
+{% block title %}Resultados de Importación - Servicio de Alimentación{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto; padding: 2rem;">
+    <h2>Resultados de la Importación Masiva</h2>
+    
+    <div style="display: flex; gap: 1rem; margin-top: 1.5rem; margin-bottom: 2rem;">
+        <div style="flex: 1; padding: 1.5rem; border-radius: 8px; text-align: center; background-color: #f3f4f6; border: 1px solid #d1d5db;">
+            <h3 style="margin: 0; font-size: 2rem; color: #374151;">{{ resultados.total }}</h3>
+            <p style="margin: 0.5rem 0 0 0; color: #6b7280;">Procesados</p>
+        </div>
+        <div style="flex: 1; padding: 1.5rem; border-radius: 8px; text-align: center; background-color: #ecfdf5; border: 1px solid #a7f3d0;">
+            <h3 style="margin: 0; font-size: 2rem; color: #059669;">{{ resultados.exitosos }}</h3>
+            <p style="margin: 0.5rem 0 0 0; color: #10b981;">Importados</p>
+        </div>
+        <div style="flex: 1; padding: 1.5rem; border-radius: 8px; text-align: center; background-color: #fef2f2; border: 1px solid #fecaca;">
+            <h3 style="margin: 0; font-size: 2rem; color: #dc2626;">{{ resultados.fallidos }}</h3>
+            <p style="margin: 0.5rem 0 0 0; color: #ef4444;">Rechazados</p>
+        </div>
+    </div>
+
+    {% if resultados.exitosos > 0 %}
+    <div style="margin-top: 2rem;">
+        <h3 style="color: #059669;">Detalle de registros importados exitosamente</h3>
+        <ul style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 1.5rem 1.5rem 1.5rem 3rem; color: #065f46;">
+            {% for persona in resultados.detalles_exitosos %}
+                <li style="margin-bottom: 0.5rem;">{{ persona }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if resultados.fallidos > 0 %}
+    <div style="margin-top: 2rem;">
+        <h3 style="color: #b91c1c;">Detalle de registros rechazados</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+            <thead>
+                <tr style="background-color: #f9fafb;">
+                    <th style="border: 1px solid #e5e7eb; padding: 0.75rem; text-align: left;">Fila CSV</th>
+                    <th style="border: 1px solid #e5e7eb; padding: 0.75rem; text-align: left;">Registro</th>
+                    <th style="border: 1px solid #e5e7eb; padding: 0.75rem; text-align: left;">Motivo del Error</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for detalle in resultados.detalles_errores %}
+                <tr>
+                    <td style="border: 1px solid #e5e7eb; padding: 0.75rem; vertical-align: top;">{{ detalle.fila }}</td>
+                    <td style="border: 1px solid #e5e7eb; padding: 0.75rem; vertical-align: top;">{{ detalle.persona }}</td>
+                    <td style="border: 1px solid #e5e7eb; padding: 0.75rem; vertical-align: top; color: #b91c1c;">
+                        <ul style="margin: 0; padding-left: 1.2rem;">
+                            {% for error in detalle.errores %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <div style="margin-top: 2rem;">
+        <a href="{{ url_for('personal.index') }}" style="display: inline-block; padding: 0.5rem 1rem; background-color: #2563eb; color: white; text-decoration: none; border-radius: 4px;">
+            Volver al listado de Personal
+        </a>
+    </div>
+</div>
+{% endblock %}

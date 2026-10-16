@@ -11,6 +11,7 @@ from flask import (
 from src.core.services.personal import personal as service_personal
 from src.core.services import configuracion as service_config
 from src.web.validators.personal.personal import validar_datos_personal
+import csv, io
 
 personal_bp = Blueprint("personal", __name__, url_prefix="/personal")
 
@@ -238,3 +239,111 @@ def activar(id: int):
         flash("No se encontró el registro.", "danger")
 
     return redirect(url_for("personal.index"), code=303)
+
+@personal_bp.get("/importar")
+def importar_form():
+    """Muestra el formulario para subir el archivo CSV."""
+    return render_template("personal/importar.html")
+
+@personal_bp.post("/importar")
+def importar_procesar():
+    """Procesa el archivo CSV subido traduciendo nombres a IDs."""
+    archivo = request.files.get("archivo_csv")
+    
+    if not archivo or archivo.filename == "":
+        flash("No se seleccionó ningún archivo.", "danger")
+        return redirect(url_for("personal.importar_form"), code=303)
+
+    if not archivo.filename.endswith('.csv'):
+        flash("El archivo debe tener extensión .csv", "danger")
+        return redirect(url_for("personal.importar_form"), code=303)
+
+    stream = io.StringIO(archivo.stream.read().decode("UTF8"), newline=None)
+    csv_reader = csv.DictReader(stream)
+
+    # traer catalogos del servicio
+    tipos_personal = service_personal.get_tipos_personal()
+    tipos_menu = service_personal.get_tipos_menu()
+    sectores = service_personal.get_sectores()
+
+    # crear diccionarios de traduccion (nombre en minuscula -> ID)
+    map_tipos_personal = {t.nombre.strip().lower(): t.idTipoPersonal for t in tipos_personal}
+    map_tipos_menu = {m.nombre.strip().lower(): m.idTipoMenu for m in tipos_menu}
+    map_sectores = {s.nombre.strip().lower(): s.idSector for s in sectores}
+
+    resultados = {
+        "total": 0,
+        "exitosos": 0,
+        "fallidos": 0,
+        "detalles_errores": [],
+        "detalles_exitosos": []  
+    }
+
+    # procesar fila por fila
+    for fila_num, fila in enumerate(csv_reader, start=2):
+        resultados["total"] += 1
+        
+        # quito espacios y saltos de línea (\r) de las columnas y valores
+        fila_limpia = {str(k).strip().lower(): str(v).strip() for k, v in fila.items() if k is not None}
+
+        nombre_tipo = fila_limpia.get("tipo_personal", "").lower()
+        nombre_menu = fila_limpia.get("tipo_menu", "").lower()
+        nombre_sector = fila_limpia.get("sector", "").lower()
+
+        # traduzco a IDs y fuerzo a string (para que el validador lo vea igual que un formulario web)
+        id_tipo_pers = str(map_tipos_personal.get(nombre_tipo, ""))
+        id_tipo_menu = str(map_tipos_menu.get(nombre_menu, ""))
+        id_sec = str(map_sectores.get(nombre_sector, "")) if nombre_sector else ""
+
+        datos_validacion = {
+            "dni": fila_limpia.get("dni", ""),
+            "nombre": fila_limpia.get("nombre", ""),
+            "apellido": fila_limpia.get("apellido", ""),
+            "idTipoPersonal": id_tipo_pers,
+            "idTipoMenu": id_tipo_menu,
+            "idSector": id_sec
+        }
+
+        errores_fila = validar_datos_personal(datos_validacion, tipos_personal)
+
+        if errores_fila:
+            resultados["fallidos"] += 1
+            resultados["detalles_errores"].append({
+                "fila": fila_num,
+                "persona": f"{datos_validacion['nombre']} {datos_validacion['apellido']} (DNI: {datos_validacion['dni']})",
+                "errores": errores_fila
+            })
+            continue
+
+        try:
+            persona_creada = service_personal.create(
+                dni=datos_validacion["dni"],
+                nombre=datos_validacion["nombre"],
+                apellido=datos_validacion["apellido"],
+                id_tipo_personal=int(id_tipo_pers),
+                id_tipo_menu=int(id_tipo_menu),
+                id_sector=int(id_sec) if id_sec else None
+            )
+            
+            if persona_creada is None:
+                resultados["fallidos"] += 1
+                resultados["detalles_errores"].append({
+                    "fila": fila_num,
+                    "persona": f"{datos_validacion['nombre']} {datos_validacion['apellido']} (DNI: {datos_validacion['dni']})",
+                    "errores": ["Ya existe una persona registrada con este DNI."]
+                })
+            else:
+                resultados["exitosos"] += 1
+                resultados["detalles_exitosos"].append(
+                    f"{datos_validacion['nombre']} {datos_validacion['apellido']} (DNI: {datos_validacion['dni']})"
+                )
+                
+        except Exception:
+            resultados["fallidos"] += 1
+            resultados["detalles_errores"].append({
+                "fila": fila_num,
+                "persona": f"DNI: {datos_validacion['dni']}",
+                "errores": ["Error interno al guardar en la base de datos."]
+            })
+
+    return render_template("personal/importar_resultados.html", resultados=resultados)
