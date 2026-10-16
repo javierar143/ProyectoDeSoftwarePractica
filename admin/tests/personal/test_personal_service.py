@@ -1,11 +1,9 @@
+from dotenv import load_dotenv
+load_dotenv()
 from datetime import datetime
 import pytest
-from dotenv import load_dotenv
 from sqlalchemy import text
 from unittest.mock import patch
-
-load_dotenv()
-
 from src.web import create_app
 from src.core.database import db, reset_db
 from src.core.models.TipoPersonal import TipoPersonal
