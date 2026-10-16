@@ -7,11 +7,15 @@ from flask import (
     redirect,
     url_for,
     flash,
-    current_app
+    current_app,
+    session,
+    abort
 )
 from src.core.services.personal import personal as service_personal
 from src.core.services import configuracion as service_config
 from src.web.validators.personal.personal import validar_datos_personal
+from src.core.services.usuarios import usuario as service_usuario
+from src.core.services.usuarios import rol as service_rol
 import csv, io
 
 personal_bp = Blueprint("personal", __name__, url_prefix="/personal")
@@ -19,7 +23,7 @@ personal_bp = Blueprint("personal", __name__, url_prefix="/personal")
 @personal_bp.get("")
 def index():
     """Listado general de personal con filtros, orden y paginación."""
-    # configuración de paginado del sistema
+    # configuracion de paginado del sistema
     config = service_config.obtener_configuracion()
     per_page = config.elementos_por_pagina
 
@@ -33,12 +37,27 @@ def index():
     direccion = request.args.get("direccion", "asc")
     page = request.args.get("page", 1, type=int)
 
-    # consulta al servicio
+    user_id = session.get("user_id")
+    sector_forzado_jefe = None
+    
+    if user_id:
+        usuario_actual = service_usuario.get_by_id(user_id)
+        if usuario_actual and usuario_actual.idRol:
+            rol_usuario = service_rol.get_by_id(usuario_actual.idRol)
+            if rol_usuario:
+                nombre_rol = rol_usuario.nombre.strip().lower()
+                # si es Jefe, fuerzo su sector asignado
+                if "jefe" in nombre_rol:
+                    sector_forzado_jefe = usuario_actual.idSector
+                    id_sector = sector_forzado_jefe
+
+    # consulta al servicio 
     resultado_paginado = service_personal.search(
         texto_busqueda=texto_busqueda,
         dni=dni,
         id_tipo_personal=id_tipo_personal,
         id_sector=id_sector,
+        sector_forzado_jefe=sector_forzado_jefe, 
         estado=estado,
         ordenar_por=ordenar_por,
         direccion=direccion,
@@ -106,7 +125,19 @@ def nuevo():
             valores=request.form,
         ), 400
 
-    # inserción a traves del servicio
+    user_id = session.get("user_id")
+    if user_id:
+        usuario_actual = service_usuario.get_by_id(user_id) 
+        rol_usuario = service_rol.get_by_id(usuario_actual.idRol)
+
+        id_tipo_personal_form = int(request.form.get("idTipoPersonal"))
+        
+        nombre_rol = rol_usuario.nombre.strip().lower()
+        es_servicio_alimentacion = nombre_rol == "Alimentación"
+        if id_tipo_personal_form == 2 and not es_servicio_alimentacion:
+            # si el usuario no tiene el rol de Servicio de Alimentacion y esta intentando crear un personal de tipo Residente denegamos el acceso
+            abort(403, description="Acceso denegado: Solo el Servicio de Alimentación puede administrar Residentes.")
+
     id_sector = request.form.get("idSector")
     persona_creada = service_personal.create(
         dni=request.form.get("dni", "").strip(),
@@ -127,7 +158,7 @@ def nuevo():
             sectores=sectores,
             errores=errores,
             valores=request.form,
-        ), 400
+        ), 409
 
     flash("Personal registrado con éxito.", "success")
     return redirect(url_for("personal.index"), code=303)
@@ -208,7 +239,7 @@ def editar(id: int):
             sectores=sectores,
             errores=errores,
             valores=request.form,
-        ), 400
+        ), 409
 
     flash("Datos actualizados correctamente.", "success")
     return redirect(url_for("personal.index"), code=303)

@@ -116,21 +116,24 @@ def get_sectores() -> list[Sector]:
     statement = select(Sector).where(Sector.isActive.is_(True)).order_by(Sector.nombre)
     return db.session.execute(statement).scalars().all()
 
+from sqlalchemy import select, or_, desc, asc, func
+from src.core.database import db
+from src.core.models.Personal import Personal
+from src.core.models.SectorCompuestoPorPersonal import SectorCompuestoPorPersonal
+
 def search(
     texto_busqueda: str | None = None,
     dni: str | None = None,
     id_tipo_personal: int | None = None,
     id_sector: int | None = None,
+    sector_forzado_jefe: int | None = None,
     estado: str | None = "activos",
     ordenar_por: str = "nombre_apellido",
     direccion: str = "asc",
     page: int = 1,
     per_page: int = 10,
 ) -> tuple[list[Personal], int]:
-    """Busca personal con filtros combinables, ordenamiento y paginacion en base de datos.
-    
-    Retorna (lista_personal_pagina, total_registros_filtrados).
-    """
+    """Ejecuta la consulta SQL con filtros y paginado."""
     statement = (
         select(Personal)
         .outerjoin(SectorCompuestoPorPersonal, SectorCompuestoPorPersonal.idPersonal == Personal.idPersonal)
@@ -138,53 +141,46 @@ def search(
         .distinct()
     )
 
-    # filtro por Nombre / Apellido
     if texto_busqueda:
         termino = f"%{texto_busqueda.strip()}%"
         statement = statement.where(
-            or_(
-                Personal.nombre.ilike(termino),
-                Personal.apellido.ilike(termino)
-            )
+            or_(Personal.nombre.ilike(termino), Personal.apellido.ilike(termino))
         )
 
-    # filtro por DNI
     if dni:
         statement = statement.where(Personal.dni.ilike(f"%{dni.strip()}%"))
 
-    # filtro por Tipo de Personal
     if id_tipo_personal:
         statement = statement.where(Personal.idTipoPersonal == id_tipo_personal)
 
-    # filtro por Sector
-    if id_sector:
+    if sector_forzado_jefe is not None:
+        statement = statement.where(
+            or_(
+                SectorCompuestoPorPersonal.idSector == sector_forzado_jefe,
+                Personal.idTipoPersonal == 2
+            )
+        )
+    elif id_sector:
         statement = statement.where(SectorCompuestoPorPersonal.idSector == id_sector)
 
-    # filtro por Estado (activos / inactivos / todos)
     if estado == "activos":
         statement = statement.where(Personal.isActive.is_(True))
     elif estado == "inactivos":
         statement = statement.where(Personal.isActive.is_(False))
 
-    # total de registros para la paginacion
     count_statement = select(func.count()).select_from(statement.subquery())
     total = db.session.execute(count_statement).scalar_one()
 
-    # criterios de ordenamiento
     es_desc = direccion.lower() == "desc"
     if ordenar_por == "dni":
         criterios = [desc(Personal.dni) if es_desc else asc(Personal.dni)]
     elif ordenar_por == "fecha":
         criterios = [desc(Personal.inserted_at) if es_desc else asc(Personal.inserted_at)]
-    else:  # por defecto: apellido y nombre
-        if es_desc:
-            criterios = [desc(Personal.apellido), desc(Personal.nombre)]
-        else:
-            criterios = [asc(Personal.apellido), asc(Personal.nombre)]
+    else:
+        criterios = [desc(Personal.apellido), desc(Personal.nombre)] if es_desc else [asc(Personal.apellido), asc(Personal.nombre)]
 
     statement = statement.order_by(*criterios)
 
-    # paginacion
     offset_val = (page - 1) * per_page
     statement = statement.limit(per_page).offset(offset_val)
 
