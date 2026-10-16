@@ -8,6 +8,7 @@ from src.core.models.TipoMenu import TipoMenu
 from src.core.repositories.personal import personal as repo_personal
 from src.core.models.Sector import Sector
 import math
+from flask import current_app
 
 def get_all(solo_activos: bool = False) -> list[Personal]:
     """Obtiene todo el personal registrado."""
@@ -35,6 +36,7 @@ def create(
     """Crea una persona validando previamente la unicidad del DNI y gestionando la asignacion de sector si corresponde."""
     persona_existente = repo_personal.get_by_dni(dni)
     if persona_existente is not None:
+        current_app.logger.warning(f"Intento de registro fallido: El DNI {dni} ya existe en el sistema.")
         return None
 
     # si es Residente no debe tener sector asignado
@@ -64,6 +66,7 @@ def create(
     if id_sector is not None:
         repo_personal.set_sector(persona_creada.idPersonal, id_sector)
 
+    current_app.logger.info(f"Personal registrado exitosamente: {nombre} {apellido} (DNI: {dni}).")
     return persona_creada
 
 
@@ -189,11 +192,14 @@ def eliminar_personal(id_personal: int) -> tuple[bool, str]:
     """
     persona = repo_personal.get_by_id(id_personal)
     if not persona:
+        current_app.logger.warning(f"Intento de eliminación fallido: Personal con ID {id_personal} no encontrado.")
         return False, "no_encontrado"
 
     if repo_personal.tiene_historial(id_personal):
         repo_personal.deactivate(persona)
+        current_app.logger.info(f"Personal desactivado exitosamente: {persona.nombre} {persona.apellido} (DNI: {persona.dni}).")
         return True, "inactivado"
     else:
         repo_personal.eliminar(persona)
+        current_app.logger.info(f"Personal eliminado exitosamente: {persona.nombre} {persona.apellido} (DNI: {persona.dni}).")
         return True, "eliminado"

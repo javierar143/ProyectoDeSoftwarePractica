@@ -7,6 +7,7 @@ from flask import (
     redirect,
     url_for,
     flash,
+    current_app
 )
 from src.core.services.personal import personal as service_personal
 from src.core.services import configuracion as service_config
@@ -338,12 +339,17 @@ def importar_procesar():
                     f"{datos_validacion['nombre']} {datos_validacion['apellido']} (DNI: {datos_validacion['dni']})"
                 )
                 
-        except Exception:
+        except Exception as e:
+            current_app.logger.error(f"Error inesperado al importar personal DNI {datos_validacion['dni']}: {str(e)}")
+            
             resultados["fallidos"] += 1
             resultados["detalles_errores"].append({
                 "fila": fila_num,
                 "persona": f"DNI: {datos_validacion['dni']}",
                 "errores": ["Error interno al guardar en la base de datos."]
             })
+
+    # log informativo al terminar todo el CSV
+    current_app.logger.info(f"Importación CSV de personal finalizada: {resultados['exitosos']} exitosos, {resultados['fallidos']} rechazados.")
 
     return render_template("personal/importar_resultados.html", resultados=resultados)
