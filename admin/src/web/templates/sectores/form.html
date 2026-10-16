@@ -47,7 +47,7 @@
                 <select id="jefes" name="jefes" multiple size="5">
                     {% for jefe in jefes_disponibles %}
                         <option value="{{ jefe.id_user }}"
-                            {% if jefe.id_user|string in valores.getlist('jefes') if valores else false %}selected{% endif %}>
+                            {% if valores and (jefe.id_user|string in valores.getlist('jefes')) %}selected{% endif %}>
                             {{ jefe.alias }} ({{ jefe.email }})
                         </option>
                     {% endfor %}

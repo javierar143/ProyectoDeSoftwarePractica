@@ -153,3 +153,24 @@ def set_active(user_id: int, is_active: bool) -> Usuario | None:
 def get_all_with_role() -> list[tuple[Usuario, str]]:
     """Obtiene todos los usuarios junto con el nombre de su rol."""
     return repo_usuario.get_all_with_role()
+
+
+def buscar_paginado(filtros: dict) -> tuple[list, int]:
+    """Obtiene los usuarios filtrados y paginados.
+
+    Args:
+        filtros: Filtros validados del listado.
+
+    Returns:
+        Una tupla con los usuarios de la página y el total de coincidencias.
+    """
+    from src.core.repositories.usuarios import busqueda
+    from src.core.services import configuracion
+
+    config = configuracion.obtener_configuracion()
+
+    return busqueda.buscar_paginado(
+        filtros,
+        config.elementos_por_pagina,
+    )
+
