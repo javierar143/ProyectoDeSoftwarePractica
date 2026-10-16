@@ -5,15 +5,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from unittest.mock import patch
+from flask import abort
 import pytest
 
 from src.core.models.enums import EstadoPedido
-from src.core.services.pedidos.pedidos import (
-    PedidoConflictError,
-    PedidoForbiddenError,
-    PedidoNotFoundError,
-    PedidoValidationError,
-)
 from src.web import create_app
 
 
@@ -34,11 +29,12 @@ def client(app):
 class MockUser:
     """Usuario simulado para las pruebas de pedidos."""
 
-    def __init__(self, is_active=True, id_rol=1, id_personal=1):
+    def __init__(self, is_active=True, id_rol=1, id_personal=1, id_sector=None):
         self.isActive = is_active
         self.id_user = 1
         self.idRol = id_rol
         self.idPersonal = id_personal
+        self.idSector = id_sector
 
 
 class MockRol:
@@ -79,7 +75,9 @@ def test_obtener_detalle_pedido_ajeno_403(
     mock_get_user.return_value = MockUser()
     mock_db.session.get.return_value = MockRol(nombre="jefe")
     mock_obtener_sector.return_value = 5
-    mock_servicio_detalle.side_effect = PedidoForbiddenError("No tiene permisos")
+    mock_servicio_detalle.side_effect = lambda *a, **kw: abort(
+        403, description="No tiene permisos para consultar un pedido de otro sector."
+    )
 
     response = client.get(
         "/api/requests/99", headers={"Authorization": "Bearer tokenfalso"}
@@ -140,7 +138,7 @@ def test_crear_pedido_faltan_datos(
     )
 
     assert response.status_code == 400
-    assert response.json["error"] == "Faltan datos obligatorios"
+    assert "Faltan datos obligatorios" in response.json["error"]
 
 
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.crear_pedido")
@@ -154,8 +152,8 @@ def test_crear_pedido_persona_inactiva(
     mock_get_user.return_value = MockUser()
     mock_db.session.get.return_value = MockRol(nombre="jefe")
     mock_obtener_sector.return_value = 5
-    mock_crear_pedido.side_effect = PedidoValidationError(
-        "La persona con ID 5 no existe o está inactiva."
+    mock_crear_pedido.side_effect = lambda *a, **kw: abort(
+        400, description="La persona con ID 5 no existe o está inactiva."
     )
 
     response = client.post(
@@ -184,8 +182,9 @@ def test_crear_pedido_duplicado(
     mock_get_user.return_value = MockUser()
     mock_db.session.get.return_value = MockRol(nombre="jefe")
     mock_obtener_sector.return_value = 5
-    mock_crear_pedido.side_effect = PedidoConflictError(
-        "Ya existe una solicitud para la persona 1 en esa fecha y comida."
+    mock_crear_pedido.side_effect = lambda *a, **kw: abort(
+        409,
+        description="Ya existe una solicitud para la persona 1 en esa fecha y comida.",
     )
 
     response = client.post(
@@ -243,7 +242,9 @@ def test_actualizar_pedido_no_encontrado(
     mock_get_user.return_value = MockUser()
     mock_db.session.get.return_value = MockRol(nombre="jefe")
     mock_obtener_sector.return_value = 5
-    mock_actualizar.side_effect = PedidoNotFoundError("El pedido con ID 99 no existe.")
+    mock_actualizar.side_effect = lambda *a, **kw: abort(
+        404, description="El pedido con ID 99 no existe."
+    )
 
     response = client.put(
         "/api/requests/99",
@@ -253,6 +254,7 @@ def test_actualizar_pedido_no_encontrado(
 
     assert response.status_code == 404
     assert "no existe" in response.json["error"]
+    mock_db.session.rollback.assert_called_once()
 
 
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.actualizar_pedido")
@@ -266,8 +268,9 @@ def test_actualizar_pedido_ya_procesado(
     mock_get_user.return_value = MockUser()
     mock_db.session.get.return_value = MockRol(nombre="jefe")
     mock_obtener_sector.return_value = 5
-    mock_actualizar.side_effect = PedidoConflictError(
-        "No se puede modificar un pedido que ya está autorizado."
+    mock_actualizar.side_effect = lambda *a, **kw: abort(
+        409,
+        description="No se puede modificar un pedido que ya está autorizado.",
     )
 
     response = client.put(
@@ -288,7 +291,7 @@ def test_actualizar_pedido_ya_procesado(
 def test_eliminar_pedido_exito(
     mock_db, mock_get_user, mock_obtener_sector, mock_borrar, client
 ):
-    """Verifica la eliminación exitosa de un pedido (204)."""
+    """Verifica la eliminación (baja lógica) exitosa de un pedido (204)."""
     mock_get_user.return_value = MockUser()
     mock_db.session.get.return_value = MockRol(nombre="jefe")
     mock_obtener_sector.return_value = 5
@@ -315,7 +318,9 @@ def test_eliminar_pedido_no_encontrado(
     mock_get_user.return_value = MockUser()
     mock_db.session.get.return_value = MockRol(nombre="jefe")
     mock_obtener_sector.return_value = 5
-    mock_borrar.side_effect = PedidoNotFoundError("El pedido con ID 99 no existe.")
+    mock_borrar.side_effect = lambda *a, **kw: abort(
+        404, description="El pedido con ID 99 no existe."
+    )
 
     response = client.delete(
         "/api/requests/99",
@@ -338,8 +343,9 @@ def test_eliminar_pedido_ya_procesado(
     mock_get_user.return_value = MockUser()
     mock_db.session.get.return_value = MockRol(nombre="jefe")
     mock_obtener_sector.return_value = 5
-    mock_borrar.side_effect = PedidoConflictError(
-        "No se puede eliminar un pedido que ya fue autorizado."
+    mock_borrar.side_effect = lambda *a, **kw: abort(
+        409,
+        description="No se puede eliminar un pedido que ya fue autorizado.",
     )
 
     response = client.delete(

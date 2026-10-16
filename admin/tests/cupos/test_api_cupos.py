@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from unittest.mock import patch
+from flask import abort
 import pytest
 
 from src.web import create_app
@@ -27,11 +28,12 @@ def client(app):
 class MockUser:
     """Usuario simulado para pruebas de autenticación."""
 
-    def __init__(self, is_active=True, id_rol=1, id_personal=1):
+    def __init__(self, is_active=True, id_rol=1, id_personal=1, id_sector=None):
         self.isActive = is_active
         self.id_user = 1
         self.idRol = id_rol
         self.idPersonal = id_personal
+        self.idSector = id_sector
 
 
 class MockRol:
@@ -78,6 +80,7 @@ def test_crear_cupo_exito_201(mock_db, mock_get_user, mock_create, client):
         idSector = 2
         idTipoComida = 1
         cantComensales = 20
+        activo = True
 
     mock_create.return_value = MockCupo()
 
@@ -89,6 +92,7 @@ def test_crear_cupo_exito_201(mock_db, mock_get_user, mock_create, client):
 
     assert response.status_code == 201
     assert response.get_json()["idCupo"] == 1
+    assert response.get_json()["activo"] is True
     mock_db.session.commit.assert_called_once()
 
 
@@ -112,3 +116,50 @@ def test_listar_cupos_jefe_filtra_sector_automaticamente(
     assert response.status_code == 200
     mock_listar.assert_called_once()
     assert mock_listar.call_args[1]["id_sector"] == 2
+
+
+@patch("src.web.controllers.cupos.api_cupos.cupos.eliminar")
+@patch("src.web.controllers.cupos.api_cupos.api_auth.get_authenticated_user")
+@patch("src.web.controllers.cupos.api_cupos.db")
+def test_eliminar_cupo_baja_logica_exito(
+    mock_db, mock_get_user, mock_eliminar, client
+):
+    """Verifica la baja lógica de un cupo mediante DELETE /api/quotas/<id>."""
+    mock_get_user.return_value = MockUser()
+    mock_db.session.get.return_value = MockRol(nombre="alimentacion")
+
+    class MockCupoInactivo:
+        idCupo = 5
+        activo = False
+
+    mock_eliminar.return_value = MockCupoInactivo()
+
+    response = client.delete(
+        "/api/quotas/5", headers={"Authorization": "Bearer tokenfalso"}
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["activo"] is False
+    mock_db.session.commit.assert_called_once()
+
+
+@patch("src.web.controllers.cupos.api_cupos.cupos.eliminar")
+@patch("src.web.controllers.cupos.api_cupos.api_auth.get_authenticated_user")
+@patch("src.web.controllers.cupos.api_cupos.db")
+def test_eliminar_cupo_inexistente_404(
+    mock_db, mock_get_user, mock_eliminar, client
+):
+    """Verifica que intentar dar de baja un cupo inexistente devuelva 404 y haga rollback."""
+    mock_get_user.return_value = MockUser()
+    mock_db.session.get.return_value = MockRol(nombre="alimentacion")
+    mock_eliminar.side_effect = lambda *a, **kw: abort(
+        404, description="El cupo con ID 99 no existe."
+    )
+
+    response = client.delete(
+        "/api/quotas/99", headers={"Authorization": "Bearer tokenfalso"}
+    )
+
+    assert response.status_code == 404
+    assert "no existe" in response.get_json()["error"]
+    mock_db.session.rollback.assert_called_once()
