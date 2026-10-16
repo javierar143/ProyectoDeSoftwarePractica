@@ -1,0 +1,28 @@
+"""Repositorio para la persistencia y consulta de roles."""
+
+from sqlalchemy import select
+
+from src.core.database import db
+from src.core.models.Rol import Rol
+
+
+def get_by_name(nombre: str) -> Rol | None:
+    """Obtiene un rol a partir de su nombre."""
+    statement = select(Rol).where(Rol.nombre == nombre)
+    rol = db.session.execute(statement).scalar_one_or_none()
+    
+    return rol
+
+def get_by_id(rol_id: int) -> Rol | None:
+    """Obtiene un rol a partir de su identificador."""
+    statement = select(Rol).where(Rol.idRol == rol_id)
+    rol_encontrado = db.session.execute(statement).scalar_one_or_none()
+
+    return rol_encontrado
+
+def get_all() -> list[Rol]:
+    """Obtiene todos los roles registrados."""
+    statement = select(Rol)
+    roles = db.session.execute(statement).scalars().all()
+
+    return roles

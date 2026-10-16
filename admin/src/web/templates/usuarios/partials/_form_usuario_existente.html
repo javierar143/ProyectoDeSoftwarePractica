@@ -1,0 +1,124 @@
+<h2>Personal existente</h2>
+
+<form method="post" action="{{ url_for('usuarios.alta_usuarios.buscar') }}">
+    <div>
+        <label for="dni">DNI</label>
+        <input
+            type="text"
+            id="dni"
+            name="dni"
+            value="{{ dni }}"
+            required
+            inputmode="numeric"
+        >
+    </div>
+
+    <button type="submit">Buscar DNI</button>
+</form>
+
+{% if dni and not persona_encontrada %}
+    <p>No se encontró personal con el DNI ingresado.</p>
+{% endif %}
+
+{% if persona_encontrada %}
+    <section aria-labelledby="personal-seleccionado">
+        <h3 id="personal-seleccionado">Personal seleccionado</h3>
+
+        <p>
+            <strong>Nombre:</strong>
+            {{ persona_encontrada.nombre }}
+            {{ persona_encontrada.apellido }}
+        </p>
+
+        <p>
+            <strong>DNI:</strong>
+            {{ persona_encontrada.dni }}
+        </p>
+    </section>
+
+    <form method="post" action="{{ url_for('usuarios.alta_usuarios.crear_usuario_existente') }}">
+        <input
+            type="hidden"
+            name="personal_id"
+            value="{{ persona_encontrada.idPersonal }}"
+        >
+        <input
+            type="hidden"
+            name="dni"
+            value="{{ persona_encontrada.dni }}"
+        >
+
+        <fieldset>
+            <legend>Datos del usuario</legend>
+
+            <div>
+                <label for="email-existente">Email</label>
+                <input
+                    type="email"
+                    id="email-existente"
+                    name="email"
+                    value="{{ form_data.get('email', '') }}"
+                    required
+                    autocomplete="email"
+                >
+            </div>
+
+            <div>
+                <label for="alias-existente">Alias</label>
+                <input
+                    type="text"
+                    id="alias-existente"
+                    name="alias"
+                    value="{{ form_data.get('alias', '') }}"
+                    required
+                    autocomplete="username"
+                >
+            </div>
+
+            <div>
+                <label for="password-existente">Contraseña</label>
+                <input
+                    type="password"
+                    id="password-existente"
+                    name="password"
+                    required
+                    autocomplete="new-password"
+                >
+            </div>
+
+            <div>
+                <input
+                    type="checkbox"
+                    id="admin-existente"
+                    name="is_system_admin"
+                    {% if form_data.get('is_system_admin') == 'on' %}checked{% endif %}
+                >
+                <label for="admin-existente">
+                    Administrador del sistema
+                </label>
+            </div>
+
+            <div>
+                <label for="rol-nuevo">Rol</label>
+                <select id="rol-nuevo" name="rol_nombre" required>
+                    <option value="">Seleccione un rol</option>
+                    {% for rol in roles %}
+                        {# Ocultamos el rol de Administrador de la lista #}
+                        {% if rol.nombre != 'Administrador' %}
+                            <option
+                                value="{{ rol.nombre }}"
+                                {% if form_data.get('rol_nombre', '') == rol.nombre %}
+                                    selected
+                                {% endif %}
+                            >
+                                {{ rol.nombre }}
+                            </option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+        </fieldset>
+
+        <button type="submit">Crear usuario</button>
+    </form>
+{% endif %}

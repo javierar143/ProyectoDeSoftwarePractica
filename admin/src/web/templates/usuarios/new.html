@@ -1,0 +1,38 @@
+
+{% extends "layout.html" %}
+
+{% block content %}
+<main>
+    <h1>Alta de usuarios</h1>
+
+    <section aria-label="Tipo de alta">
+        <button type="button" id="btn-existente">
+            Alta de Usuario
+        </button>
+
+        <button type="button" id="btn-nuevo">
+            Alta de Personal y Usuario
+        </button>
+    </section>
+
+    {% if error %}
+        <div class="alert alert-danger" role="alert">
+            {{ error }}
+        </div>
+    {% endif %}
+
+    <section
+        id="panel-existente"
+        data-mostrar-inicial="{{ 'true' if mostrar_existente else 'false' }}"
+        {% if not mostrar_existente %}hidden{% endif %}
+    >
+        {% include "usuarios/partials/_form_usuario_existente.html" %}
+    </section>
+
+    <section id="panel-nuevo" hidden>
+        {% include "usuarios/partials/_form_personal_usuario.html" %}
+    </section>
+</main>
+
+<script src="{{ url_for('static', filename='js/usuarios/nuevo.js') }}"></script>
+{% endblock %}

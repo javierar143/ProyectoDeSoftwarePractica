@@ -1,38 +1,94 @@
 <!doctype html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8" />
-    <title>{% block title %}Mi Aplicación{% endblock %}</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Inicio{% endblock %} | Servicio de Alimentación</title>
 
-    {% block head %}
-        <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    {% endblock %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+
+    <style>
+        /* Estilo para asegurar que la sección activa del menú lateral tenga el fondo de la barra superior */
+        .sidebar a.active {
+            background-color: var(--primary-color, #2c3e50); /* O el color de fondo exacto de tu topbar */
+            color: #ffffff !important;
+            font-weight: bold;
+        }
+    </style>
+
+    {% block head %}{% endblock %}
+    {% block module_styles %}{% endblock %}
 </head>
-
 <body>
-    <header>
-        {% block header %}
-        <h1>Mi Aplicación</h1>
-        {% endblock %}
+    <header class="topbar">
+        <a class="topbar__brand" href="{{ url_for('home') }}">Servicio de Alimentación</a>
+
+        {% if current_user %}
+            <details class="account-menu">
+                <summary>
+                    {% if current_personal %}
+                        {{ current_personal.nombre }} {{ current_personal.apellido }}
+                    {% else %}
+                        {{ current_user.alias }}
+                    {% endif %}
+                </summary>
+                <ul>
+                    <li>
+                        <a href="{{ url_for('usuarios.listado_usuarios.perfil') }}">
+                            Ver perfil
+                        </a>
+                    </li>
+                    <li>
+                        <form action="{{ url_for('auth.logout') }}" method="post">
+                            <button type="submit">Cerrar sesión</button>
+                        </form>
+                    </li>
+                </ul>
+            </details>
+        {% else %}
+            <a class="topbar__login" href="{{ url_for('auth.login') }}">Iniciar sesión</a>
+        {% endif %}
     </header>
 
-    <nav>
-        {% block nav %}
-        <!-- Menú de navegación -->
-        {% endblock %}
-    </nav>
+    <div class="app">
+        {% if current_user %}
+            {% set menu = [
+                ("usuarios", "usuarios.listado_usuarios.index", "Usuarios"),
+                ("sectores", "sectores.index", "Sectores"),
+                ("personal", "personal.index", "Personal"),
+                ("config", "config.mostrar_config", "Ajustes del sistema"),
+            ] %}
+            <nav class="sidebar" aria-label="Navegación principal">
+                <ul>
+                    {% for blueprint, endpoint, label in menu %}
+                        <li>
+                            <a href="{{ url_for(endpoint) }}"
+                               {% if request.endpoint and (blueprint in request.endpoint) %}class="active" aria-current="page"{% endif %}>
+                                {{ label }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </nav>
+        {% endif %}
 
-    <main>
-        {% block content %}
-        <!-- Contenido principal -->
-        {% endblock %}
-    </main>
+        <main class="content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="alerts">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
 
-    <footer>
-        {% block footer %}
-        &copy; Mi Aplicación
-        {% endblock %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <footer class="footer">
+        {% block footer %}Hospital "Sor María Ludovica" · Servicio de Alimentación y Dietética{% endblock %}
     </footer>
 </body>
 </html>
