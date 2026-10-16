@@ -66,4 +66,18 @@ def bad_request(error):
     )
 
     return render_template("error.html", error=error_data), 400
-    
+
+
+def conflict(error):
+    """Renderiza la página o respuesta JSON correspondiente a un error HTTP 409."""
+    descripcion = getattr(
+        error,
+        "description",
+        "La operación genera un conflicto con el estado actual del recurso.",
+    )
+    error_data = HTTPError(
+        code=409,
+        message="Conflicto en la solicitud",
+        description=str(descripcion),
+    )
+    return render_template("error.html", error=error_data), 409
