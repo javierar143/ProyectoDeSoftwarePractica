@@ -72,7 +72,7 @@ def test_borrar_pedido_otro_sector_403(mock_get_pedido, mock_eliminar):
 @patch("src.core.services.pedidos.pedidos.repo_personal.pertenece_a_sector")
 @patch("src.core.services.pedidos.pedidos.repo_pedidos.create_pedido_con_solicitudes")
 @patch("src.core.services.pedidos.pedidos.repo_pedidos.existe_solicitud_duplicada")
-@patch("src.core.services.pedidos.pedidos.repo_pedidos.get_personal_by_id")
+@patch("src.core.services.pedidos.pedidos.repo_personal.get_by_id")
 @patch("src.core.services.pedidos.pedidos.cupos.get_by_sector_y_comida")
 @patch("src.core.services.pedidos.pedidos.repo_pedidos.existe_pedido_en_sector_y_fecha")
 def test_calculo_regular_y_excepcion(
@@ -153,7 +153,7 @@ def test_calculo_regular_y_excepcion(
 @patch("src.core.services.pedidos.pedidos.repo_pedidos.guardar_nuevas_solicitudes")
 @patch("src.core.services.pedidos.pedidos.repo_pedidos.limpiar_solicitudes_de_pedido")
 @patch("src.core.services.pedidos.pedidos.repo_pedidos.existe_solicitud_duplicada")
-@patch("src.core.services.pedidos.pedidos.repo_pedidos.get_personal_by_id")
+@patch("src.core.services.pedidos.pedidos.repo_personal.get_by_id")
 @patch("src.core.services.pedidos.pedidos.cupos.get_by_sector_y_comida")
 @patch("src.core.services.pedidos.pedidos.repo_pedidos.get_pedido_by_id")
 def test_actualizar_pedido_limpia_antes_de_guardar_y_recalcula(

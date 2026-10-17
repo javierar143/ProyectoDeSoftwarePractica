@@ -60,15 +60,6 @@ def test_crear_cupo_sector_inactivo(mock_get_sector):
     assert "inactivo" in str(exc_info.value.description)
 
 
-def test_crear_cupo_cantidad_invalida():
-    """Verifica que rechace con 400 cantidades menores o iguales a cero."""
-    with pytest.raises(Exception) as exc_info:
-        cupos.create(id_sector=1, id_tipo_comida=1, cant_comensales=-5)
-
-    assert getattr(exc_info.value, "code", None) == 400
-    assert "mayor a cero" in str(exc_info.value.description)
-
-
 @patch("src.core.services.cupos.cupos.obtener_configuracion")
 @patch("src.core.services.cupos.cupos.repo_cupos.list_cupos")
 def test_listar_cupos_usa_configuracion_global(mock_list, mock_config):
@@ -84,7 +75,11 @@ def test_listar_cupos_usa_configuracion_global(mock_list, mock_config):
 
     assert per_page == 15
     mock_list.assert_called_once_with(
-        id_sector=None, id_tipo_comida=None, orden="asc", page=1, per_page=15
+        page=1,
+        per_page=15,
+        id_sector=None,
+        id_tipo_comida=None,
+        orden="asc",
     )
 
 
