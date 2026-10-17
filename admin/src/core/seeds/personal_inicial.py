@@ -12,6 +12,9 @@ from src.core.models.TipoMenu import TipoMenu
 from src.core.models.TipoPersonal import TipoPersonal
 from src.core.models.Usuario import Usuario
 from src.core.security.password import hash_password
+from src.core.models.Sector import Sector
+from src.core.repositories.personal import personal as repo_personal
+from src.core.models.SectorCompuestoPorPersonal import SectorCompuestoPorPersonal
 
 
 PERSONAL_INICIAL = (
@@ -19,6 +22,7 @@ PERSONAL_INICIAL = (
         "dni": "11111111",
         "nombre": "Juan",
         "apellido": "Soyadmin",
+        "sector": "Dirección", 
         "usuario": {
             "email": "admin@temporal.com",
             "alias": "Administrador",
@@ -31,6 +35,7 @@ PERSONAL_INICIAL = (
         "dni": "22222222",
         "nombre": "Fulano",
         "apellido": "Detal",
+        "sector": "Alimentación",
         "usuario": {
             "email": "jefe@ejemplo.com",
             "alias": "Jefe de Servicio",
@@ -43,16 +48,20 @@ PERSONAL_INICIAL = (
         "dni": "33333333",
         "nombre": "Mengano",
         "apellido": "Perez",
+        "sector": "Quirófano",
         "usuario": None,
     },
     {
         "dni": "44444444",
         "nombre": "Pascuala",
         "apellido": "Gomez",
+        "sector": "Quirófano",
         "usuario": None,
     },
 )
 
+
+from src.core.models.SectorCompuestoPorPersonal import SectorCompuestoPorPersonal
 
 def load_personal_inicial() -> None:
     """Carga el personal inicial y solo las cuentas expresamente definidas."""
@@ -87,42 +96,53 @@ def load_personal_inicial() -> None:
             db.session.add(persona)
             db.session.flush()
 
-        datos_usuario = datos["usuario"]
+        id_sector = None
+        nombre_sector = datos.get("sector")
+        if nombre_sector:
+            sector = db.session.execute(
+                select(Sector).where(Sector.nombre == nombre_sector)
+            ).scalar_one_or_none()
+            if sector is None:
+                raise ValueError(f"No existe el sector '{nombre_sector}'.")
+            id_sector = sector.idSector
 
+            ya_asignado = db.session.execute(
+                select(SectorCompuestoPorPersonal).where(
+                    SectorCompuestoPorPersonal.idPersonal == persona.idPersonal,
+                    SectorCompuestoPorPersonal.idSector == id_sector,
+                )
+            ).scalar_one_or_none()
+            if ya_asignado is None:
+                db.session.add(
+                    SectorCompuestoPorPersonal(
+                        idSector=id_sector,
+                        idPersonal=persona.idPersonal,
+                    )
+                )
+
+        datos_usuario = datos["usuario"]
         if datos_usuario is None:
             continue
 
         rol = db.session.execute(
             select(Rol).where(Rol.nombre == datos_usuario["rol"])
         ).scalar_one_or_none()
-
         if rol is None:
-            raise ValueError(
-                f"No existe el rol {datos_usuario['rol']}."
-            )
+            raise ValueError(f"No existe el rol {datos_usuario['rol']}.")
 
         usuario_por_email = db.session.execute(
-            select(Usuario).where(
-                Usuario.email == datos_usuario["email"]
-            )
+            select(Usuario).where(Usuario.email == datos_usuario["email"])
         ).scalar_one_or_none()
-
         usuario_por_persona = db.session.execute(
-            select(Usuario).where(
-                Usuario.idPersonal == persona.idPersonal
-            )
+            select(Usuario).where(Usuario.idPersonal == persona.idPersonal)
         ).scalar_one_or_none()
 
-        if usuario_por_email is not None:
-            if usuario_por_email.idPersonal != persona.idPersonal:
-                raise ValueError(
-                    f"El correo {datos_usuario['email']} "
-                    "ya pertenece a otra persona."
-                )
+        if usuario_por_email is not None or usuario_por_persona is not None:
             continue
 
-        if usuario_por_persona is not None:
-            continue
+        id_sector_usuario = (
+            id_sector if datos_usuario["rol"] == "Jefe de Servicio" else None
+        )
 
         db.session.add(
             Usuario(
@@ -135,6 +155,7 @@ def load_personal_inicial() -> None:
                 updated_at=ahora,
                 idRol=rol.idRol,
                 idPersonal=persona.idPersonal,
+                idSector=id_sector_usuario,
             )
         )
 
