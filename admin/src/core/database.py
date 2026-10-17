@@ -49,9 +49,9 @@ def seed_all():
 
     load_roles()
     load_tipos_iniciales()
+    sector_service.seed(SECTORES_INICIALES)
     load_personal_inicial()
     load_permisos()
-    sector_service.seed(SECTORES_INICIALES)
 
     db.session.commit()
 

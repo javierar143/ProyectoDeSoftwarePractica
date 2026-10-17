@@ -7,8 +7,10 @@ from src.core.models.TipoPersonal import TipoPersonal
 from src.core.models.TipoMenu import TipoMenu
 from src.core.repositories.personal import personal as repo_personal
 from src.core.models.Sector import Sector
+from src.core.models.SectorCompuestoPorPersonal import SectorCompuestoPorPersonal
 import math
 from flask import current_app
+from sqlalchemy import or_, func, desc, asc
 
 def get_all(solo_activos: bool = False) -> list[Personal]:
     """Obtiene todo el personal registrado."""
@@ -146,18 +148,20 @@ def search(
     dni: str | None = None,
     id_tipo_personal: int | None = None,
     id_sector: int | None = None,
+    sector_forzado_jefe: int | None = None,
     estado: str | None = "activos",
     ordenar_por: str = "nombre_apellido",
     direccion: str = "asc",
     page: int = 1,
     per_page: int = 10,
 ) -> dict:
-    """Coordina la búsqueda paginada y ordenada de personal."""
+    """Orquesta la búsqueda delegando en el repositorio y estructurando la paginación."""
     elementos, total = repo_personal.search(
         texto_busqueda=texto_busqueda,
         dni=dni,
         id_tipo_personal=id_tipo_personal,
         id_sector=id_sector,
+        sector_forzado_jefe=sector_forzado_jefe,
         estado=estado,
         ordenar_por=ordenar_por,
         direccion=direccion,
@@ -165,22 +169,18 @@ def search(
         per_page=per_page,
     )
 
-    # adjuntamos el sector asignado a cada persona recuperada
-    for persona in elementos:
-        persona.sector_asignado = repo_personal.get_sector_asignado(persona.idPersonal)
-
-    total_paginas = math.ceil(total / per_page) if per_page > 0 else 1
+    total_pages = math.ceil(total / per_page) if per_page > 0 else 1
 
     return {
         "items": elementos,
         "total": total,
         "page": page,
         "per_page": per_page,
-        "pages": total_paginas,
+        "pages": total_pages,
         "has_prev": page > 1,
-        "has_next": page < total_paginas,
+        "has_next": page < total_pages,
         "prev_num": page - 1 if page > 1 else None,
-        "next_num": page + 1 if page < total_paginas else None,
+        "next_num": page + 1 if page < total_pages else None,
     }
 
 def eliminar_personal(id_personal: int) -> tuple[bool, str]:

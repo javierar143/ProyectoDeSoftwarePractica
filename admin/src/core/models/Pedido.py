@@ -2,7 +2,7 @@
 
 from datetime import date, datetime
 
-from sqlalchemy import Enum, ForeignKey
+from sqlalchemy import Enum, ForeignKey, Boolean, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core.database import BaseModel
@@ -43,6 +43,8 @@ class Pedido(BaseModel):
     idUser: Mapped[int] = mapped_column(
         ForeignKey("Usuario.id_user"), nullable=False
     )
+    activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, default=None, nullable=True)
     inserted_at: Mapped[datetime] = mapped_column(
         default=datetime.now, nullable=False
     )

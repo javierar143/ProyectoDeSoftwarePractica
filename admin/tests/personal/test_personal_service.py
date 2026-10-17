@@ -1,11 +1,9 @@
+from dotenv import load_dotenv
+load_dotenv()
 from datetime import datetime
 import pytest
-from dotenv import load_dotenv
 from sqlalchemy import text
 from unittest.mock import patch
-
-load_dotenv()
-
 from src.web import create_app
 from src.core.database import db, reset_db
 from src.core.models.TipoPersonal import TipoPersonal
@@ -323,3 +321,28 @@ def test_eliminar_personal_con_historial(mock_tiene_historial, app):
             {"id": id_pers}
         ).fetchone()
         assert resultado[0] is False  # is_deleted es False
+
+def test_search_alcance_jefe_sector(app):
+    """Verifica que si se pasa sector_forzado_jefe, devuelva sus fijos y todos los residentes."""
+    # crear Fijo en Sector 1 (Guardia) -> EL JEFE DEL SECTOR 1 LO DEBE VER
+    service_personal.create(dni="11111111", nombre="Fijo", apellido="Guardia", id_tipo_personal=1, id_tipo_menu=1, id_sector=1)
+    
+    # crear Fijo en Sector 2 (Ej: Pediatría) -> EL JEFE DEL SECTOR 1 NO LO DEBE VER
+    db.session.add(Sector(idSector=2, nombre="Pediatría", isActive=True))
+    db.session.commit()
+    service_personal.create(dni="22222222", nombre="Fijo", apellido="Pediatria", id_tipo_personal=1, id_tipo_menu=1, id_sector=2)
+    
+    # crear Residente (Sector None) -> EL JEFE DEL SECTOR 1 LO DEBE VER (Todos ven residentes)
+    service_personal.create(dni="33333333", nombre="Resi", apellido="Dente", id_tipo_personal=2, id_tipo_menu=1)
+
+    # ejecutamos la búsqueda forzando el sector 1 (simulando al Jefe de Guardia)
+    resultado_paginado = service_personal.search(sector_forzado_jefe=1)
+    resultados = resultado_paginado["items"]
+    total = resultado_paginado["total"]
+    
+    #aserciones
+    assert total == 2  # debe traer solo 2 personas de las 3 creadas
+    dnis_encontrados = [p.dni for p in resultados]
+    assert "11111111" in dnis_encontrados # Ve al fijo de Guardia
+    assert "33333333" in dnis_encontrados # Ve al residente
+    assert "22222222" not in dnis_encontrados # NO ve al fijo de Pediatría
