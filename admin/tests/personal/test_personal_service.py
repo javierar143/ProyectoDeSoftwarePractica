@@ -2,6 +2,7 @@ from datetime import datetime
 import pytest
 from dotenv import load_dotenv
 from sqlalchemy import text
+from unittest.mock import patch
 
 load_dotenv()
 
@@ -141,7 +142,7 @@ def test_update_personal_exitoso(app):
     assert persona_db.idTipoMenu == 2
 
 
-def test_set_active_soft_delete(app):
+def test_set_active(app):
     """Verifica la baja lógica y posterior reactivación del personal."""
     # crear persona activa por defecto
     persona = service_personal.create(
@@ -252,3 +253,73 @@ def test_transicion_residente_a_fijo_asigna_sector(app):
     sector_despues = service_personal.get_sector_asignado(persona.idPersonal)
     assert sector_despues is not None
     assert sector_despues.idSector == 1
+
+def test_eliminar_personal_sin_historial(app):
+    """Prueba que si la persona NO tiene historial, se oculta físicamente (Soft Delete)."""
+    # crear persona
+    persona = service_personal.create(
+        dni="55555555",
+        nombre="Fisico",
+        apellido="Borrado",
+        id_tipo_personal=1,
+        id_tipo_menu=1,
+        id_sector=1
+    )
+    id_pers = persona.idPersonal
+
+    # ejecutar eliminación
+    exito, accion = service_personal.eliminar_personal(id_pers)
+
+    # verificaciones de la lógica
+    assert exito is True
+    assert accion == "eliminado"
+    
+    # verificación en base de datos: Ya no debe ser accesible por las funciones normales
+    assert service_personal.get_by_id(id_pers) is None
+    
+    # comprobación de integridad: Verificamos con SQL puro que sigue en la BD pero oculta
+    with app.app_context():
+        resultado = db.session.execute(
+            text('SELECT is_deleted FROM "Personal" WHERE "idPersonal" = :id'),
+            {"id": id_pers}
+        ).fetchone()
+        assert resultado is not None
+        assert resultado[0] is True  # is_deleted es True
+
+
+@patch("src.core.services.personal.personal.repo_personal.tiene_historial")
+def test_eliminar_personal_con_historial(mock_tiene_historial, app):
+    """Prueba que si la persona TIENE historial, solo se desactiva (Baja lógica)."""
+    # Forzamos a que el sistema crea que tiene historial para no tener que crear pedidos falsos
+    mock_tiene_historial.return_value = True
+
+    # crear persona
+    persona = service_personal.create(
+        dni="66666666",
+        nombre="Logica",
+        apellido="Baja",
+        id_tipo_personal=1,
+        id_tipo_menu=1,
+        id_sector=1
+    )
+    id_pers = persona.idPersonal
+
+    # ejecutar eliminación (con historial forzado)
+    exito, accion = service_personal.eliminar_personal(id_pers)
+
+    # verificaciones de la lógica
+    assert exito is True
+    assert accion == "inactivado"
+    
+    # verificación en base de datos: A diferencia del borrado, acá SÍ debe aparecer, pero inactiva
+    persona_db = service_personal.get_by_id(id_pers)
+    assert persona_db is not None
+    assert persona_db.isActive is False
+    
+    # comprobación de integridad
+    with app.app_context():
+        resultado = db.session.execute(
+            text('SELECT is_deleted FROM "Personal" WHERE "idPersonal" = :id'),
+            {"id": id_pers}
+        ).fetchone()
+        assert resultado[0] is False  # is_deleted es False

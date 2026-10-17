@@ -17,6 +17,7 @@ from src.core.models.TipoComida import TipoComida
 from src.core.models.TipoMenu import TipoMenu
 from src.core.models.TipoPersonal import TipoPersonal
 from src.core.models.Usuario import Usuario
+from src.core.models.UsuarioEsJefeSector import UsuarioEsJefeSector
 
 __all__ = [
     "Configuracion",
@@ -34,4 +35,5 @@ __all__ = [
     "TipoMenu",
     "TipoPersonal",
     "Usuario",
+    "UsuarioEsJefeSector",
 ]

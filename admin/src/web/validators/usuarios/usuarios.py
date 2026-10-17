@@ -1,4 +1,4 @@
-"""Validaciones de los datos de usuarios."""
+"""Validaciones de los datos de alta y edición de usuarios."""
 
 
 def validate_user_data(
@@ -27,16 +27,16 @@ def validate_user_data(
 
 
 def validate_alta_conjunta_data(datos: dict[str, str]) -> list[str]:
-    """Valida los campos requeridos para el alta simultánea de Personal y Usuario."""
+    """Valida los campos requeridos para el alta conjunta de Personal y Usuario."""
     errores = []
 
-    if not datos.get("dni", "").isdigit():
+    if not datos.get("dni", "").strip().isdigit():
         errores.append("El DNI es obligatorio y debe contener solo números.")
 
-    if not datos.get("nombre", ""):
+    if not datos.get("nombre", "").strip():
         errores.append("El nombre es obligatorio.")
 
-    if not datos.get("apellido", ""):
+    if not datos.get("apellido", "").strip():
         errores.append("El apellido es obligatorio.")
 
     if not datos.get("idTipoPersonal", "").isdigit():
@@ -53,6 +53,29 @@ def validate_alta_conjunta_data(datos: dict[str, str]) -> list[str]:
     )
 
     if not usuario_valido:
-        errores.append("Completá correctamente los datos obligatorios del usuario.")
+        errores.append(
+            "Completá correctamente los datos obligatorios del usuario."
+        )
 
+    return errores
+
+
+def validate_edit_user_data(
+    email: str,
+    alias: str,
+    rol_id_texto: str,
+    password: str = "",
+) -> list[str]:
+    """Valida los campos requeridos para la edición de un usuario."""
+    errores = []
+    email_limpio = email.strip()
+    alias_limpio = alias.strip()
+    
+    if not email_limpio or "@" not in email_limpio:
+        errores.append("El correo electrónico es obligatorio y debe ser válido.")
+    if not alias_limpio:
+        errores.append("El alias es obligatorio.")
+    if not rol_id_texto.strip().isdigit():
+        errores.append("Debe seleccionar un rol válido.")
+    
     return errores

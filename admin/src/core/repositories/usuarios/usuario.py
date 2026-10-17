@@ -1,10 +1,11 @@
 """Repositorio para la persistencia y consulta de usuarios."""
 
-from sqlalchemy import select
+from sqlalchemy import asc, desc, func, or_, select
 
 from src.core.database import db
 from src.core.models.Rol import Rol
 from src.core.models.Usuario import Usuario
+from src.core.models.Personal import Personal
 
 
 def get_by_email(email: str) -> Usuario | None:
@@ -63,3 +64,5 @@ def get_all_with_role() -> list[tuple[Usuario, str]]:
         .join(Rol, Usuario.idRol == Rol.idRol)
     )
     return list(db.session.execute(statement).all())
+
+

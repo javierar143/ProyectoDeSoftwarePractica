@@ -1,13 +1,17 @@
 """Inicialización y configuración de la aplicación Flask."""
 
-from flask import Flask, render_template
+from flask import Flask, render_template, request, session
 from flask_session import Session
 
 from src.core import database
 from src.core.security.session import get_authenticated_user_id
 from src.core.seeds.sectores import SECTORES_INICIALES
+from src.core.services import configuracion as config_service
+from src.core.services.personal import personal as personal_service
 from src.core.services.sectores import sector as sector_service
 from src.core.services.usuarios import usuario as usuario_service
+from src.core.services.usuarios import permiso as permiso_service
+
 from src.web.controllers.auth import auth_bp
 from src.web.controllers.auth.api_auth import api_auth_controller
 from src.web.controllers.autorizaciones.api_autorizaciones import (
@@ -44,12 +48,62 @@ def create_app(
     Session(app)
     database.init_app(app)
 
+    if not app.config.get("TESTING"):
+        with app.app_context():
+            database.ensure_db_initialized()
+
     @app.context_processor
     def inject_current_user():
-        """Expone el usuario autenticado a todas las plantillas."""
+        """Expone el usuario autenticado y su personal asociado a todas las plantillas."""
         user_id = get_authenticated_user_id()
         current_user = usuario_service.get_by_id(user_id) if user_id else None
-        return {"current_user": current_user}
+        current_personal = None
+        if current_user and hasattr(current_user, "idPersonal") and current_user.idPersonal:
+            current_personal = personal_service.get_by_id(current_user.idPersonal)
+        return {"current_user": current_user, "current_personal": current_personal}
+
+    # =========================
+    # MIDDLEWARE MODO MANTENIMIENTO
+    # =========================
+    @app.before_request
+    def verificar_modo_mantenimiento():
+        """Intercepta las peticiones si el sitio se encuentra en mantenimiento."""
+        try:
+            cfg = config_service.obtener_configuracion()
+        except Exception:
+            database.db.session.rollback()
+            return None
+
+        # Si no está en mantenimiento, permitimos el flujo normal
+        if not cfg or not cfg.modo_mantenimiento:
+            return None
+
+        # 1. Permitir recursos estáticos (CSS, JS, imágenes)
+        if request.endpoint and ('static' in request.endpoint or request.path.startswith('/static/')):
+            return None
+
+        # 2. Permitir acceso al login / autenticación para que el admin pueda ingresar
+        if request.endpoint and ('auth' in request.endpoint or request.path.startswith('/auth')):
+            return None
+
+        # 3. Permitir acceso al propio panel de configuración
+        if request.endpoint and 'config' in request.endpoint:
+            return None
+
+        # 4. Verificar si el usuario autenticado es Administrador o tiene permisos
+        user_id = get_authenticated_user_id()
+        if user_id:
+            user = usuario_service.get_by_id(user_id)
+            if user:
+                # Verificamos si es administrador del sistema (isSystemAdmin) o si tiene permisos globales
+                if getattr(user, "isSystemAdmin", False) or permiso_service.user_has_permission(user_id, "user_index"):
+                    return None
+
+        # 5. Si es un usuario común o invitado, bloqueamos y mostramos la vista de mantenimiento
+        return render_template(
+            "config/mantenimiento.html",
+            mensaje=cfg.mensaje_mantenimiento
+        ), 503
 
     @app.route("/")
     def home():

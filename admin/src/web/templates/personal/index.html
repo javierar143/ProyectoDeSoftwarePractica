@@ -4,33 +4,107 @@
 
 {% block content %}
 <section>
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h2 style="margin: 0;">Gestión de Personal</h2>
-        <a href="{{ url_for('personal.nuevo_form') }}">
-            + Registrar Nuevo Personal
-        </a>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Gestión de Personal</h2>
+        <div>
+            <a href="{{ url_for('personal.importar_form') }}" style="margin-right: 15px; color: #2563eb; text-decoration: none; font-weight: bold;">
+                + Importar CSV
+            </a>
+            <a href="{{ url_for('personal.nuevo_form') }}" style="color: #2563eb; text-decoration: none; font-weight: bold;">
+                + Registrar Nuevo Personal
+            </a>
+        </div>
     </div>
 
-    {# Notificaciones de feedback del sistema
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <p style="padding: 0.5rem; background-color: #eee;">{{ message }}</p>
-            {% endfor %}
-        {% endif %}  ## ojala no explote nada
-    {% endwith %} #}
+    <!-- Formulario de Búsqueda y Filtros Combinables -->
+    <form method="GET" action="{{ url_for('personal.index') }}" style="background: #f4f4f4; padding: 1rem; margin-bottom: 1.5rem; border: 1px solid #ddd; display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end;">
+        <div>
+            <label for="q" style="display: block; font-size: 0.85rem; font-weight: bold;">Nombre / Apellido</label>
+            <input type="text" id="q" name="q" value="{{ filtros.q }}" placeholder="Buscar por texto...">
+        </div>
+
+        <div>
+            <label for="dni" style="display: block; font-size: 0.85rem; font-weight: bold;">DNI</label>
+            <input type="text" id="dni" name="dni" value="{{ filtros.dni }}" placeholder="Buscar por DNI...">
+        </div>
+
+        <div>
+            <label for="id_tipo_personal" style="display: block; font-size: 0.85rem; font-weight: bold;">Tipo</label>
+            <select id="id_tipo_personal" name="id_tipo_personal">
+                <option value="">Todos los tipos</option>
+                {% for tp in tipos_personal %}
+                    <option value="{{ tp.idTipoPersonal }}" {{ 'selected' if filtros.id_tipo_personal == tp.idTipoPersonal }}>
+                        {{ tp.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="id_sector" style="display: block; font-size: 0.85rem; font-weight: bold;">Sector</label>
+            <select id="id_sector" name="id_sector">
+                <option value="">Todos los sectores</option>
+                {% for s in sectores %}
+                    <option value="{{ s.idSector }}" {{ 'selected' if filtros.id_sector == s.idSector }}>
+                        {{ s.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="estado" style="display: block; font-size: 0.85rem; font-weight: bold;">Estado</label>
+            <select id="estado" name="estado">
+                <option value="activos" {{ 'selected' if filtros.estado == 'activos' }}>Solo Activos</option>
+                <option value="inactivos" {{ 'selected' if filtros.estado == 'inactivos' }}>Solo Inactivos</option>
+                <option value="todos" {{ 'selected' if filtros.estado == 'todos' }}>Todos</option>
+            </select>
+        </div>
+
+        <!-- Mantiene el orden seleccionado al filtrar -->
+        <input type="hidden" name="ordenar_por" value="{{ filtros.ordenar_por }}">
+        <input type="hidden" name="direccion" value="{{ filtros.direccion }}">
+
+        <div>
+            <button type="submit">Filtrar</button>
+            <a href="{{ url_for('personal.index') }}" style="margin-left: 0.5rem;">Limpiar</a>
+        </div>
+    </form>
 
     {% if personal %}
         <table style="width: 100%; border-collapse: collapse; border: 1px solid #ccc; text-align: left;">
             <caption>Listado de personal del hospital</caption>
             <thead>
                 <tr style="background-color: #f9f9f9;">
-                    <th scope="col" style="border: 1px solid #ccc; padding: 0.5rem;">DNI</th>
-                    <th scope="col" style="border: 1px solid #ccc; padding: 0.5rem;">Apellido y Nombre</th>
+                    <!-- Columna DNI Ordenable -->
+                    <th scope="col" style="border: 1px solid #ccc; padding: 0.5rem;">
+                        {% set dir_dni = 'desc' if (filtros.ordenar_por == 'dni' and filtros.direccion == 'asc') else 'asc' %}
+                        <a href="{{ url_for('personal.index', q=filtros.q, dni=filtros.dni, id_tipo_personal=filtros.id_tipo_personal, id_sector=filtros.id_sector, estado=filtros.estado, ordenar_por='dni', direccion=dir_dni) }}">
+                            DNI {% if filtros.ordenar_por == 'dni' %}{{ '▲' if filtros.direccion == 'asc' else '▼' }}{% endif %}
+                        </a>
+                    </th>
+
+                    <!-- Columna Apellido y Nombre Ordenable -->
+                    <th scope="col" style="border: 1px solid #ccc; padding: 0.5rem;">
+                        {% set dir_nom = 'desc' if (filtros.ordenar_por == 'nombre_apellido' and filtros.direccion == 'asc') else 'asc' %}
+                        <a href="{{ url_for('personal.index', q=filtros.q, dni=filtros.dni, id_tipo_personal=filtros.id_tipo_personal, id_sector=filtros.id_sector, estado=filtros.estado, ordenar_por='nombre_apellido', direccion=dir_nom) }}">
+                            Apellido y Nombre {% if filtros.ordenar_por == 'nombre_apellido' %}{{ '▲' if filtros.direccion == 'asc' else '▼' }}{% endif %}
+                        </a>
+                    </th>
+
                     <th scope="col" style="border: 1px solid #ccc; padding: 0.5rem;">Tipo de Personal</th>
                     <th scope="col" style="border: 1px solid #ccc; padding: 0.5rem;">Sector</th>
                     <th scope="col" style="border: 1px solid #ccc; padding: 0.5rem;">Tipo de Menú</th>
                     <th scope="col" style="border: 1px solid #ccc; padding: 0.5rem;">Estado</th>
+
+                    <!-- Columna Fecha Ordenable -->
+                    <th scope="col" style="border: 1px solid #ccc; padding: 0.5rem;">
+                        {% set dir_fec = 'desc' if (filtros.ordenar_por == 'fecha' and filtros.direccion == 'asc') else 'asc' %}
+                        <a href="{{ url_for('personal.index', q=filtros.q, dni=filtros.dni, id_tipo_personal=filtros.id_tipo_personal, id_sector=filtros.id_sector, estado=filtros.estado, ordenar_por='fecha', direccion=dir_fec) }}">
+                            Alta {% if filtros.ordenar_por == 'fecha' %}{{ '▲' if filtros.direccion == 'asc' else '▼' }}{% endif %}
+                        </a>
+                    </th>
+
                     <th scope="col" style="border: 1px solid #ccc; padding: 0.5rem; text-align: right;">Acciones</th>
                 </tr>
             </thead>
@@ -53,21 +127,22 @@
                             {{ p.tipo_menu.nombre if p.tipo_menu else p.idTipoMenu }}
                         </td>
                         <td style="border: 1px solid #ccc; padding: 0.5rem;">
-                            {% if p.isActive %}
-                                Activo
-                            {% else %}
-                                Inactivo
-                            {% endif %}
+                            {{ "Activo" if p.isActive else "Inactivo" }}
+                        </td>
+                        <td style="border: 1px solid #ccc; padding: 0.5rem;">
+                            {{ p.inserted_at.strftime('%d/%m/%Y') if p.inserted_at else '-' }}
                         </td>
                         <td style="border: 1px solid #ccc; padding: 0.5rem; text-align: right;">
                             <a href="{{ url_for('personal.editar_form', id=p.idPersonal) }}">Editar</a>
                             {% if p.isActive %}
-                                <form action="{{ url_for('personal.desactivar', id=p.idPersonal) }}" method="POST" style="display: inline;" onsubmit="return confirm('¿Confirmar la desactivación?');">
+                                <!-- Botón de Eliminar (Baja logica) -->
+                                <form action="{{ url_for('personal.eliminar', id=p.idPersonal) }}" method="POST" style="display: inline;" onsubmit="return confirm('¿Confirmar la eliminación del personal?');">
                                     <button type="submit" style="background: none; border: none; color: #b91c1c; cursor: pointer; text-decoration: underline;">
-                                        Desactivar
+                                        Eliminar
                                     </button>
                                 </form>
                             {% else %}
+                               <!-- Botón de Activar (Se mantiene igual) -->
                                 <form action="{{ url_for('personal.activar', id=p.idPersonal) }}" method="POST" style="display: inline;" onsubmit="return confirm('¿Confirmar la reactivación?');">
                                     <button type="submit" style="background: none; border: none; color: #16a34a; cursor: pointer; text-decoration: underline;">
                                         Activar
@@ -79,8 +154,27 @@
                 {% endfor %}
             </tbody>
         </table>
+        <!-- Paginador -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+            <span>
+                Mostrando página <strong>{{ personal_paginado.page }}</strong> de <strong>{{ personal_paginado.pages }}</strong> (Total: {{ personal_paginado.total }} registros)
+            </span>
+            <div>
+                {% if personal_paginado.has_prev %}
+                    <a href="{{ url_for('personal.index', page=personal_paginado.prev_num, q=filtros.q, dni=filtros.dni, id_tipo_personal=filtros.id_tipo_personal, id_sector=filtros.id_sector, estado=filtros.estado, ordenar_por=filtros.ordenar_por, direccion=filtros.direccion) }}">
+                        &laquo; Anterior
+                    </a>
+                {% endif %}
+
+                {% if personal_paginado.has_next %}
+                    <a href="{{ url_for('personal.index', page=personal_paginado.next_num, q=filtros.q, dni=filtros.dni, id_tipo_personal=filtros.id_tipo_personal, id_sector=filtros.id_sector, estado=filtros.estado, ordenar_por=filtros.ordenar_por, direccion=filtros.direccion) }}" style="margin-left: 1rem;">
+                        Siguiente &raquo;
+                    </a>
+                {% endif %}
+            </div>
+        </div>
     {% else %}
-        <p>No hay personal registrado en el sistema.</p>
+        <p>No se encontró personal con los filtros aplicados.</p>
     {% endif %}
 </section>
 {% endblock %}

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema en Mantenimiento</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mantenimiento.css') }}">
+</head>
+<body>
+
+    <div class="maintenance-card">
+        <div class="icon-container">
+            🛠️
+        </div>
+        <h1>Estamos realizando mejoras</h1>
+        <p>{{ mensaje }}</p>
+        <div>
+            <span class="badge">Modo Mantenimiento Activo</span>
+        </div>
+    </div>
+
+</body>
+</html>

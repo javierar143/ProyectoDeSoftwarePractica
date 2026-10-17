@@ -1,13 +1,15 @@
 """Servicios de aplicación para la configuración del sistema."""
+
 from src.core.repositories import configuracion as repo_config
 
 MIN_ELEMENTOS_POR_PAGINA = 1
 MAX_ELEMENTOS_POR_PAGINA = 25
 ELEMENTOS_POR_PAGINA_DEFAULT = 10
+MENSAJE_MANTENIMIENTO_DEFAULT = "El sistema se encuentra en mantenimiento temporalmente. Por favor, intente más tarde."
 
 
 def obtener_configuracion():
-    """Obtiene la configuración y corrige valores de paginación inválidos."""
+    """Obtiene la configuración y corrige valores de paginación o mantenimiento inválidos."""
     config = repo_config.obtener_configuracion()
     elementos = config.elementos_por_pagina
 
@@ -16,24 +18,30 @@ def obtener_configuracion():
     elif elementos > MAX_ELEMENTOS_POR_PAGINA:
         elementos = MAX_ELEMENTOS_POR_PAGINA
 
-    if elementos != config.elementos_por_pagina:
+    mensaje = config.mensaje_mantenimiento
+    if not mensaje or not isinstance(mensaje, str) or not mensaje.strip():
+        mensaje = MENSAJE_MANTENIMIENTO_DEFAULT
+
+    if elementos != config.elementos_por_pagina or mensaje != config.mensaje_mantenimiento:
         config = repo_config.actualizar_configuracion(
             elementos,
             config.modo_mantenimiento,
+            mensaje,
         )
 
     return config
 
 
-def actualizar_configuracion(elementos: int, mantenimiento: bool):
+def actualizar_configuracion(elementos: int, mantenimiento: bool, mensaje: str = ""):
     """Valida y persiste la configuración del sistema.
 
     Args:
         elementos: Cantidad de elementos por página, entre 1 y 25.
         mantenimiento: Estado del modo mantenimiento.
+        mensaje: Texto descriptivo que se mostrará durante el mantenimiento.
 
     Raises:
-        ValueError: Si la cantidad no es un entero entre 1 y 25.
+        ValueError: Si la cantidad no es un entero entre 1 y 25 o el mensaje supera los 255 caracteres.
     """
     if (
         not isinstance(elementos, int)
@@ -43,4 +51,9 @@ def actualizar_configuracion(elementos: int, mantenimiento: bool):
         raise ValueError(
             "La cantidad de elementos por página debe estar entre 1 y 25."
         )
-    return repo_config.actualizar_configuracion(elementos, mantenimiento)
+
+    mensaje_limpio = mensaje.strip() if mensaje else MENSAJE_MANTENIMIENTO_DEFAULT
+    if len(mensaje_limpio) > 255:
+        raise ValueError("El mensaje de mantenimiento no puede superar los 255 caracteres.")
+
+    return repo_config.actualizar_configuracion(elementos, mantenimiento, mensaje_limpio)
