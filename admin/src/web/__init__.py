@@ -3,24 +3,30 @@
 from flask import Flask, render_template
 from flask_session import Session
 
-from .config import config
 from src.core import database
-from src.web.controllers.auth import auth_bp
-from src.web.controllers.auth.api_auth import api_auth_controller
-from src.web.controllers.usuarios import usuarios_controller
-from src.web.controllers.personal.personal import personal_bp
-from src.web.controllers.autorizaciones.api_autorizaciones import api_autorizaciones_controller
-from src.web.controllers.configuracion.config import config_controller
-from src.web.handlers import error
-from src.web.controllers.sectores.sectores import sectores_bp
-from src.web.controllers.cupos.api_cupos import bp_cupos
-from src.web.controllers.pedidos.api_pedidos import bp_pedidos
-
+from src.core.security.session import get_authenticated_user_id
 from src.core.seeds.sectores import SECTORES_INICIALES
 from src.core.services.sectores import sector as sector_service
-from src.core.security.session import get_authenticated_user_id
 from src.core.services.usuarios import usuario as usuario_service
+from src.web.controllers.auth import auth_bp
+from src.web.controllers.auth.api_auth import api_auth_controller
+from src.web.controllers.autorizaciones.api_autorizaciones import (
+    api_autorizaciones_controller,
+)
+from src.web.controllers.configuracion.config import config_controller
+from src.web.controllers.cupos.api_cupos import bp_cupos
+from src.web.controllers.pedidos.api_pedidos import (
+    bp_pedidos,
+    bp_resumen_pedidos,
+)
+from src.web.controllers.personal.personal import personal_bp
 from src.web.controllers.sectores.api_sectores import api_sectores_bp
+from src.web.controllers.sectores.sectores import sectores_bp
+from src.web.controllers.usuarios import usuarios_controller
+from src.web.handlers import error
+
+from .config import config
+
 
 def create_app(
     env="development",
@@ -54,9 +60,8 @@ def create_app(
     app.register_error_handler(401, error.unauthorized)
     app.register_error_handler(403, error.forbidden)
     app.register_error_handler(404, error.not_found)
-    app.register_error_handler(500, error.internal_server_error)
     app.register_error_handler(409, error.conflict)
-
+    app.register_error_handler(500, error.internal_server_error)
 
     @app.cli.command("reset-db")
     def reset_db():
@@ -90,9 +95,12 @@ def create_app(
     # =========================
     app.register_blueprint(config_controller)
     app.register_blueprint(api_autorizaciones_controller)
+
     # =========================
-    # CUPOS Y PEDIDOS
+    # CUPOS, PEDIDOS Y RESÚMENES
     # =========================
     app.register_blueprint(bp_cupos)
     app.register_blueprint(bp_pedidos)
+    app.register_blueprint(bp_resumen_pedidos)
+
     return app
