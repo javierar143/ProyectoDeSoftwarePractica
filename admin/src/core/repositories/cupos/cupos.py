@@ -1,21 +1,18 @@
 """Repositorio para las consultas y operaciones en base de datos de Cupos."""
 
-from datetime import date, datetime
+from datetime import datetime
 
 from sqlalchemy import func, select
 
 from src.core.database import db
 from src.core.models.Cupo import Cupo
-from src.core.models.Pedido import Pedido
 from src.core.models.Sector import Sector
-from src.core.models.Solicitud import Solicitud
-from src.core.models.enums import EstadoAutorizacion
 
 
 def create(nuevo_cupo: Cupo) -> Cupo:
     """Guarda un nuevo cupo en la sesión de la base de datos."""
     db.session.add(nuevo_cupo)
-    db.session.flush()
+    db.session.commit()
     return nuevo_cupo
 
 
@@ -23,7 +20,7 @@ def update(cupo: Cupo) -> Cupo:
     """Persiste los cambios de un cupo existente en la sesión."""
     cupo.updated_at = datetime.now()
     db.session.add(cupo)
-    db.session.flush()
+    db.session.commit()
     return cupo
 
 
@@ -33,7 +30,7 @@ def soft_delete(cupo: Cupo) -> Cupo:
     cupo.deleted_at = datetime.now()
     cupo.updated_at = datetime.now()
     db.session.add(cupo)
-    db.session.flush()
+    db.session.commit()
     return cupo
 
 
@@ -56,12 +53,11 @@ def get_by_id(id_cupo: int) -> Cupo | None:
 
 
 def list_cupos(
+    page: int,
+    per_page: int,
     id_sector: int | None = None,
     id_tipo_comida: int | None = None,
     orden: str = "asc",
-    *,
-    page: int,
-    per_page: int,
 ) -> tuple[list[Cupo], int]:
     """
     Lista los cupos vigentes filtrando por sector y comida, ordenando por Sector

@@ -70,12 +70,20 @@ def _validar_jefes(ids_jefes: list[int], id_sector: int | None, sector_activo: b
     return jefes
 
 
-def _asociar_jefes(sector: Sector, jefes: list[Usuario]) -> None:
-    """Asocia los Jefes de Servicio ya validados al sector."""
-    for jefe in jefes:
+def _sincronizar_jefes(sector: Sector, jefes_nuevos: list[Usuario]) -> None:
+    """Deja en el sector exactamente los jefes indicados (asigna y desasigna)."""
+    ids_nuevos = {jefe.id_user for jefe in jefes_nuevos}
+
+    # Sacá a los que estaban y ya no vienen en el form
+    for jefe in get_jefes(sector.idSector):
+        if jefe.id_user not in ids_nuevos:
+            jefe.idSector = None
+            repo_usuario.update(jefe)
+
+    # Asigná a los seleccionados
+    for jefe in jefes_nuevos:
         jefe.idSector = sector.idSector
         repo_usuario.update(jefe)
-
 
 def create(nombre: str, descripcion: str, ids_jefes: list[int]) -> Sector:
     """Crea un sector validando la unicidad del nombre y los Jefes asignados."""
@@ -87,7 +95,7 @@ def create(nombre: str, descripcion: str, ids_jefes: list[int]) -> Sector:
     sector = repo_sector.create(
         Sector(nombre=nombre, descripcion=descripcion or None, isActive=True)
     )
-    _asociar_jefes(sector, jefes)
+    _sincronizar_jefes(sector, jefes)
     return sector
 
 
@@ -106,7 +114,7 @@ def update(id_sector: int, nombre: str, descripcion: str, ids_jefes: list[int]) 
     sector.nombre = nombre
     sector.descripcion = descripcion or None
     repo_sector.update(sector)
-    _asociar_jefes(sector, jefes)
+    _sincronizar_jefes(sector, jefes)
     return sector
 
 

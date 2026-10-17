@@ -31,32 +31,24 @@
         <textarea id="descripcion" name="descripcion" maxlength="500" rows="3">{{ valores.get('descripcion', (sector.descripcion or '') if editando else '') }}</textarea>
 
         <fieldset>
-            <legend>Jefes de Servicio</legend>
-
-            {% if jefes_actuales %}
-                <p>Asignados actualmente:</p>
-                <ul>
-                    {% for jefe in jefes_actuales %}
-                        <li>{{ jefe.alias }} ({{ jefe.email }})</li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
-
-            {% if jefes_disponibles %}
-                <label for="jefes">Agregar Jefes sin sector asignado</label>
-                <select id="jefes" name="jefes" multiple size="5">
-                    {% for jefe in jefes_disponibles %}
-                        <option value="{{ jefe.id_user }}"
-                            {% if valores and (jefe.id_user|string in valores.getlist('jefes')) %}selected{% endif %}>
-                            {{ jefe.alias }} ({{ jefe.email }})
-                        </option>
-                    {% endfor %}
-                </select>
-                <small class="text-muted">Mantené Ctrl (o Cmd en Mac) para seleccionar varios.</small>
-            {% else %}
-                <p class="text-muted">No hay Jefes de Servicio sin sector asignado.</p>
-            {% endif %}
-        </fieldset>
+    <legend>Jefes de Servicio</legend>
+    {% if jefes_para_select %}
+        <label for="jefes">Asignar Jefes de Servicio</label>
+        <select id="jefes" name="jefes" multiple size="6">
+            {% for jefe in jefes_para_select %}
+                <option value="{{ jefe.id_user }}"
+                    {% if jefe.id_user in jefes_seleccionados %}selected{% endif %}>
+                    {{ jefe.alias }} ({{ jefe.email }})
+                </option>
+            {% endfor %}
+        </select>
+        <small class="text-muted">
+            Ctrl/Cmd para varios. Sacá la selección a un jefe para desasignarlo.
+        </small>
+    {% else %}
+        <p class="text-muted">No hay Jefes de Servicio disponibles.</p>
+    {% endif %}
+</fieldset>
 
         <div class="form-actions">
             <a href="{{ url_for('sectores.index') }}">Cancelar</a>
