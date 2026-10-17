@@ -185,6 +185,10 @@ def search(
     statement = statement.limit(per_page).offset(offset_val)
 
     elementos = list(db.session.execute(statement).scalars().all())
+
+    for persona in elementos:
+        persona.sector_asignado = get_sector_asignado(persona.idPersonal)
+
     return elementos, total
 
 def tiene_historial(id_personal: int) -> bool:
