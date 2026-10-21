@@ -1,8 +1,16 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, current_app
 from src.core.services import configuracion as config_service
 from src.core.security.permissions import require_permission
+from src.core.security.session import require_authentication
+
 
 config_controller = Blueprint("config", __name__, url_prefix="/config")
+
+@config_controller.before_request
+def require_auth():
+    """Exige autenticación para cualquier ruta dentro del módulo personal."""
+    require_authentication()
+
 
 @config_controller.route("/", methods=["GET"])
 def mostrar_config():

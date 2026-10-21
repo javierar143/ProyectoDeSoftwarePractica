@@ -16,9 +16,16 @@ from src.core.services import configuracion as service_config
 from src.web.validators.personal.personal import validar_datos_personal
 from src.core.services.usuarios import usuario as service_usuario
 from src.core.services.usuarios import rol as service_rol
+from src.core.security.session import require_authentication
 import csv, io
 
 personal_bp = Blueprint("personal", __name__, url_prefix="/personal")
+
+@personal_bp.before_request
+def require_auth():
+    """Exige autenticación para cualquier ruta dentro del módulo personal."""
+    require_authentication()
+
 
 @personal_bp.get("")
 def index():
