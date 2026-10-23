@@ -45,6 +45,10 @@ def validate_alta_conjunta_data(datos: dict[str, str]) -> list[str]:
     if not datos.get("idTipoMenu", "").isdigit():
         errores.append("Debe seleccionar un tipo de menú.")
 
+    id_sector = datos.get("idSector", "").strip()
+    if id_sector and not id_sector.isdigit():
+        errores.append("El sector seleccionado no es válido.")
+
     usuario_valido = validate_user_data(
         datos.get("email", ""),
         datos.get("alias", ""),

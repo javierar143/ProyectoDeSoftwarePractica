@@ -17,6 +17,7 @@ def _obtener_datos(form) -> dict[str, str]:
         "nombre",
         "apellido",
         "idTipoPersonal",
+        "idSector",
         "idTipoMenu",
         "email",
         "alias",
@@ -33,6 +34,7 @@ def _obtener_catalogos() -> dict:
     return {
         "tipos_personal": personal_service.get_tipos_personal(),
         "tipos_menu": personal_service.get_tipos_menu(),
+        "sectores": personal_service.get_sectores(),
         "roles": rol.get_all(),
     }
 
@@ -46,6 +48,7 @@ def mostrar_formulario(
     dni: str = "",
     persona_encontrada=None,
     mostrar_existente: bool = False,
+    mostrar_nuevo: bool = False,
     error: str | None = None,
     form_data: dict[str, str] | None = None,
     status: int = 200,
@@ -56,6 +59,7 @@ def mostrar_formulario(
         "dni": dni,
         "persona_encontrada": persona_encontrada,
         "mostrar_existente": mostrar_existente,
+        "mostrar_nuevo": mostrar_nuevo,
         "error": error,
         "form_data": form_data or {},
     }
@@ -143,6 +147,7 @@ def crear_personal_usuario(form):
 
     if errores:
         return mostrar_formulario(
+            mostrar_nuevo=True,
             error=" ".join(errores),
             form_data=datos,
             status=400,
@@ -155,6 +160,10 @@ def crear_personal_usuario(form):
             apellido=datos["apellido"],
             id_tipo_personal=int(datos["idTipoPersonal"]),
             id_tipo_menu=int(datos["idTipoMenu"]),
+            id_sector=(
+                int(datos["idSector"])
+                if datos["idSector"].isdigit()
+                else None),
             email=datos["email"],
             alias=datos["alias"],
             password=datos["password"],
@@ -163,6 +172,7 @@ def crear_personal_usuario(form):
         )
     except ValueError as excepcion:
         return mostrar_formulario(
+            mostrar_nuevo=True,
             error=str(excepcion),
             form_data=datos,
             status=400,
@@ -172,6 +182,7 @@ def crear_personal_usuario(form):
             "Error al crear Personal y Usuario conjuntamente"
         )
         return mostrar_formulario(
+            mostrar_nuevo=True,
             error="No se pudo completar el alta. No se guardaron los cambios.",
             form_data=datos,
             status=500,

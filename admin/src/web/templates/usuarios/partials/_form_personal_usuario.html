@@ -41,17 +41,40 @@
         </div>
 
         <div>
-            <label for="tipo-personal">Tipo de personal</label>
-            <select id="tipo-personal" name="idTipoPersonal" required>
-                <option value="">Seleccione un tipo</option>
+            <label for="idTipoPersonal">Tipo de Personal *</label>
+            <select id="idTipoPersonal" name="idTipoPersonal" required>
+                <option value="">Seleccionar tipo...</option>
+
                 {% for tipo in tipos_personal %}
                     <option
                         value="{{ tipo.idTipoPersonal }}"
-                        {% if form_data.get('idTipoPersonal', '')|string == tipo.idTipoPersonal|string %}
+                        data-nombre="{{ tipo.nombre | lower }}"
+                        {% if form_data.get('idTipoPersonal', '')|string
+                            == tipo.idTipoPersonal|string %}
                             selected
                         {% endif %}
                     >
                         {{ tipo.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div id="contenedorSector" style="margin-top: 1rem;">
+            <label for="idSector">Sector *</label>
+
+            <select id="idSector" name="idSector">
+                <option value="">Seleccionar sector...</option>
+
+                {% for sector in sectores %}
+                    <option
+                        value="{{ sector.idSector }}"
+                        {% if form_data.get('idSector', '')|string
+                            == sector.idSector|string %}
+                            selected
+                        {% endif %}
+                    >
+                        {{ sector.nombre }}
                     </option>
                 {% endfor %}
             </select>
@@ -146,5 +169,23 @@
         </div>
     </fieldset>
 
-    <button type="submit">Crear Personal y Usuario</button>
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">
+            Crear Personal y Usuario
+        </button>
+
+        <a
+            class="btn btn-outline"
+            href="{{ url_for('usuarios.alta_usuarios.new') }}"
+        >
+            Cancelar
+        </a>
+
+        <a
+            class="btn btn-outline"
+            href="{{ url_for('usuarios.listado_usuarios.index') }}"
+        >
+            Volver al listado
+        </a>
+    </div>
 </form>

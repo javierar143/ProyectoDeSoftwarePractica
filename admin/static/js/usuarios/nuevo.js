@@ -34,6 +34,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (panelExistente.dataset.mostrarInicial === "true") {
         mostrarPanel(panelExistente, panelNuevo);
+    } else if (panelNuevo.dataset.mostrarInicial === "true") {
+        mostrarPanel(panelNuevo, panelExistente);
     } else {
         panelExistente.hidden = true;
         panelNuevo.hidden = true;

@@ -119,6 +119,24 @@
             </div>
         </fieldset>
 
-        <button type="submit">Crear usuario</button>
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">
+            Crear usuario
+        </button>
+
+        <a
+            class="btn btn-outline"
+            href="{{ url_for('usuarios.alta_usuarios.new') }}"
+        >
+            Cancelar
+        </a>
+
+        <a
+            class="btn btn-outline"
+            href="{{ url_for('usuarios.listado_usuarios.index') }}"
+        >
+            Volver al listado
+        </a>
+    </div>
     </form>
 {% endif %}

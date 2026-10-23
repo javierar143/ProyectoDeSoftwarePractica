@@ -29,10 +29,15 @@
         {% include "usuarios/partials/_form_usuario_existente.html" %}
     </section>
 
-    <section id="panel-nuevo" hidden>
+    <section
+    id="panel-nuevo"
+    data-mostrar-inicial="{{ 'true' if mostrar_nuevo else 'false' }}"
+    {% if not mostrar_nuevo %}hidden{% endif %}
+    >
         {% include "usuarios/partials/_form_personal_usuario.html" %}
     </section>
 </main>
 
 <script src="{{ url_for('static', filename='js/usuarios/nuevo.js') }}"></script>
+<script src="{{ url_for('static', filename='js/personal/form.js') }}"></script>
 {% endblock %}
