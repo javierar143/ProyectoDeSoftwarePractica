@@ -118,3 +118,13 @@ def internal_server_error(error):
         description="Ocurrió un error en el servidor. Inténtelo más tarde.",
     )
     return _responder(error_data)
+
+
+def register_error_handlers(app) -> None:
+    """Registra los manejadores de errores HTTP centralizados en la aplicación."""
+    app.register_error_handler(400, bad_request)
+    app.register_error_handler(401, unauthorized)
+    app.register_error_handler(403, forbidden)
+    app.register_error_handler(404, not_found)
+    app.register_error_handler(409, conflict)
+    app.register_error_handler(500, internal_server_error)
