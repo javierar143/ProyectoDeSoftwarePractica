@@ -13,6 +13,7 @@
                 value="{{ form_data.get('dni', '') }}"
                 inputmode="numeric"
                 required
+                pattern="[0-9]{7,15}" minlength="7" maxlength="15"
             >
         </div>
 
@@ -25,6 +26,7 @@
                 value="{{ form_data.get('nombre', '') }}"
                 autocomplete="given-name"
                 required
+                pattern="[a-zA-ZÁÉÍÓÚÜÑáéíóúüñ\s]+" minlength="2" maxlength="100"
             >
         </div>
 
@@ -37,6 +39,7 @@
                 value="{{ form_data.get('apellido', '') }}"
                 autocomplete="family-name"
                 required
+                pattern="[a-zA-ZÁÉÍÓÚÜÑáéíóúüñ\s]+" minlength="2" maxlength="100"
             >
         </div>
 
@@ -131,6 +134,21 @@
                 type="password"
                 id="password-nuevo"
                 name="password"
+                minlength="8"
+                autocomplete="new-password"
+                required
+            >
+        </div>
+
+        <div>
+            <label for="confirmar-password-nuevo">
+                Confirmar contraseña
+            </label>
+            <input
+                type="password"
+                id="confirmar-password-nuevo"
+                name="confirmar_password"
+                minlength="8"
                 autocomplete="new-password"
                 required
             >
@@ -153,7 +171,6 @@
             <select id="rol-nuevo" name="rol_nombre" required>
                 <option value="">Seleccione un rol</option>
                 {% for rol in roles %}
-                    {# Ocultamos el rol de Administrador de la lista #}
                     {% if rol.nombre != 'Administrador' %}
                         <option
                             value="{{ rol.nombre }}"

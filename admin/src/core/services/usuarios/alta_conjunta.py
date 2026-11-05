@@ -1,6 +1,7 @@
 
 """Servicio para crear Personal y Usuario en una única transacción."""
 
+import re
 from datetime import datetime
 
 from sqlalchemy.exc import IntegrityError
@@ -14,6 +15,8 @@ from src.core.repositories.usuarios import usuario as repo_usuario
 from src.core.security.password import hash_password
 from src.core.services.personal import personal
 
+
+PATRON_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 def create(
@@ -42,20 +45,17 @@ def create(
     alias = alias.strip()
     rol_nombre = rol_nombre.strip()
 
-    if not all(
-        (
-            dni,
-            nombre,
-            apellido,
-            email,
-            "@" in email,
-            alias,
-            password.strip(),
-            rol_nombre,
-        )
-    ):
+    if not all((dni, nombre, apellido, alias, rol_nombre)):
         raise ValueError(
             "Completá correctamente todos los campos obligatorios."
+        )
+
+    if not PATRON_EMAIL.fullmatch(email):
+        raise ValueError("Ingresá un correo electrónico válido.")
+
+    if not password.strip() or len(password) < 8:
+        raise ValueError(
+            "La contraseña debe tener al menos 8 caracteres."
         )
 
     if personal.get_by_dni(dni) is not None:
@@ -65,6 +65,7 @@ def create(
         raise ValueError("El email ya está registrado.")
 
     rol_encontrado = rol.get_by_name(rol_nombre)
+
     if rol_encontrado is None:
         raise ValueError("El rol seleccionado no existe.")
 
@@ -81,7 +82,9 @@ def create(
     )
 
     if not tipo_personal_valido or not tipo_menu_valido:
-        raise ValueError("El tipo de personal o menú no es válido.")
+        raise ValueError(
+            "El tipo de personal o menú no es válido."
+        )
 
     tipo_personal = next(
         tipo
@@ -93,7 +96,6 @@ def create(
 
     if "residente" in nombre_tipo:
         id_sector = None
-
     elif "fijo" in nombre_tipo and id_sector is None:
         raise ValueError(
             "El personal fijo requiere un sector asignado obligatoriamente."

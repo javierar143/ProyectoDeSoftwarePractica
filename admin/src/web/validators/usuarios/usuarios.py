@@ -1,16 +1,15 @@
 """Validaciones de los datos de alta y edición de usuarios."""
 
-
 def validate_user_data(
     email: str,
     alias: str,
     password: str,
+    confirmar_password: str,
     rol_nombre: str,
 ) -> bool:
     """Comprueba que los datos obligatorios del usuario sean válidos."""
     email_limpio = email.strip()
     alias_limpio = alias.strip()
-    password_limpia = password.strip()
     rol_limpio = rol_nombre.strip()
 
     datos_validos = all(
@@ -18,7 +17,9 @@ def validate_user_data(
             email_limpio,
             "@" in email_limpio,
             alias_limpio,
-            password_limpia,
+            password.strip(),
+            len(password) >= 8,
+            password == confirmar_password,
             rol_limpio,
         )
     )
@@ -45,21 +46,34 @@ def validate_alta_conjunta_data(datos: dict[str, str]) -> list[str]:
     if not datos.get("idTipoMenu", "").isdigit():
         errores.append("Debe seleccionar un tipo de menú.")
 
-    id_sector = datos.get("idSector", "").strip()
-    if id_sector and not id_sector.isdigit():
-        errores.append("El sector seleccionado no es válido.")
+    email = datos.get("email", "")
+    alias = datos.get("alias", "")
+    password = datos.get("password", "")
+    confirmar_password = datos.get("confirmar_password", "")
+    rol_nombre = datos.get("rol_nombre", "")
 
-    usuario_valido = validate_user_data(
-        datos.get("email", ""),
-        datos.get("alias", ""),
-        datos.get("password", ""),
-        datos.get("rol_nombre", ""),
-    )
-
-    if not usuario_valido:
+    if not email.strip() or "@" not in email.strip():
         errores.append(
-            "Completá correctamente los datos obligatorios del usuario."
+            "El correo electrónico es obligatorio y debe ser válido."
         )
+
+    if not alias.strip():
+        errores.append("El alias es obligatorio.")
+
+    if not password.strip():
+        errores.append("La contraseña es obligatoria.")
+    elif len(password) < 8:
+        errores.append(
+            "La contraseña debe tener al menos 8 caracteres."
+        )
+
+    if not confirmar_password.strip():
+        errores.append("Debés confirmar la contraseña.")
+    elif password != confirmar_password:
+        errores.append("Las contraseñas no coinciden.")
+
+    if not rol_nombre.strip():
+        errores.append("Debe seleccionar un rol.")
 
     return errores
 
@@ -69,17 +83,28 @@ def validate_edit_user_data(
     alias: str,
     rol_id_texto: str,
     password: str = "",
+    confirmar_password: str = "",
 ) -> list[str]:
     """Valida los campos requeridos para la edición de un usuario."""
     errores = []
     email_limpio = email.strip()
     alias_limpio = alias.strip()
-    
+
     if not email_limpio or "@" not in email_limpio:
-        errores.append("El correo electrónico es obligatorio y debe ser válido.")
+        errores.append(
+            "El correo electrónico es obligatorio y debe ser válido."
+        )
+
     if not alias_limpio:
         errores.append("El alias es obligatorio.")
+
     if not rol_id_texto.strip().isdigit():
         errores.append("Debe seleccionar un rol válido.")
-    
+
+    if password:
+        if len(password) < 8:
+            errores.append("La contraseña debe tener al menos 8 caracteres.")
+        if password != confirmar_password:
+            errores.append("Las contraseñas no coinciden.")
+
     return errores

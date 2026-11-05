@@ -1,6 +1,6 @@
 """Controladores web relacionados con la autenticación."""
 
-from flask import abort, redirect, render_template, request, url_for
+from flask import flash, redirect, render_template, request, url_for
 
 from src.core.security.session import (
     clear_session,
@@ -8,6 +8,7 @@ from src.core.security.session import (
 )
 from src.core.services.auth.auth import authenticate
 from src.web.validators.auth.auth import validate_login
+from src.core.services.usuarios import permiso
 
 from . import auth_bp
 
@@ -15,30 +16,34 @@ from . import auth_bp
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     """Muestra el formulario de login y procesa su autenticación."""
-    response = render_template("auth/login.html")
-
     if request.method == "POST":
         email = request.form.get("email", "")
         password = request.form.get("password", "")
 
         if not validate_login(email, password):
-            abort(400)
+            flash("Debés completar todos los campos obligatorios.", "danger")
+            return render_template("auth/login.html"), 400
 
         usuario = authenticate(email, password)
 
         if usuario is None:
-            abort(401)
+            flash("Credenciales inválidas.", "danger")
+            return render_template("auth/login.html"), 401
+
+        # RÚBRICA: Ahor se valida por permisos, no por rol.
+        # Si no tiene permiso para administrar usuarios, no entra al backoffice.
+        if not permiso.user_has_permission(usuario.id_user, "user_index"):
+            flash("No tenés permisos para acceder al panel de administración.", "danger")
+            return render_template("auth/login.html"), 403
 
         set_authenticated_user(usuario.id_user)
-        response = redirect(url_for("home"))
+        return redirect(url_for("home"))
 
-    return response
+    return render_template("auth/login.html")
 
 
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
     """Cierra la sesión del usuario y redirige al login."""
     clear_session()
-    response = redirect(url_for("auth.login"))
-
-    return response
+    return redirect(url_for("auth.login"))
