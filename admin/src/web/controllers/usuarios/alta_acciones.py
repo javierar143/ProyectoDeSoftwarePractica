@@ -2,7 +2,6 @@
 """Coordina las acciones disponibles en el alta de usuarios."""
 
 from flask import (
-    abort,
     current_app,
     flash,
     redirect,
@@ -10,7 +9,8 @@ from flask import (
     url_for,
 )
 
-from src.core.security.session import get_authenticated_user_id
+from werkzeug.exceptions import HTTPException
+
 from src.core.services.personal import personal as personal_service
 from src.core.services.usuarios import alta_conjunta, personal, rol, usuario
 from src.web.validators.usuarios.usuarios import (
@@ -59,41 +59,6 @@ def _obtener_catalogos() -> dict:
 def _buscar_persona(dni: str):
     """Obtiene una persona por DNI si el valor es válido."""
     return personal.get_by_dni(dni.strip()) if dni else None
-
-
-def _puede_asignar_privilegios_administrador() -> bool:
-    """Comprueba si el usuario autenticado es administrador del sistema."""
-    user_id = get_authenticated_user_id()
-
-    if user_id is None:
-        return False
-
-    usuario_actual = usuario.get_by_id(user_id)
-
-    return (
-        usuario_actual is not None
-        and usuario_actual.isActive
-        and usuario_actual.isSystemAdmin
-    )
-
-
-def _validar_asignacion_administrador(datos: dict[str, str]) -> None:
-    """Impide conceder privilegios de administrador sin autorización."""
-    solicita_admin_sistema = datos.get("is_system_admin") == "on"
-    solicita_rol_administrador = (
-        datos.get("rol_nombre", "").strip() == "Administrador"
-    )
-
-    if (
-        solicita_admin_sistema or solicita_rol_administrador
-    ) and not _puede_asignar_privilegios_administrador():
-        abort(
-            403,
-            description=(
-                "No tenés autorización para asignar privilegios "
-                "de administrador."
-            ),
-        )
 
 
 def mostrar_formulario(
@@ -178,8 +143,6 @@ def crear_usuario(form):
             status=422,
         )
 
-    _validar_asignacion_administrador(datos)
-
     try:
         usuario.create(
             email=datos["email"],
@@ -198,6 +161,8 @@ def crear_usuario(form):
             form_data=datos,
             status=422,
         )
+    except HTTPException:
+        raise
     except Exception:
         current_app.logger.exception("Error al crear un usuario")
 
@@ -228,8 +193,6 @@ def crear_personal_usuario(form):
             status=422,
         )
 
-    _validar_asignacion_administrador(datos)
-
     try:
         alta_conjunta.create(
             dni=datos["dni"],
@@ -255,6 +218,8 @@ def crear_personal_usuario(form):
             form_data=datos,
             status=422,
         )
+    except HTTPException:
+        raise
     except Exception:
         current_app.logger.exception(
             "Error al crear Personal y Usuario conjuntamente"

@@ -101,10 +101,21 @@ def validate_edit_user_data(
     if not rol_id_texto.strip().isdigit():
         errores.append("Debe seleccionar un rol válido.")
 
-    if password:
-        if len(password) < 8:
-            errores.append("La contraseña debe tener al menos 8 caracteres.")
-        if password != confirmar_password:
+    # La contraseña es opcional, pero si se completa alguno
+    # de los dos campos, deben completarse ambos correctamente.
+    if password or confirmar_password:
+        if not password.strip():
+            errores.append("Debés ingresar la nueva contraseña.")
+
+        elif len(password) < 8:
+            errores.append(
+                "La contraseña debe tener al menos 8 caracteres."
+            )
+
+        if not confirmar_password:
+            errores.append("Debés confirmar la nueva contraseña.")
+
+        elif password != confirmar_password:
             errores.append("Las contraseñas no coinciden.")
 
     return errores
