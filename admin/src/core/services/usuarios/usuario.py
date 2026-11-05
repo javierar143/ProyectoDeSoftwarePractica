@@ -10,6 +10,9 @@ from src.core.database import db
 from src.core.models.Usuario import Usuario
 from src.core.repositories.usuarios import rol
 from src.core.repositories.usuarios import usuario as repo_usuario
+from src.core.security.admin_privileges import (
+    require_admin_privilege_change,
+)
 from src.core.security.password import hash_password
 
 
@@ -149,6 +152,21 @@ def update(
 
     if rol_encontrado is None:
         raise ValueError("El rol seleccionado no existe.")
+
+    rol_anterior = rol.get_by_id(usuario_actual.idRol)
+
+    is_system_admin_nuevo = (
+        usuario_actual.isSystemAdmin
+        if is_system_admin is None
+        else is_system_admin
+    )
+
+    require_admin_privilege_change(
+        rol_anterior=rol_anterior.nombre if rol_anterior else None,
+        is_system_admin_anterior=usuario_actual.isSystemAdmin,
+        rol_nuevo=rol_encontrado.nombre,
+        is_system_admin_nuevo=is_system_admin_nuevo,
+    )
 
     usuario_actual.email = email
     usuario_actual.alias = alias
