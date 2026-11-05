@@ -3,11 +3,12 @@
 from flask import (
     Blueprint,
     abort,
+    current_app,
+    flash,
     redirect,
     render_template,
     request,
     url_for,
-    current_app,
 )
 
 from src.core.security.permissions import require_permission
@@ -26,15 +27,13 @@ listado_controller = Blueprint("listado_usuarios", __name__)
 
 @listado_controller.get("/")
 def index():
-    """Muestra el listado paginado y filtrado de usuarios con filtros combinables."""
+    """Muestra el listado paginado y filtrado de usuarios."""
     require_permission("user_index")
 
     filtros, errores_validacion = validar_filtros_listado(request.args)
-
     resultado_busqueda = busqueda_service.buscar_paginado(filtros)
-    
 
-    response = render_template(
+    return render_template(
         "usuarios/index.html",
         usuarios=resultado_busqueda["usuarios"],
         pagination=resultado_busqueda,
@@ -43,8 +42,6 @@ def index():
         roles=rol.get_all(),
         sectores=sector_service.get_all(),
     )
-
-    return response
 
 
 @listado_controller.post("/desactivar")
@@ -55,31 +52,41 @@ def desactivar():
     user_id_form = request.form.get("user_id", "")
 
     if not user_id_form.isdecimal():
-        current_app.logger.warning("Intento de desactivación de usuario con ID no decimal.")
-        abort(400, description="Identificador de usuario inválido.")
+        abort(
+            400,
+            description="Identificador de usuario inválido.",
+        )
 
     user_id = int(user_id_form)
 
     try:
-        usuario_actualizado = usuario.set_active(
+        usuario_actualizado = usuario.set_active(user_id, False)
+    except ValueError as error:
+        current_app.logger.warning(
+            "Intento prohibido de desactivar la cuenta ID %s: %s",
             user_id,
-            False,
+            error,
         )
-    except ValueError as e:
-        current_app.logger.warning(f"Intento prohibido de desactivar cuenta protegida (Admin): usuario ID {user_id}")
         abort(
             403,
             description="No se puede bloquear una cuenta de administrador.",
         )
-    except Exception as e:
-        current_app.logger.error(f"Error inesperado al desactivar el usuario ID {user_id}: {str(e)}")
+    except Exception:
+        current_app.logger.exception(
+            "Error al desactivar el usuario ID %s",
+            user_id,
+        )
         abort(500)
 
     if usuario_actualizado is None:
-        current_app.logger.warning(f"Intento de desactivar usuario inexistente ID {user_id}")
         abort(404, description="Usuario no encontrado.")
 
-    current_app.logger.info(f"Usuario ID {user_id} desactivado correctamente.")
+    current_app.logger.info(
+        "Usuario ID %s desactivado correctamente.",
+        user_id,
+    )
+    flash("El usuario fue bloqueado correctamente.", "success")
+
     return redirect(url_for("usuarios.listado_usuarios.index"))
 
 
@@ -91,28 +98,38 @@ def activar():
     user_id_form = request.form.get("user_id", "")
 
     if not user_id_form.isdecimal():
-        current_app.logger.warning("Intento de activación de usuario con ID no decimal.")
-        abort(400, description="Identificador de usuario inválido.")
+        abort(
+            400,
+            description="Identificador de usuario inválido.",
+        )
 
     user_id = int(user_id_form)
 
     try:
-        usuario_actualizado = usuario.set_active(
+        usuario_actualizado = usuario.set_active(user_id, True)
+    except ValueError as error:
+        current_app.logger.warning(
+            "Operación no permitida al activar el usuario ID %s: %s",
             user_id,
-            True,
+            error,
         )
-    except ValueError as e:
-        current_app.logger.warning(f"Operación no permitida al intentar activar el usuario ID {user_id}: {str(e)}")
         abort(403, description="Operación no permitida.")
-    except Exception as e:
-        current_app.logger.error(f"Error inesperado al activar el usuario ID {user_id}: {str(e)}")
+    except Exception:
+        current_app.logger.exception(
+            "Error al activar el usuario ID %s",
+            user_id,
+        )
         abort(500)
 
     if usuario_actualizado is None:
-        current_app.logger.warning(f"Intento de activar usuario inexistente ID {user_id}")
         abort(404, description="Usuario no encontrado.")
 
-    current_app.logger.info(f"Usuario ID {user_id} activado correctamente.")
+    current_app.logger.info(
+        "Usuario ID %s activado correctamente.",
+        user_id,
+    )
+    flash("El usuario fue desbloqueado correctamente.", "success")
+
     return redirect(url_for("usuarios.listado_usuarios.index"))
 
 
@@ -128,18 +145,17 @@ def detalle(user_id: int):
 
     rol_actual = rol.get_by_id(usuario_seleccionado.idRol)
     rol_nombre = rol_actual.nombre if rol_actual is not None else "Sin rol"
+
     personal_asociado = personal.get_by_id(
         usuario_seleccionado.idPersonal
     )
 
-    response = render_template(
+    return render_template(
         "usuarios/detalle.html",
         usuario=usuario_seleccionado,
         rol_nombre=rol_nombre,
         personal=personal_asociado,
     )
-
-    return response
 
 
 @listado_controller.get("/perfil")
@@ -159,15 +175,14 @@ def perfil():
 
     rol_actual = rol.get_by_id(usuario_seleccionado.idRol)
     rol_nombre = rol_actual.nombre if rol_actual is not None else "Sin rol"
+
     personal_asociado = personal.get_by_id(
         usuario_seleccionado.idPersonal
     )
 
-    response = render_template(
+    return render_template(
         "usuarios/detalle.html",
         usuario=usuario_seleccionado,
         rol_nombre=rol_nombre,
         personal=personal_asociado,
     )
-
-    return response

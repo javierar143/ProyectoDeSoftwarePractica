@@ -131,6 +131,21 @@
                 type="password"
                 id="password-nuevo"
                 name="password"
+                minlength="8"
+                autocomplete="new-password"
+                required
+            >
+        </div>
+
+        <div>
+            <label for="confirmar-password-nuevo">
+                Confirmar contraseña
+            </label>
+            <input
+                type="password"
+                id="confirmar-password-nuevo"
+                name="confirmar_password"
+                minlength="8"
                 autocomplete="new-password"
                 required
             >
@@ -153,7 +168,6 @@
             <select id="rol-nuevo" name="rol_nombre" required>
                 <option value="">Seleccione un rol</option>
                 {% for rol in roles %}
-                    {# Ocultamos el rol de Administrador de la lista #}
                     {% if rol.nombre != 'Administrador' %}
                         <option
                             value="{{ rol.nombre }}"

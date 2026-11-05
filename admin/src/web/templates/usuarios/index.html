@@ -5,17 +5,57 @@
         rel="stylesheet"
         href="{{ url_for('static', filename='css/usuarios.css') }}"
     >
+    <style>
+        .confirmacion-dialogo {
+            border: 0;
+            border-radius: 10px;
+            box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25);
+            margin: auto;
+            max-width: 420px;
+            padding: 1.5rem;
+            width: calc(100% - 2rem);
+        }
+
+        .confirmacion-dialogo::backdrop {
+            background: rgba(0, 0, 0, 0.55);
+        }
+
+        .confirmacion-dialogo h2 {
+            margin-bottom: 0.75rem;
+        }
+
+        .confirmacion-dialogo p {
+            margin-bottom: 1.25rem;
+        }
+
+        .confirmacion-acciones {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
+
+        .confirmacion-cancelar {
+            background: #6b7280;
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
 <div class="usuarios-contenedor">
     <div class="usuarios-header">
-        
         <h1>Administración de usuarios</h1>
+
         <div class="usuarios-header-actions">
-            <button type="button" id="btn-toggle-filtros" class="btn btn-secondary">
+            <button
+                type="button"
+                id="btn-toggle-filtros"
+                class="btn btn-secondary"
+                aria-controls="panel-filtros-usuarios"
+                aria-expanded="{{ 'true' if filtros.email or filtros.nombre_apellido or filtros.dni or filtros.activo or filtros.rol_id or filtros.sector_id else 'false' }}"
+            >
                 Filtrar
             </button>
+
             <a
                 class="btn btn-primary"
                 href="{{ url_for('usuarios.alta_usuarios.new') }}"
@@ -25,33 +65,77 @@
         </div>
     </div>
 
-    <section id="panel-filtros-usuarios" class="filtros-panel {% if not filtros.email and not filtros.nombre_apellido and not filtros.dni and not filtros.activo and not filtros.rol_id and not filtros.sector_id %}oculto{% endif %}" aria-label="Filtros de búsqueda">
-        <form method="GET" action="{{ url_for('usuarios.listado_usuarios.index') }}" class="filtros-form">
+    <section
+        id="panel-filtros-usuarios"
+        class="filtros-panel {% if not filtros.email and not filtros.nombre_apellido and not filtros.dni and not filtros.activo and not filtros.rol_id and not filtros.sector_id %}oculto{% endif %}"
+        aria-label="Filtros de búsqueda"
+    >
+        <form
+            method="GET"
+            action="{{ url_for('usuarios.listado_usuarios.index') }}"
+            class="filtros-form"
+        >
             <div class="filtros-grid">
                 <div class="form-group">
                     <label for="filtro-email">Correo electrónico</label>
-                    <input type="text" id="filtro-email" name="email" value="{{ filtros.email }}" maxlength="100" placeholder="ej. usuario@dominio.com">
-                    {% if errores.email %}<span class="error-msg">{{ errores.email }}</span>{% endif %}
+                    <input
+                        type="text"
+                        id="filtro-email"
+                        name="email"
+                        value="{{ filtros.email }}"
+                        maxlength="100"
+                        placeholder="ej. usuario@dominio.com"
+                    >
+                    {% if errores.email %}
+                        <span class="error-msg">{{ errores.email }}</span>
+                    {% endif %}
                 </div>
 
                 <div class="form-group">
                     <label for="filtro-nombre-apellido">Nombre o apellido</label>
-                    <input type="text" id="filtro-nombre-apellido" name="nombre_apellido" value="{{ filtros.nombre_apellido }}" maxlength="100" placeholder="Buscar por nombre o apellido">
-                    {% if errores.nombre_apellido %}<span class="error-msg">{{ errores.nombre_apellido }}</span>{% endif %}
+                    <input
+                        type="text"
+                        id="filtro-nombre-apellido"
+                        name="nombre_apellido"
+                        value="{{ filtros.nombre_apellido }}"
+                        maxlength="100"
+                        placeholder="Buscar por nombre o apellido"
+                    >
+                    {% if errores.nombre_apellido %}
+                        <span class="error-msg">{{ errores.nombre_apellido }}</span>
+                    {% endif %}
                 </div>
 
                 <div class="form-group">
                     <label for="filtro-dni">DNI</label>
-                    <input type="text" id="filtro-dni" name="dni" value="{{ filtros.dni }}" inputmode="numeric" pattern="[0-9]{1,15}" maxlength="15" title="Solo números (máximo 15 dígitos)" placeholder="Solo números">
-                    {% if errores.dni %}<span class="error-msg">{{ errores.dni }}</span>{% endif %}
+                    <input
+                        type="text"
+                        id="filtro-dni"
+                        name="dni"
+                        value="{{ filtros.dni }}"
+                        inputmode="numeric"
+                        pattern="[0-9]{1,15}"
+                        maxlength="15"
+                        title="Solo números (máximo 15 dígitos)"
+                        placeholder="Solo números"
+                    >
+                    {% if errores.dni %}
+                        <span class="error-msg">{{ errores.dni }}</span>
+                    {% endif %}
                 </div>
 
                 <div class="form-group">
                     <label for="filtro-activo">Activo</label>
                     <select id="filtro-activo" name="activo">
-                        <option value="" {% if filtros.activo == "" %}selected{% endif %}>Todos</option>
-                        <option value="1" {% if filtros.activo == "1" %}selected{% endif %}>Sí</option>
-                        <option value="0" {% if filtros.activo == "0" %}selected{% endif %}>No</option>
+                        <option value="" {% if filtros.activo == "" %}selected{% endif %}>
+                            Todos
+                        </option>
+                        <option value="1" {% if filtros.activo == "1" %}selected{% endif %}>
+                            Sí
+                        </option>
+                        <option value="0" {% if filtros.activo == "0" %}selected{% endif %}>
+                            No
+                        </option>
                     </select>
                 </div>
 
@@ -60,7 +144,10 @@
                     <select id="filtro-rol" name="rol_id">
                         <option value="">Todos los roles</option>
                         {% for rol in roles %}
-                            <option value="{{ rol.idRol }}" {% if filtros.rol_id == rol.idRol %}selected{% endif %}>
+                            <option
+                                value="{{ rol.idRol }}"
+                                {% if filtros.rol_id == rol.idRol %}selected{% endif %}
+                            >
                                 {{ rol.nombre }}
                             </option>
                         {% endfor %}
@@ -72,7 +159,10 @@
                     <select id="filtro-sector" name="sector_id">
                         <option value="">Todos los sectores</option>
                         {% for sector in sectores %}
-                            <option value="{{ sector.idSector }}" {% if filtros.sector_id == sector.idSector %}selected{% endif %}>
+                            <option
+                                value="{{ sector.idSector }}"
+                                {% if filtros.sector_id == sector.idSector %}selected{% endif %}
+                            >
                                 {{ sector.nombre }}
                             </option>
                         {% endfor %}
@@ -82,31 +172,50 @@
                 <div class="form-group">
                     <label for="filtro-orden">Ordenar por</label>
                     <select id="filtro-orden" name="orden">
-                        <option value="fecha" {% if filtros.orden == "fecha" %}selected{% endif %}>Fecha de creación</option>
-                        <option value="apellido_nombre" {% if filtros.orden == "apellido_nombre" %}selected{% endif %}>Apellido y nombre</option>
-                        <option value="email" {% if filtros.orden == "email" %}selected{% endif %}>Correo electrónico</option>
+                        <option value="fecha" {% if filtros.orden == "fecha" %}selected{% endif %}>
+                            Fecha de creación
+                        </option>
+                        <option value="apellido_nombre" {% if filtros.orden == "apellido_nombre" %}selected{% endif %}>
+                            Apellido y nombre
+                        </option>
+                        <option value="email" {% if filtros.orden == "email" %}selected{% endif %}>
+                            Correo electrónico
+                        </option>
                     </select>
                 </div>
 
                 <div class="form-group">
                     <label for="filtro-sentido">Sentido</label>
                     <select id="filtro-sentido" name="sentido">
-                        <option value="asc" {% if filtros.sentido == "asc" %}selected{% endif %}>Ascendente</option>
-                        <option value="desc" {% if filtros.sentido == "desc" %}selected{% endif %}>Descendente</option>
+                        <option value="asc" {% if filtros.sentido == "asc" %}selected{% endif %}>
+                            Ascendente
+                        </option>
+                        <option value="desc" {% if filtros.sentido == "desc" %}selected{% endif %}>
+                            Descendente
+                        </option>
                     </select>
                 </div>
             </div>
 
             <div class="filtros-actions">
-                <a href="{{ url_for('usuarios.listado_usuarios.index') }}" class="btn btn-outline">Cerrar filtros</a>
-                <button type="submit" class="btn btn-primary">Aplicar filtros</button>
+                <a
+                    href="{{ url_for('usuarios.listado_usuarios.index') }}"
+                    class="btn btn-outline"
+                >
+                    Cerrar filtros
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    Aplicar filtros
+                </button>
             </div>
         </form>
     </section>
 
     <section aria-labelledby="usuarios-title">
         <div class="usuarios-toolbar">
-            <h2 id="usuarios-title">Usuarios registrados ({{ pagination.total_usuarios }})</h2>
+            <h2 id="usuarios-title">
+                Usuarios registrados ({{ pagination.total_usuarios }})
+            </h2>
         </div>
 
         {% if usuarios %}
@@ -135,13 +244,16 @@
                                     <em>Sin personal asociado</em>
                                 {% endif %}
                             </td>
+
                             <td>{{ personal.dni if personal else "-" }}</td>
+
                             <td>
                                 {{ usuario.email }}
                                 {% if usuario.isSystemAdmin %}
                                     <span class="badge-admin">Admin</span>
                                 {% endif %}
                             </td>
+
                             <td>
                                 {% if usuario.isActive %}
                                     Sí
@@ -149,8 +261,13 @@
                                     No
                                 {% endif %}
                             </td>
+
                             <td>{{ rol_nombre }}</td>
-                            <td>{{ usuario.inserted_at.strftime('%d/%m/%Y') if usuario.inserted_at else '-' }}</td>
+
+                            <td>
+                                {{ usuario.inserted_at.strftime('%d/%m/%Y') if usuario.inserted_at else '-' }}
+                            </td>
+
                             <td class="acciones-celda">
                                 <a
                                     class="btn btn-primary"
@@ -159,9 +276,20 @@
                                     Ver detalles
                                 </a>
 
-                                <form method="post" action="{{ url_for('usuarios.edicion_usuarios.edit') }}">
-                                    <input type="hidden" name="accion" value="seleccionar">
-                                    <input type="hidden" name="user_id" value="{{ usuario.id_user }}">
+                                <form
+                                    method="post"
+                                    action="{{ url_for('usuarios.edicion_usuarios.edit') }}"
+                                >
+                                    <input
+                                        type="hidden"
+                                        name="accion"
+                                        value="seleccionar"
+                                    >
+                                    <input
+                                        type="hidden"
+                                        name="user_id"
+                                        value="{{ usuario.id_user }}"
+                                    >
                                     <button type="submit">Editar</button>
                                 </form>
 
@@ -170,18 +298,26 @@
                                         <form
                                             method="post"
                                             action="{{ url_for('usuarios.listado_usuarios.desactivar') }}"
-                                            onsubmit="return confirm('¿Confirmás el bloqueo de este usuario?');"
+                                            data-confirm-message="¿Confirmás el bloqueo de este usuario?"
                                         >
-                                            <input type="hidden" name="user_id" value="{{ usuario.id_user }}">
+                                            <input
+                                                type="hidden"
+                                                name="user_id"
+                                                value="{{ usuario.id_user }}"
+                                            >
                                             <button type="submit">Bloquear</button>
                                         </form>
                                     {% else %}
                                         <form
                                             method="post"
                                             action="{{ url_for('usuarios.listado_usuarios.activar') }}"
-                                            onsubmit="return confirm('¿Confirmás el desbloqueo de este usuario?');"
+                                            data-confirm-message="¿Confirmás el desbloqueo de este usuario?"
                                         >
-                                            <input type="hidden" name="user_id" value="{{ usuario.id_user }}">
+                                            <input
+                                                type="hidden"
+                                                name="user_id"
+                                                value="{{ usuario.id_user }}"
+                                            >
                                             <button type="submit">Desbloquear</button>
                                         </form>
                                     {% endif %}
@@ -193,21 +329,35 @@
             </table>
 
             {% if pagination.total_paginas > 1 %}
-                <nav class="paginacion-nav" aria-label="Paginación de usuarios">
+                <nav
+                    class="paginacion-nav"
+                    aria-label="Paginación de usuarios"
+                >
                     <ul class="paginacion-lista">
                         {% if pagination.tiene_anterior %}
                             <li>
-                                <a class="btn" href="{{ url_for('usuarios.listado_usuarios.index', pagina=pagination.pagina_actual - 1, email=filtros.email, nombre_apellido=filtros.nombre_apellido, dni=filtros.dni, activo=filtros.activo, rol_id=filtros.rol_id or '', sector_id=filtros.sector_id or '', orden=filtros.orden, sentido=filtros.sentido) }}">
+                                <a
+                                    class="btn"
+                                    href="{{ url_for('usuarios.listado_usuarios.index', pagina=pagination.pagina_actual - 1, email=filtros.email, nombre_apellido=filtros.nombre_apellido, dni=filtros.dni, activo=filtros.activo, rol_id=filtros.rol_id or '', sector_id=filtros.sector_id or '', orden=filtros.orden, sentido=filtros.sentido) }}"
+                                >
                                     &laquo; Anterior
                                 </a>
                             </li>
                         {% endif %}
+
                         <li class="paginacion-info">
-                            Página <strong>{{ pagination.pagina_actual }}</strong> de <strong>{{ pagination.total_paginas }}</strong>
+                            Página
+                            <strong>{{ pagination.pagina_actual }}</strong>
+                            de
+                            <strong>{{ pagination.total_paginas }}</strong>
                         </li>
+
                         {% if pagination.tiene_siguiente %}
                             <li>
-                                <a class="btn" href="{{ url_for('usuarios.listado_usuarios.index', pagina=pagination.pagina_actual + 1, email=filtros.email, nombre_apellido=filtros.nombre_apellido, dni=filtros.dni, activo=filtros.activo, rol_id=filtros.rol_id or '', sector_id=filtros.sector_id or '', orden=filtros.orden, sentido=filtros.sentido) }}">
+                                <a
+                                    class="btn"
+                                    href="{{ url_for('usuarios.listado_usuarios.index', pagina=pagination.pagina_actual + 1, email=filtros.email, nombre_apellido=filtros.nombre_apellido, dni=filtros.dni, activo=filtros.activo, rol_id=filtros.rol_id or '', sector_id=filtros.sector_id or '', orden=filtros.orden, sentido=filtros.sentido) }}"
+                                >
                                     Siguiente &raquo;
                                 </a>
                             </li>
@@ -220,6 +370,31 @@
         {% endif %}
     </section>
 </div>
+
+<dialog
+    id="dialogo-confirmacion"
+    class="confirmacion-dialogo"
+    aria-labelledby="dialogo-confirmacion-titulo"
+>
+    <h2 id="dialogo-confirmacion-titulo">Confirmar operación</h2>
+    <p id="dialogo-confirmacion-mensaje"></p>
+
+    <div class="confirmacion-acciones">
+        <button
+            type="button"
+            id="dialogo-confirmacion-cancelar"
+            class="confirmacion-cancelar"
+        >
+            Cancelar
+        </button>
+        <button
+            type="button"
+            id="dialogo-confirmacion-aceptar"
+        >
+            Confirmar
+        </button>
+    </div>
+</dialog>
 
 <script src="{{ url_for('static', filename='js/usuarios/index.js') }}"></script>
 {% endblock %}

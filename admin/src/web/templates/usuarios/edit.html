@@ -1,9 +1,21 @@
-
 {% extends "layout.html" %}
+
+{% block title %}Editar usuario{% endblock %}
 
 {% block content %}
 <section aria-labelledby="editar-usuario-title">
     <h1 id="editar-usuario-title">Editar usuario</h1>
+
+    {% if errores %}
+        <div class="alert alert-danger" role="alert" aria-live="assertive">
+            <p>No se pudieron guardar los cambios:</p>
+            <ul>
+                {% for error in errores %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
 
     <form method="post" action="{{ url_for('usuarios.edicion_usuarios.edit') }}">
         <input type="hidden" name="accion" value="guardar">
@@ -14,7 +26,9 @@
                 type="email"
                 id="email"
                 name="email"
-                value="{{ usuario.email }}"
+                value="{{ valores.get('email', usuario.email) }}"
+                maxlength="254"
+                autocomplete="email"
                 required
             >
         </div>
@@ -25,7 +39,8 @@
                 type="text"
                 id="alias"
                 name="alias"
-                value="{{ usuario.alias }}"
+                value="{{ valores.get('alias', usuario.alias) }}"
+                autocomplete="username"
                 required
             >
         </div>
@@ -36,7 +51,9 @@
                 {% for rol in roles %}
                     <option
                         value="{{ rol.idRol }}"
-                        {% if rol.idRol == usuario.idRol %}selected{% endif %}
+                        {% if valores.get('rol_id', usuario.idRol|string)|string == rol.idRol|string %}
+                            selected
+                        {% endif %}
                     >
                         {{ rol.nombre }}
                     </option>
@@ -51,9 +68,11 @@
                 id="password"
                 name="password"
                 autocomplete="new-password"
+                minlength="8"
             >
             <small>
                 Dejá el campo vacío para conservar la contraseña actual.
+                Si la cambiás, debe tener al menos 8 caracteres.
             </small>
         </div>
 
@@ -62,17 +81,21 @@
                 type="checkbox"
                 id="is_system_admin"
                 name="is_system_admin"
-                {% if usuario.isSystemAdmin %}checked{% endif %}
+                {% if valores.get('is_system_admin', usuario.isSystemAdmin) %}
+                    checked
+                {% endif %}
             >
             <label for="is_system_admin">
                 Administrador del sistema
             </label>
         </div>
 
-        <button type="submit">Guardar cambios</button>
-        <a href="{{ url_for('usuarios.listado_usuarios.index') }}">
-            Cancelar
-        </a>
+        <div class="form-actions">
+            <button type="submit">Guardar cambios</button>
+            <a href="{{ url_for('usuarios.listado_usuarios.index') }}">
+                Cancelar
+            </a>
+        </div>
     </form>
 </section>
 {% endblock %}

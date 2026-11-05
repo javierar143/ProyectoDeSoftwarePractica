@@ -1,11 +1,18 @@
 """Servicios relacionados con la gestión de usuarios."""
 
+import re
 from datetime import datetime
 
+from sqlalchemy.exc import IntegrityError
+
+from src.core.database import db
 from src.core.models.Usuario import Usuario
 from src.core.repositories.usuarios import rol
 from src.core.repositories.usuarios import usuario as repo_usuario
 from src.core.security.password import hash_password
+
+
+PATRON_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 def get_all() -> list[Usuario]:
@@ -16,6 +23,26 @@ def get_all() -> list[Usuario]:
 def get_by_id(user_id: int) -> Usuario | None:
     """Obtiene un usuario por su identificador."""
     return repo_usuario.get_by_id(user_id)
+
+
+def _validar_email(email: str) -> str:
+    """Normaliza y valida el formato básico de un correo electrónico."""
+    email_limpio = email.strip()
+
+    if not PATRON_EMAIL.fullmatch(email_limpio):
+        raise ValueError("Ingresá un correo electrónico válido.")
+
+    return email_limpio
+
+
+def _validar_alias(alias: str) -> str:
+    """Normaliza y valida el alias."""
+    alias_limpio = alias.strip()
+
+    if not alias_limpio:
+        raise ValueError("El alias es obligatorio.")
+
+    return alias_limpio
 
 
 def create(
@@ -29,15 +56,16 @@ def create(
     """Crea un usuario si los datos y sus asociaciones son válidos.
 
     Raises:
-        ValueError: Si los datos son inválidos, el email ya existe,
-            el Personal ya tiene un usuario o el rol no es válido.
+        ValueError: Si los datos son inválidos o el email ya existe.
     """
-    email = email.strip()
-    alias = alias.strip()
+    email = _validar_email(email)
+    alias = _validar_alias(alias)
     rol_nombre = rol_nombre.strip()
 
-    if not email or "@" not in email or not alias or not password.strip():
-        raise ValueError("Completá correctamente los campos obligatorios.")
+    if not password or len(password) < 8:
+        raise ValueError(
+            "La contraseña debe tener al menos 8 caracteres."
+        )
 
     usuario_existente = repo_usuario.get_by_email(email)
     if usuario_existente is not None:
@@ -67,7 +95,13 @@ def create(
         idPersonal=personal_id,
     )
 
-    repo_usuario.create(nuevo_usuario)
+    try:
+        repo_usuario.create(nuevo_usuario)
+    except IntegrityError as error:
+        db.session.rollback()
+        raise ValueError(
+            "El email ya está registrado o existe una asociación inválida."
+        ) from error
 
     return nuevo_usuario
 
@@ -83,43 +117,54 @@ def update(
     """Actualiza los datos de un usuario existente.
 
     Raises:
-        ValueError: Si el email ya pertenece a otro usuario.
+        ValueError: Si los datos son inválidos o el email pertenece
+            a otro usuario.
     """
-    email = email.strip()
-    alias = alias.strip()
+    email = _validar_email(email)
+    alias = _validar_alias(alias)
+
+    if password and len(password) < 8:
+        raise ValueError(
+            "La nueva contraseña debe tener al menos 8 caracteres."
+        )
 
     usuario_actual = repo_usuario.get_by_id(user_id)
+
+    if usuario_actual is None:
+        return None
+
     email_existente = repo_usuario.get_by_email(email)
-    rol_encontrado = rol.get_by_id(rol_id)
 
-    email_disponible = (
-        email_existente is None
-        or email_existente.id_user == user_id
-    )
-
-    usuario_actualizado = None
-
-    if usuario_actual is not None and not email:
-        raise ValueError("El email es obligatorio.")
-
-    if usuario_actual is not None and not email_disponible:
+    if (
+        email_existente is not None
+        and email_existente.id_user != user_id
+    ):
         raise ValueError("El email ya está registrado.")
 
-    if usuario_actual is not None and rol_encontrado is not None:
-        usuario_actual.email = email
-        usuario_actual.alias = alias
-        usuario_actual.idRol = rol_encontrado.idRol
+    rol_encontrado = rol.get_by_id(rol_id)
 
-        if is_system_admin is not None:
-            usuario_actual.isSystemAdmin = is_system_admin
+    if rol_encontrado is None:
+        raise ValueError("El rol seleccionado no existe.")
 
-        if password:
-            usuario_actual.password_hash = hash_password(password)
+    usuario_actual.email = email
+    usuario_actual.alias = alias
+    usuario_actual.idRol = rol_encontrado.idRol
 
-        usuario_actual.updated_at = datetime.now()
-        usuario_actualizado = repo_usuario.update(usuario_actual)
+    if is_system_admin is not None:
+        usuario_actual.isSystemAdmin = is_system_admin
 
-    return usuario_actualizado
+    if password:
+        usuario_actual.password_hash = hash_password(password)
+
+    usuario_actual.updated_at = datetime.now()
+
+    try:
+        return repo_usuario.update(usuario_actual)
+    except IntegrityError as error:
+        db.session.rollback()
+        raise ValueError(
+            "El email ya está registrado."
+        ) from error
 
 
 def set_active(user_id: int, is_active: bool) -> Usuario | None:
@@ -156,14 +201,7 @@ def get_all_with_role() -> list[tuple[Usuario, str]]:
 
 
 def buscar_paginado(filtros: dict) -> tuple[list, int]:
-    """Obtiene los usuarios filtrados y paginados.
-
-    Args:
-        filtros: Filtros validados del listado.
-
-    Returns:
-        Una tupla con los usuarios de la página y el total de coincidencias.
-    """
+    """Obtiene los usuarios filtrados y paginados."""
     from src.core.repositories.usuarios import busqueda
     from src.core.services import configuracion
 
@@ -173,4 +211,3 @@ def buscar_paginado(filtros: dict) -> tuple[list, int]:
         filtros,
         config.elementos_por_pagina,
     )
-

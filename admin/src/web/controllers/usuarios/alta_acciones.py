@@ -1,6 +1,6 @@
 """Coordina las acciones disponibles en el alta de usuarios."""
 
-from flask import current_app, redirect, render_template, url_for
+from flask import current_app, flash, redirect, render_template, url_for
 
 from src.core.services.personal import personal as personal_service
 from src.core.services.usuarios import alta_conjunta, personal, rol, usuario
@@ -26,7 +26,10 @@ def _obtener_datos(form) -> dict[str, str]:
         "personal_id",
         "is_system_admin",
     )
-    return {campo: form.get(campo, "").strip() for campo in campos}
+    return {
+        campo: form.get(campo, "").strip()
+        for campo in campos
+    }
 
 
 def _obtener_catalogos() -> dict:
@@ -63,6 +66,7 @@ def mostrar_formulario(
         "error": error,
         "form_data": form_data or {},
     }
+
     return render_template("usuarios/new.html", **contexto), status
 
 
@@ -90,7 +94,7 @@ def crear_usuario(form):
             mostrar_existente=True,
             error="No se encontró el Personal asociado al usuario.",
             form_data=datos,
-            status=400,
+            status=422,
         )
 
     if not validate_user_data(
@@ -105,7 +109,7 @@ def crear_usuario(form):
             mostrar_existente=True,
             error="Completá correctamente todos los campos obligatorios.",
             form_data=datos,
-            status=400,
+            status=422,
         )
 
     try:
@@ -124,10 +128,11 @@ def crear_usuario(form):
             mostrar_existente=True,
             error=str(excepcion),
             form_data=datos,
-            status=400,
+            status=422,
         )
     except Exception:
         current_app.logger.exception("Error al crear un usuario")
+
         return mostrar_formulario(
             dni=dni,
             persona_encontrada=persona,
@@ -136,6 +141,8 @@ def crear_usuario(form):
             form_data=datos,
             status=500,
         )
+
+    flash("El usuario se creó correctamente.", "success")
 
     return redirect(url_for("usuarios.listado_usuarios.index"))
 
@@ -150,7 +157,7 @@ def crear_personal_usuario(form):
             mostrar_nuevo=True,
             error=" ".join(errores),
             form_data=datos,
-            status=400,
+            status=422,
         )
 
     try:
@@ -163,7 +170,8 @@ def crear_personal_usuario(form):
             id_sector=(
                 int(datos["idSector"])
                 if datos["idSector"].isdigit()
-                else None),
+                else None
+            ),
             email=datos["email"],
             alias=datos["alias"],
             password=datos["password"],
@@ -175,17 +183,23 @@ def crear_personal_usuario(form):
             mostrar_nuevo=True,
             error=str(excepcion),
             form_data=datos,
-            status=400,
+            status=422,
         )
     except Exception:
         current_app.logger.exception(
             "Error al crear Personal y Usuario conjuntamente"
         )
+
         return mostrar_formulario(
             mostrar_nuevo=True,
             error="No se pudo completar el alta. No se guardaron los cambios.",
             form_data=datos,
             status=500,
         )
+
+    flash(
+        "El Personal y el usuario se crearon correctamente.",
+        "success",
+    )
 
     return redirect(url_for("usuarios.listado_usuarios.index"))
