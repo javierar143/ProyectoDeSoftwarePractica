@@ -1,3 +1,4 @@
+
 """Servicios relacionados con la gestión de usuarios."""
 
 import re
@@ -62,22 +63,25 @@ def create(
     alias = _validar_alias(alias)
     rol_nombre = rol_nombre.strip()
 
-    if not password or len(password) < 8:
+    if not password.strip() or len(password) < 8:
         raise ValueError(
             "La contraseña debe tener al menos 8 caracteres."
         )
 
     usuario_existente = repo_usuario.get_by_email(email)
+
     if usuario_existente is not None:
         raise ValueError("El email ya está registrado.")
 
     usuario_por_personal = repo_usuario.get_by_personal_id(personal_id)
+
     if usuario_por_personal is not None:
         raise ValueError(
             "El Personal seleccionado ya tiene un usuario asociado."
         )
 
     rol_encontrado = rol.get_by_name(rol_nombre)
+
     if rol_encontrado is None:
         raise ValueError("El rol seleccionado no existe.")
 
@@ -123,7 +127,7 @@ def update(
     email = _validar_email(email)
     alias = _validar_alias(alias)
 
-    if password and len(password) < 8:
+    if password and (not password.strip() or len(password) < 8):
         raise ValueError(
             "La nueva contraseña debe tener al menos 8 caracteres."
         )

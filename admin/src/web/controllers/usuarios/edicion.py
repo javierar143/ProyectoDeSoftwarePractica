@@ -106,6 +106,7 @@ def _save_user_changes():
         "alias": request.form.get("alias", "").strip(),
         "rol_id": request.form.get("rol_id", "").strip(),
         "password": request.form.get("password", ""),
+        "confirmar_password": request.form.get("confirmar_password", ""),
         "is_system_admin": request.form.get("is_system_admin") == "on",
     }
 
@@ -114,7 +115,13 @@ def _save_user_changes():
         valores["alias"],
         valores["rol_id"],
         valores["password"],
+        valores["confirmar_password"]
     )
+
+    # Validar que el email no esté ocupado por otra cuenta para evitar el Error 500
+    usuario_existente = usuario.get_by_email(valores["email"])
+    if usuario_existente and usuario_existente.id_user != user_id:
+        errores.append("El correo electrónico ya está registrado en otra cuenta.")
 
     if errores:
         current_app.logger.warning(

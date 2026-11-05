@@ -1,3 +1,4 @@
+
 """Servicios relacionados con la autenticación de la API."""
 
 from datetime import datetime, timedelta, timezone
@@ -34,8 +35,9 @@ def login(email: str, password: str) -> str | None:
     return token
 
 
-    #Seguridad: almacenamos solamente el hash del token; si alguien accede a la base de datos, 
-    #no obtiene directamente el bearer token.
+    # Seguridad: almacenamos solamente el hash del token; si alguien
+    # accede a la base de datos, no obtiene directamente el bearer token.
+
 
 def get_authenticated_user(token: str) -> Usuario | None:
     """Obtiene el usuario asociado a un token válido y no expirado."""
@@ -49,6 +51,9 @@ def get_authenticated_user(token: str) -> Usuario | None:
 
         if stored_token.revoked_at is None and stored_token.expires_at > now:
             user = usuario.get_by_id(stored_token.id_user)
+
+            if user is not None and not user.isActive:
+                user = None
 
     return user
 

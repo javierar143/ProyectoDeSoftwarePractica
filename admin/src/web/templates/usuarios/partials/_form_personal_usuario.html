@@ -13,6 +13,7 @@
                 value="{{ form_data.get('dni', '') }}"
                 inputmode="numeric"
                 required
+                pattern="[0-9]{7,15}" minlength="7" maxlength="15"
             >
         </div>
 
@@ -25,6 +26,7 @@
                 value="{{ form_data.get('nombre', '') }}"
                 autocomplete="given-name"
                 required
+                pattern="[a-zA-ZÁÉÍÓÚÜÑáéíóúüñ\s]+" minlength="2" maxlength="100"
             >
         </div>
 
@@ -37,6 +39,7 @@
                 value="{{ form_data.get('apellido', '') }}"
                 autocomplete="family-name"
                 required
+                pattern="[a-zA-ZÁÉÍÓÚÜÑáéíóúüñ\s]+" minlength="2" maxlength="100"
             >
         </div>
 
