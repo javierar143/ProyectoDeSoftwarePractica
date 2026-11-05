@@ -1,3 +1,4 @@
+
 """Controlador web para la edición de usuarios."""
 
 from flask import (
@@ -11,6 +12,8 @@ from flask import (
     session,
     url_for,
 )
+
+from werkzeug.exceptions import HTTPException
 
 from src.core.security.permissions import require_permission
 from src.core.services.usuarios import rol, usuario
@@ -115,13 +118,8 @@ def _save_user_changes():
         valores["alias"],
         valores["rol_id"],
         valores["password"],
-        valores["confirmar_password"]
+        valores["confirmar_password"],
     )
-
-    # Validar que el email no esté ocupado por otra cuenta para evitar el Error 500
-    usuario_existente = usuario.get_by_email(valores["email"])
-    if usuario_existente and usuario_existente.id_user != user_id:
-        errores.append("El correo electrónico ya está registrado en otra cuenta.")
 
     if errores:
         current_app.logger.warning(
@@ -157,6 +155,8 @@ def _save_user_changes():
             errores=[str(error)],
             status=422,
         )
+    except HTTPException:
+        raise
     except Exception:
         current_app.logger.exception(
             "Error al actualizar el usuario ID %s",
