@@ -1,4 +1,3 @@
-
 {% extends "layout.html" %}
 
 {% block content %}
@@ -30,9 +29,9 @@
     </section>
 
     <section
-    id="panel-nuevo"
-    data-mostrar-inicial="{{ 'true' if mostrar_nuevo else 'false' }}"
-    {% if not mostrar_nuevo %}hidden{% endif %}
+        id="panel-nuevo"
+        data-mostrar-inicial="{{ 'true' if mostrar_nuevo else 'false' }}"
+        {% if not mostrar_nuevo %}hidden{% endif %}
     >
         {% include "usuarios/partials/_form_personal_usuario.html" %}
     </section>
@@ -40,4 +39,5 @@
 
 <script src="{{ url_for('static', filename='js/usuarios/nuevo.js') }}"></script>
 <script src="{{ url_for('static', filename='js/personal/form.js') }}"></script>
+<script src="{{ url_for('static', filename='js/usuarios/validar_password.js') }}"></script>
 {% endblock %}

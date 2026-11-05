@@ -10,6 +10,7 @@
             value="{{ dni }}"
             required
             inputmode="numeric"
+            pattern="[0-9]{7,15}" minlength="7" maxlength="15"
         >
     </div>
 
@@ -81,6 +82,21 @@
                     type="password"
                     id="password-existente"
                     name="password"
+                    minlength="8"
+                    required
+                    autocomplete="new-password"
+                >
+            </div>
+
+            <div>
+                <label for="confirmar-password-existente">
+                    Confirmar contraseña
+                </label>
+                <input
+                    type="password"
+                    id="confirmar-password-existente"
+                    name="confirmar_password"
+                    minlength="8"
                     required
                     autocomplete="new-password"
                 >
@@ -103,7 +119,6 @@
                 <select id="rol-nuevo" name="rol_nombre" required>
                     <option value="">Seleccione un rol</option>
                     {% for rol in roles %}
-                        {# Ocultamos el rol de Administrador de la lista #}
                         {% if rol.nombre != 'Administrador' %}
                             <option
                                 value="{{ rol.nombre }}"
@@ -119,24 +134,24 @@
             </div>
         </fieldset>
 
-    <div class="form-actions">
-        <button type="submit" class="btn btn-primary">
-            Crear usuario
-        </button>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                Crear Usuario
+            </button>
 
-        <a
-            class="btn btn-outline"
-            href="{{ url_for('usuarios.alta_usuarios.new') }}"
-        >
-            Cancelar
-        </a>
+            <a
+                class="btn btn-outline"
+                href="{{ url_for('usuarios.alta_usuarios.new') }}"
+            >
+                Cancelar
+            </a>
 
-        <a
-            class="btn btn-outline"
-            href="{{ url_for('usuarios.listado_usuarios.index') }}"
-        >
-            Volver al listado
-        </a>
-    </div>
+            <a
+                class="btn btn-outline"
+                href="{{ url_for('usuarios.listado_usuarios.index') }}"
+            >
+                Volver al listado
+            </a>
+        </div>
     </form>
 {% endif %}
