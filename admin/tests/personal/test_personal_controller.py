@@ -13,40 +13,34 @@ def app():
     with app.app_context():
         yield app
 
-def test_crear_personal_dni_duplicado_retorna_409(app):
+@patch('src.web.controllers.personal.personal.require_permission')
+def test_crear_personal_dni_duplicado_retorna_409(mock_require_permission, app):
     """Verifica que el controlador retorne HTTP 409 (Conflict) ante un DNI duplicado."""
     client = app.test_client()
     
-    # usamos patch nativo de Python con el bloque "with"
-    with patch('src.core.services.usuarios.rol.get_by_id') as mock_rol, \
-         patch('src.core.services.usuarios.usuario.get_by_id') as mock_usuario:
-         
-        mock_rol.return_value = type('obj', (object,), {'nombre': 'Servicio de Alimentación'})
-        mock_usuario.return_value = type('obj', (object,), {'idRol': 1, 'idSector': 1})
+    # Simulamos que el permiso pasa sin abortar
+    mock_require_permission.return_value = None
+    
+    # Creamos la primera persona
+    service_personal.create(
+        dni="88888888", nombre="Original", apellido="Uno", 
+        id_tipo_personal=1, id_tipo_menu=1, id_sector=1
+    )
+    
+    # Intentamos crear con el mismo DNI
+    datos_form = {
+        "dni": "88888888",
+        "nombre": "Copia",
+        "apellido": "Dos",
+        "idTipoPersonal": "1",
+        "idTipoMenu": "1",
+        "idSector": "1"
+    }
+    
+    with client.session_transaction() as sess:
+        sess["user_id"] = 99
         
-        # Creamos la primera persona en la base de datos de prueba
-        service_personal.create(
-            dni="88888888", nombre="Original", apellido="Uno", 
-            id_tipo_personal=1, id_tipo_menu=1, id_sector=1
-        )
-        
-        # Preparamos el formulario intentando usar el MISMO DNI
-        datos_form = {
-            "dni": "88888888",
-            "nombre": "Copia",
-            "apellido": "Dos",
-            "idTipoPersonal": "1",
-            "idTipoMenu": "1",
-            "idSector": "1"
-        }
-        
-        # simulamos la sesión del usuario
-        with client.session_transaction() as sess:
-            sess["user_id"] = 99
-            
-        # Hacemos el POST a la ruta
-        response = client.post('/personal/nuevo', data=datos_form)
-        
-        # El servidor debe retornar 409
-        assert response.status_code == 409
-        assert b"Ya existe una persona registrada con ese DNI" in response.data
+    response = client.post('/personal/nuevo', data=datos_form)
+    
+    assert response.status_code == 409
+    assert b"Ya existe una persona registrada con ese DNI" in response.data

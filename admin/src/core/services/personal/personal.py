@@ -8,6 +8,8 @@ from src.core.models.TipoMenu import TipoMenu
 from src.core.repositories.personal import personal as repo_personal
 from src.core.models.Sector import Sector
 from src.core.models.SectorCompuestoPorPersonal import SectorCompuestoPorPersonal
+from src.core.services.usuarios import usuario as service_usuario
+from src.core.services.usuarios import permiso as service_permiso
 import math
 from flask import current_app
 from sqlalchemy import or_, func, desc, asc
@@ -34,8 +36,15 @@ def create(
     id_tipo_personal: int,
     id_tipo_menu: int,
     id_sector: int | None = None,
+    user_id: int | None = None,
 ) -> Personal | None:
     """Crea una persona validando previamente la unicidad del DNI y gestionando la asignacion de sector si corresponde."""
+
+    # fuerzo el sector si el usuario no tiene permiso
+    sector_forzado = _obtener_sector_forzado(user_id)
+    if sector_forzado is not None:
+        id_sector = sector_forzado
+
     persona_existente = repo_personal.get_by_dni(dni)
     if persona_existente is not None:
         current_app.logger.warning(f"Intento de registro fallido: El DNI {dni} ya existe en el sistema.")
@@ -80,8 +89,15 @@ def update(
     id_tipo_personal: int,
     id_tipo_menu: int,
     id_sector: int | None = None,
+    user_id: int | None = None,
 ) -> Personal | None:
     """Modifica los datos de una persona y actualiza su asignacion de sector."""
+
+    # fuerzo el sector si el usuario no tiene permiso 
+    sector_forzado = _obtener_sector_forzado(user_id)
+    if sector_forzado is not None:
+        id_sector = sector_forzado
+
     persona_actual = repo_personal.get_by_id(id_personal)
     if persona_actual is None:
         return None
@@ -154,14 +170,19 @@ def search(
     direccion: str = "asc",
     page: int = 1,
     per_page: int = 10,
+    user_id: int | None = None,
 ) -> dict:
     """Orquesta la búsqueda delegando en el repositorio y estructurando la paginación."""
+
+    # calculo el sector forzado a nivel de servicio
+    sector_forzado_jefe = _obtener_sector_forzado(user_id)
+    
     elementos, total = repo_personal.search(
         texto_busqueda=texto_busqueda,
         dni=dni,
         id_tipo_personal=id_tipo_personal,
         id_sector=id_sector,
-        sector_forzado_jefe=sector_forzado_jefe,
+        sector_forzado_jefe=sector_forzado_jefe, 
         estado=estado,
         ordenar_por=ordenar_por,
         direccion=direccion,
@@ -203,3 +224,20 @@ def eliminar_personal(id_personal: int) -> tuple[bool, str]:
         repo_personal.eliminar(persona)
         current_app.logger.info(f"Personal eliminado exitosamente: {persona.nombre} {persona.apellido} (DNI: {persona.dni}).")
         return True, "eliminado"
+
+def _obtener_sector_forzado(user_id: int | None) -> int | None:
+    """ Obtiene el sector forzado para un usuario si es Jefe de sector y no tiene permiso de ver todo."""
+    if not user_id:
+        return None
+        
+    usuario_actual = service_usuario.get_by_id(user_id)
+    if not usuario_actual:
+        return None
+
+    # Chequeo por permiso, no por el nombre del rol
+    puede_ver_todo = service_permiso.user_has_permission(user_id, "personal_manage_all_sectors")
+    
+    if not puede_ver_todo and usuario_actual.idSector is not None:
+        return usuario_actual.idSector
+        
+    return None
