@@ -13,7 +13,7 @@
         <small><em>Nota: Si es residente, el id_sector puede quedar vacío.</em></small>
     </div>
 
-    <form action="{{ url_for('personal.importar_procesar') }}" method="POST" enctype="multipart/form-data">
+    <form action="{{ url_for('personal_csv.importar_procesar') }}" method="POST" enctype="multipart/form-data">
         <div style="margin-bottom: 1.5rem;">
             <label for="archivo_csv" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Seleccionar archivo (.csv):</label>
             <input type="file" id="archivo_csv" name="archivo_csv" accept=".csv" required style="width: 100%; padding: 0.5rem;">
