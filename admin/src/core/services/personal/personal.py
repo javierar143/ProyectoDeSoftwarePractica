@@ -241,3 +241,16 @@ def _obtener_sector_forzado(user_id: int | None) -> int | None:
         return usuario_actual.idSector
         
     return None
+
+def obtener_sector_forzado(user_id: int | None) -> int | None:
+    """Expone la regla de negocio del sector forzado para los controladores."""
+    return _obtener_sector_forzado(user_id)
+
+
+def es_residente(id_tipo_personal: int) -> bool:
+    """Indica si el tipo de personal corresponde a Residente."""
+    tipos = {
+        t.idTipoPersonal: t.nombre.lower()
+        for t in repo_personal.get_tipos_personal()
+    }
+    return "residente" in tipos.get(id_tipo_personal, "")

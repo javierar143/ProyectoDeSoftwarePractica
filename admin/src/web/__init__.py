@@ -21,6 +21,7 @@ from src.web.controllers.pedidos.api_pedidos import (
 )
 from src.web.controllers.personal.personal import personal_bp
 from src.web.controllers.personal.personal_csv import personal_csv_bp
+from src.web.controllers.personal.api_personal import api_personal_controller
 from src.web.controllers.sectores.api_sectores import api_sectores_bp
 from src.web.controllers.sectores.sectores import sectores_bp
 from src.web.controllers.usuarios import usuarios_controller
@@ -42,6 +43,7 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(usuarios_controller)
     app.register_blueprint(personal_bp)
     app.register_blueprint(personal_csv_bp)
+    app.register_blueprint(api_personal_controller)
     app.register_blueprint(sectores_bp)
     app.register_blueprint(api_sectores_bp)
 
