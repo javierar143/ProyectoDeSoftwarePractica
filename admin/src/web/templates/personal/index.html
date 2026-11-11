@@ -7,7 +7,7 @@
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <h2>Gestión de Personal</h2>
         <div>
-            <a href="{{ url_for('personal.importar_form') }}" style="margin-right: 15px; color: #2563eb; text-decoration: none; font-weight: bold;">
+            <a href="{{ url_for('personal_csv.importar_form') }}" style="margin-right: 15px; color: #2563eb; text-decoration: none; font-weight: bold;">
                 + Importar CSV
             </a>
             <a href="{{ url_for('personal.nuevo_form') }}" style="color: #2563eb; text-decoration: none; font-weight: bold;">
@@ -76,7 +76,6 @@
             <caption>Listado de personal del hospital</caption>
             <thead>
                 <tr style="background-color: #f9f9f9;">
-                    <!-- Columna DNI Ordenable -->
                     <th scope="col" style="border: 1px solid #ccc; padding: 0.5rem;">
                         {% set dir_dni = 'desc' if (filtros.ordenar_por == 'dni' and filtros.direccion == 'asc') else 'asc' %}
                         <a href="{{ url_for('personal.index', q=filtros.q, dni=filtros.dni, id_tipo_personal=filtros.id_tipo_personal, id_sector=filtros.id_sector, estado=filtros.estado, ordenar_por='dni', direccion=dir_dni) }}">
@@ -84,7 +83,6 @@
                         </a>
                     </th>
 
-                    <!-- Columna Apellido y Nombre Ordenable -->
                     <th scope="col" style="border: 1px solid #ccc; padding: 0.5rem;">
                         {% set dir_nom = 'desc' if (filtros.ordenar_por == 'nombre_apellido' and filtros.direccion == 'asc') else 'asc' %}
                         <a href="{{ url_for('personal.index', q=filtros.q, dni=filtros.dni, id_tipo_personal=filtros.id_tipo_personal, id_sector=filtros.id_sector, estado=filtros.estado, ordenar_por='nombre_apellido', direccion=dir_nom) }}">
@@ -97,7 +95,6 @@
                     <th scope="col" style="border: 1px solid #ccc; padding: 0.5rem;">Tipo de Menú</th>
                     <th scope="col" style="border: 1px solid #ccc; padding: 0.5rem;">Estado</th>
 
-                    <!-- Columna Fecha Ordenable -->
                     <th scope="col" style="border: 1px solid #ccc; padding: 0.5rem;">
                         {% set dir_fec = 'desc' if (filtros.ordenar_por == 'fecha' and filtros.direccion == 'asc') else 'asc' %}
                         <a href="{{ url_for('personal.index', q=filtros.q, dni=filtros.dni, id_tipo_personal=filtros.id_tipo_personal, id_sector=filtros.id_sector, estado=filtros.estado, ordenar_por='fecha', direccion=dir_fec) }}">
@@ -135,15 +132,13 @@
                         <td style="border: 1px solid #ccc; padding: 0.5rem; text-align: right;">
                             <a href="{{ url_for('personal.editar_form', id=p.idPersonal) }}">Editar</a>
                             {% if p.isActive %}
-                                <!-- Botón de Eliminar (Baja logica) -->
-                                <form action="{{ url_for('personal.eliminar', id=p.idPersonal) }}" method="POST" style="display: inline;" onsubmit="return confirm('¿Confirmar la eliminación del personal?');">
+                                <form action="{{ url_for('personal.eliminar', id=p.idPersonal) }}" method="POST" style="display: inline;" data-confirm-message="¿Confirmar la eliminación o baja lógica de {{ p.apellido }}, {{ p.nombre }}?">
                                     <button type="submit" style="background: none; border: none; color: #b91c1c; cursor: pointer; text-decoration: underline;">
                                         Eliminar
                                     </button>
                                 </form>
                             {% else %}
-                               <!-- Botón de Activar (Se mantiene igual) -->
-                                <form action="{{ url_for('personal.activar', id=p.idPersonal) }}" method="POST" style="display: inline;" onsubmit="return confirm('¿Confirmar la reactivación?');">
+                                <form action="{{ url_for('personal.activar', id=p.idPersonal) }}" method="POST" style="display: inline;" data-confirm-message="¿Confirmar la reactivación de {{ p.apellido }}, {{ p.nombre }}?">
                                     <button type="submit" style="background: none; border: none; color: #16a34a; cursor: pointer; text-decoration: underline;">
                                         Activar
                                     </button>
@@ -176,5 +171,18 @@
     {% else %}
         <p>No se encontró personal con los filtros aplicados.</p>
     {% endif %}
+
+    <!-- Modal de confirmación sin usar confirm() nativo -->
+    <dialog id="modalConfirmacion" style="border: 1px solid #ccc; border-radius: 8px; padding: 1.5rem; max-width: 400px;">
+        <p id="mensajeConfirmacion" style="margin-bottom: 1.5rem; font-weight: bold;"></p>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+            <button type="button" id="btnCancelarModal" style="padding: 0.4rem 0.8rem; cursor: pointer;">Cancelar</button>
+            <button type="button" id="btnConfirmarModal" style="padding: 0.4rem 0.8rem; background-color: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer;">Confirmar</button>
+        </div>
+    </dialog>
 </section>
+
+<script src="{{ url_for('static', filename='js/personal/index.js') }}"></script>
 {% endblock %}
+
+

@@ -322,27 +322,31 @@ def test_eliminar_personal_con_historial(mock_tiene_historial, app):
         ).fetchone()
         assert resultado[0] is False  # is_deleted es False
 
-def test_search_alcance_jefe_sector(app):
-    """Verifica que si se pasa sector_forzado_jefe, devuelva sus fijos y todos los residentes."""
-    # crear Fijo en Sector 1 (Guardia) -> EL JEFE DEL SECTOR 1 LO DEBE VER
+@patch("src.core.services.personal.personal._obtener_sector_forzado")
+def test_search_alcance_jefe_sector(mock_sector_forzado, app):
+    """Verifica que si se fuerza el sector, devuelva sus fijos y todos los residentes."""
+    # No forzar sectores al crear los datos de prueba.
+    mock_sector_forzado.return_value = None
+
+    # crear Fijo en Sector 1 (Guardia) -> LO DEBE VER
     service_personal.create(dni="11111111", nombre="Fijo", apellido="Guardia", id_tipo_personal=1, id_tipo_menu=1, id_sector=1)
     
-    # crear Fijo en Sector 2 (Ej: Pediatría) -> EL JEFE DEL SECTOR 1 NO LO DEBE VER
+    # crear Fijo en Sector 2 (Pediatría) -> NO LO DEBE VER
     db.session.add(Sector(idSector=2, nombre="Pediatría", isActive=True))
     db.session.commit()
     service_personal.create(dni="22222222", nombre="Fijo", apellido="Pediatria", id_tipo_personal=1, id_tipo_menu=1, id_sector=2)
     
-    # crear Residente (Sector None) -> EL JEFE DEL SECTOR 1 LO DEBE VER (Todos ven residentes)
+    # crear Residente -> LO DEBE VER
     service_personal.create(dni="33333333", nombre="Resi", apellido="Dente", id_tipo_personal=2, id_tipo_menu=1)
 
-    # ejecutamos la búsqueda forzando el sector 1 (simulando al Jefe de Guardia)
-    resultado_paginado = service_personal.search(sector_forzado_jefe=1)
+    # Simulamos que el usuario que consulta tiene forzado el sector 1.
+    # Se configura después de crear los datos para no alterar sus sectores.
+    mock_sector_forzado.return_value = 1
+    resultado_paginado = service_personal.search(user_id=99)
     resultados = resultado_paginado["items"]
-    total = resultado_paginado["total"]
     
-    #aserciones
-    assert total == 2  # debe traer solo 2 personas de las 3 creadas
+    assert resultado_paginado["total"] == 2
     dnis_encontrados = [p.dni for p in resultados]
-    assert "11111111" in dnis_encontrados # Ve al fijo de Guardia
-    assert "33333333" in dnis_encontrados # Ve al residente
-    assert "22222222" not in dnis_encontrados # NO ve al fijo de Pediatría
+    assert "11111111" in dnis_encontrados 
+    assert "33333333" in dnis_encontrados 
+    assert "22222222" not in dnis_encontrados

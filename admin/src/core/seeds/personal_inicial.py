@@ -61,7 +61,6 @@ PERSONAL_INICIAL = (
 )
 
 
-from src.core.models.SectorCompuestoPorPersonal import SectorCompuestoPorPersonal
 
 def load_personal_inicial() -> None:
     """Carga el personal inicial y solo las cuentas expresamente definidas."""

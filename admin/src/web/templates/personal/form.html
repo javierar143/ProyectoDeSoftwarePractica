@@ -16,7 +16,11 @@
         </section>
     {% endif %}
 
-    <form method="POST" action="{{ url_for('personal.editar', id=persona.idPersonal) if persona else url_for('personal.nuevo') }}">
+    <section id="erroresCliente" aria-label="Errores de validación en cliente" style="color: red; margin-bottom: 1rem; display: none;">
+        <ul id="listaErroresCliente"></ul>
+    </section>
+
+    <form id="formPersonal" method="POST" action="{{ url_for('personal.editar', id=persona.idPersonal) if persona else url_for('personal.nuevo') }}">
         <div>
             <label for="dni">DNI *</label><br>
             <input 
@@ -24,7 +28,7 @@
                 id="dni" 
                 name="dni" 
                 required 
-                maxlength="10"
+                inputmode="numeric"
                 value="{{ valores.dni if valores else (persona.dni if persona else '') }}"
             >
         </div>

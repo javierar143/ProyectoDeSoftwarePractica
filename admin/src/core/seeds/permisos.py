@@ -1,10 +1,11 @@
-"""Carga los permisos iniciales de la aplicación."""
+"""Carga los permisos iniciales de la aplicación y los asigna a los roles."""
+
+from sqlalchemy import select
 
 from src.core.database import db
 from src.core.models.Permiso import Permiso
 from src.core.models.Rol import Rol
 from src.core.models.RolPoseePermiso import RolPoseePermiso
-from sqlalchemy import select
 
 
 PERMISOS_USUARIOS = (
@@ -14,38 +15,64 @@ PERMISOS_USUARIOS = (
     "user_destroy",
 )
 
+PERMISOS_PERSONAL = (
+    "personal_index",
+    "personal_new",
+    "personal_update",
+    "personal_destroy",
+    "personal_import",
+    "personal_create_residente",
+    "personal_manage_all_sectors",
+)
+
+PERMISOS_POR_ROL = {
+    "Administrador": PERMISOS_USUARIOS + PERMISOS_PERSONAL,
+    "Servicio de Alimentación": PERMISOS_PERSONAL,
+    "Jefe de Servicio": (
+        "personal_index",
+        "personal_new",
+        "personal_update",
+        "personal_destroy",
+        "personal_import",
+    ),
+    "Sector Comedor": (
+        "personal_index",
+        "personal_manage_all_sectors",
+    ),
+}
+
 
 def load_permisos() -> None:
-    """Crea los permisos y los asigna al rol Administrador."""
-    rol_admin = db.session.execute(
-        select(Rol).where(Rol.nombre == "Administrador")
-    ).scalar_one_or_none()
-
-    if rol_admin is None:
-        raise ValueError("No existe el rol Administrador.")
-
-    for nombre in PERMISOS_USUARIOS:
-        permiso = db.session.execute(
-            select(Permiso).where(Permiso.nombre == nombre)
+    """Crea los permisos y los asigna a cada rol de forma idempotente."""
+    for nombre_rol, nombres_permisos in PERMISOS_POR_ROL.items():
+        rol = db.session.execute(
+            select(Rol).where(Rol.nombre == nombre_rol)
         ).scalar_one_or_none()
 
-        if permiso is None:
-            permiso = Permiso(nombre=nombre)
-            db.session.add(permiso)
-            db.session.flush()
+        if rol is None:
+            raise ValueError(f"No existe el rol {nombre_rol}.")
 
-        asociacion = db.session.get(
-            RolPoseePermiso,
-            (rol_admin.idRol, permiso.idPermiso),
-        )
+        for nombre in nombres_permisos:
+            permiso = db.session.execute(
+                select(Permiso).where(Permiso.nombre == nombre)
+            ).scalar_one_or_none()
 
-        if asociacion is None:
-            db.session.add(
-                RolPoseePermiso(
-                    idRol=rol_admin.idRol,
-                    idPermiso=permiso.idPermiso,
-                )
+            if permiso is None:
+                permiso = Permiso(nombre=nombre)
+                db.session.add(permiso)
+                db.session.flush()
+
+            asociacion = db.session.get(
+                RolPoseePermiso,
+                (rol.idRol, permiso.idPermiso),
             )
 
-    db.session.commit()
+            if asociacion is None:
+                db.session.add(
+                    RolPoseePermiso(
+                        idRol=rol.idRol,
+                        idPermiso=permiso.idPermiso,
+                    )
+                )
 
+    db.session.commit()
