@@ -1,8 +1,7 @@
 """Repositorio para la persistencia y consulta de personal."""
 
 from datetime import datetime
-from sqlalchemy import select, delete, or_, asc, desc, func
-from sqlalchemy import select, delete, exists
+from sqlalchemy import select, delete, or_, asc, desc, func, exists
 
 from src.core.database import db
 from src.core.models.Personal import Personal
@@ -16,10 +15,14 @@ from src.core.models.Entrega import Entrega
 
 def get_all(solo_activos: bool = False) -> list[Personal]:
     """Obtiene todo el personal ordenado por apellido y nombre."""
-    statement = select(Personal).where(Personal.is_deleted.is_(False)).order_by(Personal.apellido, Personal.nombre)
+    statement = (
+        select(Personal)
+        .where(Personal.is_deleted.is_(False))
+        .order_by(Personal.apellido, Personal.nombre)
+    )
     if solo_activos:
         statement = statement.where(Personal.isActive.is_(True))
-    return db.session.execute(statement).scalars().all()
+    return list(db.session.execute(statement).scalars().all())
 
 
 def get_by_id(id_personal: int) -> Personal | None:
@@ -71,19 +74,22 @@ def eliminar(personal: Personal) -> None:
 def get_tipos_personal() -> list[TipoPersonal]:
     """Obtiene el catálogo de tipos de personal para los formularios."""
     statement = select(TipoPersonal).order_by(TipoPersonal.nombre)
-    return db.session.execute(statement).scalars().all()
+    return list(db.session.execute(statement).scalars().all())
 
 
 def get_tipos_menu() -> list[TipoMenu]:
     """Obtiene el catálogo de tipos de menú para los formularios."""
     statement = select(TipoMenu).order_by(TipoMenu.nombre)
-    return db.session.execute(statement).scalars().all()
+    return list(db.session.execute(statement).scalars().all())
 
 def get_sector_asignado(id_personal: int) -> Sector | None:
     """Obtiene el sector asignado al personal si existe en la tabla intermedia."""
     statement = (
         select(Sector)
-        .join(SectorCompuestoPorPersonal, SectorCompuestoPorPersonal.idSector == Sector.idSector)
+        .join(
+            SectorCompuestoPorPersonal,
+            SectorCompuestoPorPersonal.idSector == Sector.idSector,
+        )
         .where(SectorCompuestoPorPersonal.idPersonal == id_personal)
     )
     return db.session.execute(statement).scalar_one_or_none()
@@ -102,24 +108,29 @@ def set_sector(id_personal: int, id_sector: int | None) -> None:
     """Asigna o quita el sector de un personal en SectorCompuestoPorPersonal."""
     # elimina asignacion previa si existiera
     db.session.execute(
-        delete(SectorCompuestoPorPersonal).where(SectorCompuestoPorPersonal.idPersonal == id_personal)
+        delete(SectorCompuestoPorPersonal).where(
+            SectorCompuestoPorPersonal.idPersonal == id_personal
+        )
     )
     # si viene un id_sector (es PersonalFijo), inserta el vinculo
     if id_sector is not None:
-        nueva_asociacion = SectorCompuestoPorPersonal(idSector=id_sector, idPersonal=id_personal)
+        nueva_asociacion = SectorCompuestoPorPersonal(
+            idSector=id_sector, 
+            idPersonal=id_personal
+        )
         db.session.add(nueva_asociacion)
     db.session.commit()
 
 
 def get_sectores() -> list[Sector]:
     """Obtiene el catálogo de sectores activos para los desplegables."""
-    statement = select(Sector).where(Sector.isActive.is_(True)).order_by(Sector.nombre)
-    return db.session.execute(statement).scalars().all()
+    statement = (
+        select(Sector)
+        .where(Sector.isActive.is_(True))
+        .order_by(Sector.nombre)
+    )
+    return list(db.session.execute(statement).scalars().all())
 
-from sqlalchemy import select, or_, desc, asc, func
-from src.core.database import db
-from src.core.models.Personal import Personal
-from src.core.models.SectorCompuestoPorPersonal import SectorCompuestoPorPersonal
 
 def search(
     texto_busqueda: str | None = None,
@@ -133,10 +144,14 @@ def search(
     page: int = 1,
     per_page: int = 10,
 ) -> tuple[list[Personal], int]:
-    """Ejecuta la consulta SQL con filtros y paginado."""
+    """Ejecuta la consulta SQL con filtros, alcance de sector y paginado."""
     statement = (
         select(Personal)
-        .outerjoin(SectorCompuestoPorPersonal, SectorCompuestoPorPersonal.idPersonal == Personal.idPersonal)
+        .join(TipoPersonal, TipoPersonal.idTipoPersonal == Personal.idTipoPersonal)
+        .outerjoin(
+            SectorCompuestoPorPersonal,
+            SectorCompuestoPorPersonal.idPersonal == Personal.idPersonal,
+        )
         .where(Personal.is_deleted.is_(False))
         .distinct()
     )
@@ -144,7 +159,10 @@ def search(
     if texto_busqueda:
         termino = f"%{texto_busqueda.strip()}%"
         statement = statement.where(
-            or_(Personal.nombre.ilike(termino), Personal.apellido.ilike(termino))
+            or_(
+                Personal.nombre.ilike(termino),
+                Personal.apellido.ilike(termino),
+            )
         )
 
     if dni:
@@ -157,11 +175,13 @@ def search(
         statement = statement.where(
             or_(
                 SectorCompuestoPorPersonal.idSector == sector_forzado_jefe,
-                Personal.idTipoPersonal == 2
+                TipoPersonal.nombre.ilike("%residente%"),
             )
         )
     elif id_sector:
-        statement = statement.where(SectorCompuestoPorPersonal.idSector == id_sector)
+        statement = statement.where(
+            SectorCompuestoPorPersonal.idSector == id_sector
+        )
 
     if estado == "activos":
         statement = statement.where(Personal.isActive.is_(True))
@@ -175,14 +195,21 @@ def search(
     if ordenar_por == "dni":
         criterios = [desc(Personal.dni) if es_desc else asc(Personal.dni)]
     elif ordenar_por == "fecha":
-        criterios = [desc(Personal.inserted_at) if es_desc else asc(Personal.inserted_at)]
+        criterios = [
+            desc(Personal.inserted_at) if es_desc else asc(Personal.inserted_at)
+        ]
     else:
-        criterios = [desc(Personal.apellido), desc(Personal.nombre)] if es_desc else [asc(Personal.apellido), asc(Personal.nombre)]
+        criterios = (
+            [desc(Personal.apellido), desc(Personal.nombre)]
+            if es_desc
+            else [asc(Personal.apellido), asc(Personal.nombre)]
+        )
 
     statement = statement.order_by(*criterios)
 
-    offset_val = (page - 1) * per_page
-    statement = statement.limit(per_page).offset(offset_val)
+    per_page_seguro = max(1, min(per_page, 25))
+    offset_val = (max(1, page) - 1) * per_page_seguro
+    statement = statement.limit(per_page_seguro).offset(offset_val)
 
     elementos = list(db.session.execute(statement).scalars().all())
 
@@ -192,8 +219,7 @@ def search(
     return elementos, total
 
 def tiene_historial(id_personal: int) -> bool:
-    """Verifica si una persona tiene solicitudes o entregas asociadas.
-    Retorna True si tiene historial, False en caso contrario. """
+    """Verifica si una persona tiene solicitudes o entregas asociadas."""
     # buscamos si tiene al menos una solicitud
     solicitud = db.session.execute(
         select(Solicitud).where(Solicitud.idPersonal == id_personal)
