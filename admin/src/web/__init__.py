@@ -2,6 +2,7 @@
 
 from flask import Flask
 from flask_session import Session
+from flask_cors import CORS
 
 from src.core import database
 from src.web import commands
@@ -14,7 +15,6 @@ from src.web.controllers.autorizaciones.api_autorizaciones import (
 )
 from src.web.controllers.configuracion.config import config_controller
 from src.web.controllers.cupos.api_cupos import bp_cupos
-from src.web.controllers.home import home_bp
 from src.web.controllers.pedidos.api_pedidos import (
     bp_pedidos,
     bp_resumen_pedidos,
@@ -69,6 +69,16 @@ def create_app(
         app.config.update(test_config)
 
     app.config.from_object(config[env])
+
+    CORS(
+        app,
+        resources={
+            r"/api/*": {
+                "origins": app.config["CORS_ORIGINS"],
+                "allow_headers": ["Content-Type", "Authorization"],
+            }
+        },
+    )
 
     Session(app)
     database.init_app(app)
