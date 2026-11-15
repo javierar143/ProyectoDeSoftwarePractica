@@ -54,21 +54,28 @@ def login():
 
 @api_auth_controller.post("/logout")
 def logout():
-    """Revoca el token de acceso utilizado para cerrar sesión."""
+    """Cierra la sesión revocando los tokens y eliminando la cookie."""
     authorization = request.headers.get("Authorization", "")
+    access_token = None
 
-    if not authorization.startswith("Bearer "):
-        abort(401, description="Token de autenticación requerido.")
+    if authorization.startswith("Bearer "):
+        access_token = authorization.removeprefix("Bearer ").strip()
 
-    token = authorization[7:]
+    refresh_token = request.cookies.get("refresh_token")
 
-    if not api_auth.logout(token):
-        abort(401, description="Token inválido o expirado.")
+    api_auth.logout(access_token, refresh_token)
 
-    return jsonify({
-        "message": "Sesión cerrada correctamente."
-    }), 200
+    response = jsonify({"message": "Sesión cerrada correctamente."})
 
+    response.delete_cookie(
+        "refresh_token",
+        path="/api/auth",
+        httponly=True,
+        secure=not current_app.debug,
+        samesite="Lax",
+    )
+
+    return response, 200
 
 @api_auth_controller.get("/me")
 def me():
@@ -90,3 +97,21 @@ def me():
         "email": user.email,
         "idRol": user.idRol,
     }), 200
+
+
+@api_auth_controller.post("/refresh")
+def refresh():
+    """Renueva el token de acceso utilizando el refresh token de la cookie."""
+    refresh_token = request.cookies.get("refresh_token")
+    response = None
+
+    if refresh_token:
+        access_token = api_auth.refresh_access_token(refresh_token)
+
+        if access_token is not None:
+            response = jsonify({"access_token": access_token}), 200
+
+    if response is None:
+        response = jsonify({"message": "Refresh token inválido o expirado."}), 401
+
+    return response

@@ -40,3 +40,13 @@ def create_many(tokens: list[ApiToken]) -> list[ApiToken]:
     db.session.commit()
 
     return tokens
+
+
+def revoke_many(tokens: list[ApiToken], revoked_at: datetime) -> list[ApiToken]:
+    """Revoca varios tokens en una única transacción."""
+    for token in tokens:
+        token.revoked_at = revoked_at
+
+    db.session.commit()
+
+    return tokens

@@ -53,6 +53,42 @@ def login(email: str, password: str) -> dict[str, str] | None:
 
     return tokens
 
+def refresh_access_token(token: str) -> str | None:
+    """Genera un nuevo token de acceso a partir de un refresh token válido."""
+    payload = jwt_service.decode_refresh_token(token)
+    access_token = None
+
+    if payload is not None:
+        now = datetime.now(timezone.utc)
+        token_hash = hash_token(token)
+        stored_token = api_token.get_by_hash(token_hash)
+
+        if (
+            stored_token is not None
+            and stored_token.token_type == "refresh"
+            and stored_token.revoked_at is None
+            and stored_token.expires_at > now
+            and str(stored_token.id_user) == payload["sub"]
+        ):
+            user = usuario.get_by_id(stored_token.id_user)
+
+            if user is not None and user.isActive:
+                access_token = jwt_service.generate_access_token(
+                    stored_token.id_user
+                )
+
+                access_entity = ApiToken(
+                    token_hash=hash_token(access_token),
+                    token_type="access",
+                    id_user=stored_token.id_user,
+                    created_at=now,
+                    expires_at=now + jwt_service.ACCESS_TOKEN_DURATION,
+                )
+
+                api_token.create(access_entity)
+
+    return access_token
+
 
 def get_authenticated_user(token: str) -> Usuario | None:
     """Obtiene el usuario asociado a un JWT de acceso válido y no revocado."""
@@ -77,22 +113,44 @@ def get_authenticated_user(token: str) -> Usuario | None:
     return user
 
 
-def logout(token: str) -> bool:
-    """Revoca un JWT de acceso autenticado."""
-    payload = jwt_service.decode_access_token(token)
-    revoked = False
+def logout(access_token: str | None, refresh_token: str | None) -> bool:
+    """Revoca los tokens de acceso y renovación de una sesión."""
+    now = datetime.now(timezone.utc)
+    tokens_to_revoke = []
 
-    if payload is not None:
-        token_hash = hash_token(token)
-        stored_token = api_token.get_by_hash(token_hash)
+    if access_token:
+        payload = jwt_service.decode_access_token(access_token)
 
-        if (
-            stored_token is not None
-            and stored_token.token_type == "access"
-            and stored_token.revoked_at is None
-        ):
-            now = datetime.now(timezone.utc)
-            api_token.revoke(stored_token, now)
-            revoked = True
+        if payload is not None:
+            stored_token = api_token.get_by_hash(hash_token(access_token))
+
+            if (
+                stored_token is not None
+                and stored_token.token_type == "access"
+                and stored_token.revoked_at is None
+                and stored_token.expires_at > now
+                and str(stored_token.id_user) == payload["sub"]
+            ):
+                tokens_to_revoke.append(stored_token)
+
+    if refresh_token:
+        payload = jwt_service.decode_refresh_token(refresh_token)
+
+        if payload is not None:
+            stored_token = api_token.get_by_hash(hash_token(refresh_token))
+
+            if (
+                stored_token is not None
+                and stored_token.token_type == "refresh"
+                and stored_token.revoked_at is None
+                and stored_token.expires_at > now
+                and str(stored_token.id_user) == payload["sub"]
+            ):
+                tokens_to_revoke.append(stored_token)
+
+    revoked = bool(tokens_to_revoke)
+
+    if revoked:
+        api_token.revoke_many(tokens_to_revoke, now)
 
     return revoked

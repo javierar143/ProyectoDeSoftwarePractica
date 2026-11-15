@@ -5,6 +5,8 @@ from flask_session import Session
 from flask_cors import CORS
 
 from src.core import database
+from src.core.security.jwt_secret import obtener_clave_jwt
+
 from src.web import commands
 from src.web.config import config
 from src.web.controllers.auth import auth_bp
@@ -72,6 +74,8 @@ def create_app(
         app.config.update(test_config)
 
     app.config.from_object(config[env])
+    if env == "production":
+        app.config["JWT_SECRET_KEY"] = obtener_clave_jwt()
 
     CORS(
         app,
