@@ -21,6 +21,12 @@ class ApiToken(BaseModel):
         index=True
     )
 
+    token_type: Mapped[str] = mapped_column(
+        String(10),
+        default="access",
+        nullable=False,
+    )
+
     id_user: Mapped[int] = mapped_column(
         ForeignKey("Usuario.id_user")
     )

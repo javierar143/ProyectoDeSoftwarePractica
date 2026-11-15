@@ -25,12 +25,13 @@ from src.web.controllers.personal.api_personal import api_personal_controller
 from src.web.controllers.sectores.api_sectores import api_sectores_bp
 from src.web.controllers.sectores.sectores import sectores_bp
 from src.web.controllers.usuarios import usuarios_controller
+from src.web.controllers.roles.api_roles import api_roles_bp
 from src.web.handlers import cache, context, error, maintenance
 
 
 def _register_blueprints(app: Flask) -> None:
     """Registra todos los blueprints web y endpoints de la API."""
-    
+
     # Vistas generales
     app.register_blueprint(home_bp)
     app.add_url_rule("/", endpoint="home", view_func=home)
@@ -38,6 +39,7 @@ def _register_blueprints(app: Flask) -> None:
     # Autenticación
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_auth_controller)
+
 
     # Administración
     app.register_blueprint(usuarios_controller)
@@ -50,6 +52,7 @@ def _register_blueprints(app: Flask) -> None:
     # Configuración y autorizaciones
     app.register_blueprint(config_controller)
     app.register_blueprint(api_autorizaciones_controller)
+    app.register_blueprint(api_roles_bp)
 
     # Cupos y pedidos
     app.register_blueprint(bp_cupos)
@@ -76,6 +79,7 @@ def create_app(
             r"/api/*": {
                 "origins": app.config["CORS_ORIGINS"],
                 "allow_headers": ["Content-Type", "Authorization"],
+                "supports_credentials": True,
             }
         },
     )

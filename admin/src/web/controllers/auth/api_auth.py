@@ -1,6 +1,7 @@
+
 """Controladores REST relacionados con autenticación."""
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, abort, current_app, jsonify, request
 
 from src.core.services.auth import api_auth
 
@@ -14,85 +15,78 @@ api_auth_controller = Blueprint(
 
 @api_auth_controller.post("/login")
 def login():
-    """Autentica un usuario y devuelve un token de acceso."""
+    """Autentica al usuario y entrega los tokens de acceso y renovación."""
     data = request.get_json(silent=True)
-    response = None
 
-    if data is None:
-        response = jsonify(
-            {"error": "El cuerpo de la solicitud debe ser JSON"}
-        ), 400
-    else:
-        email = data.get("email")
-        password = data.get("password")
+    if not isinstance(data, dict):
+        abort(400, description="El cuerpo de la solicitud debe ser un objeto JSON.")
 
-        if not email or not password:
-            response = jsonify(
-                {"error": "Email y contraseña son obligatorios"}
-            ), 400
-        else:
-            token = api_auth.login(email, password)
+    email = data.get("email")
+    password = data.get("password")
 
-            if token is None:
-                response = jsonify(
-                    {"error": "Credenciales inválidas"}
-                ), 401
-            else:
-                response = jsonify({"token": token}), 200
+    if not isinstance(email, str) or not email.strip():
+        abort(400, description="El email es obligatorio.")
 
-    return response
+    if not isinstance(password, str) or not password:
+        abort(400, description="La contraseña es obligatoria.")
+
+    tokens = api_auth.login(email.strip(), password)
+
+    if tokens is None:
+        abort(401, description="Credenciales inválidas.")
+
+    response = jsonify({
+        "access_token": tokens["access_token"]
+    })
+
+    response.set_cookie(
+        "refresh_token",
+        tokens["refresh_token"],
+        httponly=True,
+        secure=not current_app.debug,
+        samesite="Lax",
+        max_age=12 * 60 * 60,
+        path="/api/auth",
+    )
+
+    return response, 200
 
 
 @api_auth_controller.post("/logout")
 def logout():
-    """Revoca el token utilizado para cerrar sesión."""
-    authorization = request.headers.get("Authorization")
-    response = None
+    """Revoca el token de acceso utilizado para cerrar sesión."""
+    authorization = request.headers.get("Authorization", "")
 
-    if authorization is None or not authorization.startswith("Bearer "):
-        response = jsonify(
-            {"error": "Token de autenticación requerido"}
-        ), 401
-    else:
-        token = authorization[7:]
-        revoked = api_auth.logout(token)
+    if not authorization.startswith("Bearer "):
+        abort(401, description="Token de autenticación requerido.")
 
-        if revoked:
-            response = jsonify(
-                {"message": "Sesión cerrada correctamente"}
-            ), 200
-        else:
-            response = jsonify({"error": "Token inválido"}), 401
+    token = authorization[7:]
 
-    return response
+    if not api_auth.logout(token):
+        abort(401, description="Token inválido o expirado.")
+
+    return jsonify({
+        "message": "Sesión cerrada correctamente."
+    }), 200
 
 
 @api_auth_controller.get("/me")
 def me():
     """Devuelve los datos del usuario autenticado mediante Bearer token."""
-    authorization = request.headers.get("Authorization")
-    response = None
+    authorization = request.headers.get("Authorization", "")
 
-    if authorization is None or not authorization.startswith("Bearer "):
-        response = jsonify(
-            {"error": "Token de autenticación requerido"}
-        ), 401
-    else:
-        token = authorization[7:]
-        user = api_auth.get_authenticated_user(token)
+    if not authorization.startswith("Bearer "):
+        abort(401, description="Token de autenticación requerido.")
 
-        if user is None:
-            response = jsonify(
-                {"error": "Token inválido o expirado"}
-            ), 401
-        else:
-            response = jsonify(
-                {
-                    "id": user.id_user,
-                    "alias": user.alias,
-                    "email": user.email,
-                    "idRol": user.idRol,
-                }
-            ), 200
+    token = authorization[7:]
+    user = api_auth.get_authenticated_user(token)
 
-    return response
+    if user is None:
+        abort(401, description="Token inválido o expirado.")
+
+    return jsonify({
+        "id": user.id_user,
+        "alias": user.alias,
+        "email": user.email,
+        "idRol": user.idRol,
+    }), 200

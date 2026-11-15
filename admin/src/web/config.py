@@ -5,6 +5,8 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "you-will-never-guess")
     TESTING = False
     SESSION_TYPE = "filesystem"
+    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
+
 
 
 class DevelopmentConfig(Config):

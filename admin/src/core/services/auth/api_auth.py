@@ -1,55 +1,74 @@
 
 """Servicios relacionados con la autenticación de la API."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from src.core.models.ApiToken import ApiToken
 from src.core.models.Usuario import Usuario
 from src.core.repositories.auth import api_token
 from src.core.repositories.usuarios import usuario
 from src.core.security.password import verify_password
-from src.core.services.auth.api_token import generate_token, hash_token
+from src.core.services.auth.api_token import hash_token
+from src.core.services.auth import jwt_service
 
 
-def login(email: str, password: str) -> str | None:
-    """Autentica un usuario y genera un token de API válido."""
+def login(email: str, password: str) -> dict[str, str] | None:
+    """Autentica al usuario y genera los tokens de acceso y renovación."""
     stored_user = usuario.get_by_email(email)
-
-    token = None
+    tokens = None
 
     if stored_user is not None and stored_user.isActive:
         if verify_password(password, stored_user.password_hash):
-            raw_token = generate_token()
             now = datetime.now(timezone.utc)
 
-            api_token_entity = ApiToken(
-                token_hash=hash_token(raw_token),
-                id_user=stored_user.id_user,
-                created_at=now,
-                expires_at=now + timedelta(hours=24),
+            access_token = jwt_service.generate_access_token(
+                stored_user.id_user
+            )
+            refresh_token = jwt_service.generate_refresh_token(
+                stored_user.id_user
             )
 
-            api_token.create(api_token_entity)
-            token = raw_token
+            access_entity = ApiToken(
+                token_hash=hash_token(access_token),
+                token_type="access",
+                id_user=stored_user.id_user,
+                created_at=now,
+                expires_at=now + jwt_service.ACCESS_TOKEN_DURATION,
+            )
 
-    return token
+            refresh_entity = ApiToken(
+                token_hash=hash_token(refresh_token),
+                token_type="refresh",
+                id_user=stored_user.id_user,
+                created_at=now,
+                expires_at=now + jwt_service.REFRESH_TOKEN_DURATION,
+            )
 
+            api_token.create_many([access_entity, refresh_entity])
 
-    # Seguridad: almacenamos solamente el hash del token; si alguien
-    # accede a la base de datos, no obtiene directamente el bearer token.
+            tokens = {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+            }
+
+    return tokens
 
 
 def get_authenticated_user(token: str) -> Usuario | None:
-    """Obtiene el usuario asociado a un token válido y no expirado."""
-    token_hash = hash_token(token)
-    stored_token = api_token.get_by_hash(token_hash)
-
+    """Obtiene el usuario asociado a un JWT de acceso válido y no revocado."""
+    payload = jwt_service.decode_access_token(token)
     user = None
 
-    if stored_token is not None:
-        now = datetime.now(timezone.utc)
+    if payload is not None:
+        token_hash = hash_token(token)
+        stored_token = api_token.get_by_hash(token_hash)
 
-        if stored_token.revoked_at is None and stored_token.expires_at > now:
+        if (
+            stored_token is not None
+            and stored_token.token_type == "access"
+            and stored_token.revoked_at is None
+            and stored_token.expires_at > datetime.now(timezone.utc)
+        ):
             user = usuario.get_by_id(stored_token.id_user)
 
             if user is not None and not user.isActive:
@@ -59,15 +78,21 @@ def get_authenticated_user(token: str) -> Usuario | None:
 
 
 def logout(token: str) -> bool:
-    """Revoca un token de API autenticado."""
-    token_hash = hash_token(token)
-    stored_token = api_token.get_by_hash(token_hash)
-
+    """Revoca un JWT de acceso autenticado."""
+    payload = jwt_service.decode_access_token(token)
     revoked = False
 
-    if stored_token is not None and stored_token.revoked_at is None:
-        stored_token.revoked_at = datetime.now(timezone.utc)
-        api_token.revoke(stored_token, stored_token.revoked_at)
-        revoked = True
+    if payload is not None:
+        token_hash = hash_token(token)
+        stored_token = api_token.get_by_hash(token_hash)
+
+        if (
+            stored_token is not None
+            and stored_token.token_type == "access"
+            and stored_token.revoked_at is None
+        ):
+            now = datetime.now(timezone.utc)
+            api_token.revoke(stored_token, now)
+            revoked = True
 
     return revoked
