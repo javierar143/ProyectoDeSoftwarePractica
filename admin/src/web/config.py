@@ -6,6 +6,7 @@ class Config:
     TESTING = False
     SESSION_TYPE = "filesystem"
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
+    COOKIE_SECURE = False
 
 
 
@@ -28,6 +29,7 @@ class TestingConfig(Config):
 
 class ProductionConfig(Config):
     TESTING = False
+    COOKIE_SECURE = True
     CORS_ORIGINS = ["https://grupo50.proyecto2026.linti.unlp.edu.ar"]
     SQLALCHEMY_ENGINES = {
         "default": os.environ.get("DATABASE_URL")

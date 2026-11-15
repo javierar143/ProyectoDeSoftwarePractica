@@ -43,7 +43,7 @@ def login():
         "refresh_token",
         tokens["refresh_token"],
         httponly=True,
-        secure=not current_app.debug,
+        secure=current_app.config["COOKIE_SECURE"],
         samesite="Lax",
         max_age=12 * 60 * 60,
         path="/api/auth",
@@ -71,7 +71,7 @@ def logout():
         "refresh_token",
         path="/api/auth",
         httponly=True,
-        secure=not current_app.debug,
+        secure=current_app.config["COOKIE_SECURE"],
         samesite="Lax",
     )
 
