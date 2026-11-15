@@ -1,3 +1,4 @@
+
 import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({
@@ -5,13 +6,12 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'inicio',
-      component: () => import('../modules/demo/views/HomeView.vue'),
+      redirect: '/login',
     },
     {
-      path: '/contador',
-      name: 'contador',
-      component: () => import('../modules/demo/views/CounterView.vue'),
+      path: '/login',
+      name: 'login',
+      component: () => import('../modules/auth/views/LoginView.vue'),
     },
   ],
 })

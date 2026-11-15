@@ -33,3 +33,10 @@ def revoke(api_token: ApiToken, revoked_at: datetime) -> ApiToken:
     db.session.commit()
 
     return api_token
+
+def create_many(tokens: list[ApiToken]) -> list[ApiToken]:
+    """Persiste varios tokens de API en una única transacción."""
+    db.session.add_all(tokens)
+    db.session.commit()
+
+    return tokens
