@@ -1,10 +1,240 @@
-.idea/
-<<<<<<< HEAD
 
-=======
-.DS_Store
->>>>>>> d16fb0b1fd0ef3f72410759eb6ccc07386abf6b5
+# ============================================================
+# PYTHON
+# ============================================================
 
-.venv/
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+
+# Distribución y empaquetado
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+MANIFEST
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Gestores de versiones
+.python-version
+
+# ============================================================
+# POETRY
+# ============================================================
+
+# Entornos virtuales locales
+.venv/
+
+# ============================================================
+# FLASK
+# ============================================================
+
+instance/
+.webassets-cache/
+flask_session/
+
+# ============================================================
+# NODE.JS / VUE / VITE
+# ============================================================
+
+node_modules/
+.npm/
+.pnpm-store/
+
+# Build y distribución
+dist-ssr/
+out/
+*.local
+
+# Caché de Vite
+.vite/
+
+# ============================================================
+# VARIABLES DE ENTORNO Y SECRETOS
+# ============================================================
+
+# Ignorar archivos de entorno por defecto
+.env
+.env.*
+
+# Permitir archivos de ejemplo
+!.env.example
+!.env.*.example
+!.envrc
+
+# Permitir específicamente el entorno de producción del frontend
+!portal/
+portal/.env.*
+!portal/.env.production
+
+# Credenciales y secretos
+*.secret
+*.credentials
+secrets.json
+credentials.json
+
+# ============================================================
+# IDEs Y EDITORES
+# ============================================================
+
+# Visual Studio Code
+.vscode/
+
+# IntelliJ IDEA / PyCharm / JetBrains
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries/
+.idea/**/shelf/
+
+# Eclipse
+.classpath
+.project
+.settings/
+.metadata/
+.factorypath
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/nbdist/
+/.nb-gradle/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Sublime Text
+*.sublime-workspace
+
+# Vim y Emacs
+*.swp
+*.swo
+*~
+.#*
+[._]*.s[a-v][a-z]
+
+# ============================================================
+# SISTEMAS OPERATIVOS
+# ============================================================
+
+# Linux
+.Trash-*
+.nfs*
+.directory
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.VolumeIcon.icns
+.DocumentRevisions-V100
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+*.stackdump
+$RECYCLE.BIN/
+*.lnk
+
+# ============================================================
+# LOGS Y ARCHIVOS TEMPORALES
+# ============================================================
+
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+*.tmp
+*.temp
+*.bak
+*.old
+*.orig
+*.rej
+*.cache
+
+# ============================================================
+# PRUEBAS Y COBERTURA
+# ============================================================
+
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+coverage/
+coverage.xml
+*.cover
+*.py,cover
+
+.nyc_output/
+test-results/
+playwright-report/
+
+# ============================================================
+# ANÁLISIS ESTÁTICO Y LINTERS
+# ============================================================
+
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+
+# ============================================================
+# JUPYTER
+# ============================================================
+
+.ipynb_checkpoints/
+
+# ============================================================
+# BASES DE DATOS LOCALES
+# ============================================================
+
+*.sqlite
+*.sqlite3
+*.db
+
+# ============================================================
+# CERTIFICADOS Y CLAVES PRIVADAS
+# ============================================================
+
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
