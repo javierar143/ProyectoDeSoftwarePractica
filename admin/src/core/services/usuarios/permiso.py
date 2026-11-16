@@ -24,3 +24,17 @@ def user_has_permission(user_id: int, permiso_nombre: str) -> bool:
             )
 
     return tiene_permiso
+
+
+def user_has_role_permission(user_id: int, permiso_nombre: str) -> bool:
+    """Comprueba un permiso según el rol asignado, sin privilegios globales."""
+    usuario_actual = usuario.get_by_id(user_id)
+    tiene_permiso = False
+
+    if usuario_actual is not None and usuario_actual.isActive:
+        tiene_permiso = permiso.has_permission(
+            usuario_actual.idRol,
+            permiso_nombre,
+        )
+
+    return tiene_permiso

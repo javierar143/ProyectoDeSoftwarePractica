@@ -4,6 +4,9 @@
 from flask import Blueprint, abort, current_app, jsonify, request
 
 from src.core.services.auth import api_auth
+from src.core.services.personal import personal as personal_service
+from src.core.services.sectores import sector as sector_service
+from src.core.services.usuarios import rol as rol_service
 
 
 api_auth_controller = Blueprint(
@@ -30,7 +33,13 @@ def login():
     if not isinstance(password, str) or not password:
         abort(400, description="La contraseña es obligatoria.")
 
-    tokens = api_auth.login(email.strip(), password)
+    try:
+        tokens = api_auth.login(email.strip(), password)
+    except api_auth.UsuarioBloqueadoError:
+        abort(
+            403,
+            description="La cuenta está bloqueada. Contactá al administrador.",
+        )
 
     if tokens is None:
         abort(401, description="Credenciales inválidas.")
@@ -80,6 +89,7 @@ def logout():
 @api_auth_controller.get("/me")
 def me():
     """Devuelve los datos del usuario autenticado mediante Bearer token."""
+
     authorization = request.headers.get("Authorization", "")
 
     if not authorization.startswith("Bearer "):
@@ -91,13 +101,28 @@ def me():
     if user is None:
         abort(401, description="Token inválido o expirado.")
 
+    personal = personal_service.get_by_id(user.idPersonal)
+    rol = rol_service.get_by_id(user.idRol)
+
+    sector = (
+        sector_service.get_by_id(user.idSector)
+        if user.idSector is not None
+        else None
+    )
+
     return jsonify({
         "id": user.id_user,
         "alias": user.alias,
         "email": user.email,
         "idRol": user.idRol,
+        "nombre": personal.nombre if personal else None,
+        "apellido": personal.apellido if personal else None,
+        "rol": rol.nombre if rol else None,
+        "sector": {
+            "id": sector.idSector,
+            "nombre": sector.nombre,
+        } if sector else None,
     }), 200
-
 
 @api_auth_controller.post("/refresh")
 def refresh():
