@@ -1,53 +1,81 @@
 import apiClient from '@/services/api/client'
 
-function normalizarError(err) {
-  const status = err?.response?.status ?? null
-  const mensaje =
-    err?.response?.data?.message ||
-    err?.response?.data?.error ||
-    err?.message ||
-    'Error al comunicarse con el servidor.'
+function limpiarParametros(params = {}) {
+  return Object.fromEntries(
+    Object.entries(params).filter(([, v]) => v !== '' && v !== null && v !== undefined)
+  )
+}
 
-  return {
-    status,
-    message: mensaje,
-    isConflict: status === 409,
-    isNotFound: status === 404,
-  }
+function descargarBlobComoArchivo(blobData, nombreArchivo) {
+  const blob =
+    blobData instanceof Blob
+      ? blobData
+      : new Blob([blobData], { type: 'text/csv;charset=utf-8;' })
+  const blobUrl = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = blobUrl
+  link.setAttribute('download', nombreArchivo)
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(blobUrl)
 }
 
 export async function listarPedidosAutorizacion(params = {}) {
-  try {
-    const response = await apiClient.get('authorizations', { params })
-    return response.data
-  } catch (err) {
-    throw normalizarError(err)
-  }
+  const { data } = await apiClient.get('/authorizations', {
+    params: limpiarParametros(params),
+  })
+  return data
 }
 
-export async function obtenerDetalleAutorizacion(requestId) {
-  try {
-    const response = await apiClient.get(`authorizations/${requestId}`)
-    return response.data
-  } catch (err) {
-    throw normalizarError(err)
-  }
+export async function listarFechasAutorizacion(params = {}) {
+  const { data } = await apiClient.get('/authorization-dates', {
+    params: limpiarParametros(params),
+  })
+  return data
 }
 
-export async function guardarAutorizacionPedido(requestId, payload) {
-  try {
-    const response = await apiClient.put(`authorizations/${requestId}`, payload)
-    return response.data
-  } catch (err) {
-    throw normalizarError(err)
-  }
+export async function obtenerDetalleAutorizacion(idPedido) {
+  const { data } = await apiClient.get(`/authorizations/${idPedido}`)
+  return data
 }
 
-export async function rechazarPedidoCompleto(requestId, payload) {
-  try {
-    const response = await apiClient.post(`authorizations/${requestId}/reject`, payload)
-    return response.data
-  } catch (err) {
-    throw normalizarError(err)
-  }
+export async function guardarAutorizacionPedido(idPedido, payload) {
+  const { data } = await apiClient.put(`/authorizations/${idPedido}`, payload)
+  return data
+}
+
+export async function rechazarPedidoCompleto(idPedido, payload) {
+  const { data } = await apiClient.post(`/authorizations/${idPedido}/reject`, payload)
+  return data
+}
+
+export async function listarSectoresApi(estado = 'todos') {
+  const { data } = await apiClient.get('/sectors', {
+    params: { estado },
+  })
+  return data
+}
+
+export async function obtenerResumenAutorizaciones(params = {}) {
+  const { data } = await apiClient.get('/summaries/authorizations', {
+    params: limpiarParametros(params),
+  })
+  return data
+}
+
+export async function exportarPersonasAutorizadasCsv(params = {}) {
+  const { data } = await apiClient.get('/authorized-meals', {
+    params: limpiarParametros({ ...params, formato: 'csv' }),
+    responseType: 'blob',
+  })
+  descargarBlobComoArchivo(data, 'personas_autorizadas.csv')
+}
+
+export async function exportarTotalesAutorizacionesCsv(params = {}) {
+  const { data } = await apiClient.get('/summaries/authorizations', {
+    params: limpiarParametros({ ...params, formato: 'csv' }),
+    responseType: 'blob',
+  })
+  descargarBlobComoArchivo(data, 'totales_autorizaciones.csv')
 }
