@@ -43,6 +43,12 @@ def get_by_dni(dni: str) -> Personal | None:
     return db.session.execute(statement).scalar_one_or_none()
 
 
+def get_by_dni_including_deleted(dni: str) -> Personal | None:
+    """Busca un DNI incluyendo registros eliminados lógicamente."""
+    statement = select(Personal).where(Personal.dni == dni)
+    return db.session.execute(statement).scalar_one_or_none()
+
+
 def create(personal: Personal) -> Personal:
     """Persiste un nuevo personal en la base de datos."""
     db.session.add(personal)
