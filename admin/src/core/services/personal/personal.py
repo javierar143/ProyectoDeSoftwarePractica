@@ -105,10 +105,10 @@ def create(
     if sector_forzado is not None:
         id_sector = sector_forzado
 
-    persona_existente = repo_personal.get_by_dni(dni)
+    persona_existente = repo_personal.get_by_dni_including_deleted(dni)
     if persona_existente is not None:
         current_app.logger.warning(
-            f"Intento de registro fallido: El DNI {dni} ya existe en el sistema."
+            f"Intento de registro fallido: El DNI {dni} ya existe o existió en el sistema."
         )
         return None
 

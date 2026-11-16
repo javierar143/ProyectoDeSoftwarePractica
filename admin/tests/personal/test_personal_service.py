@@ -285,6 +285,34 @@ def test_eliminar_personal_sin_historial(app):
         assert resultado[0] is True  # is_deleted es True
 
 
+def test_rechaza_dni_de_persona_eliminada_logicamente(app):
+    """No permite reutilizar un DNI que quedó marcado como eliminado."""
+    persona = service_personal.create(
+        dni="77777777",
+        nombre="Histórico",
+        apellido="Eliminado",
+        id_tipo_personal=1,
+        id_tipo_menu=1,
+        id_sector=1,
+    )
+
+    exito, accion = service_personal.eliminar_personal(persona.idPersonal)
+
+    assert exito is True
+    assert accion == "eliminado"
+
+    persona_nueva = service_personal.create(
+        dni="77777777",
+        nombre="Nuevo",
+        apellido="Registro",
+        id_tipo_personal=1,
+        id_tipo_menu=1,
+        id_sector=1,
+    )
+
+    assert persona_nueva is None
+
+
 @patch("src.core.services.personal.personal.repo_personal.tiene_historial")
 def test_eliminar_personal_con_historial(mock_tiene_historial, app):
     """Prueba que si la persona TIENE historial, solo se desactiva (Baja lógica)."""
