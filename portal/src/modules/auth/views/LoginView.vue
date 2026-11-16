@@ -1,11 +1,12 @@
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
 import { getRoleHomeRoute } from '@/router/navigation'
 import { normalizeApiError } from '@/services/api/error-handler'
+import ApiErrorMessage from '@/modules/shared/components/ApiErrorMessage.vue'
 
 import {
   login,
@@ -15,14 +16,20 @@ import {
 
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 
 const email = ref('')
 const password = ref('')
 const emailError = ref('')
 const passwordError = ref('')
 const emailInput = ref(null)
-const errorMessage = ref('')
+const apiErrorMessage = ref(null)
 const loading = ref(false)
+
+// Indica si el servidor no pudo confirmar el cierre de sesión anterior.
+const logoutWarning = computed(
+  () => route.query.logout === 'incomplete',
+)
 
 /**
  * Valida los campos antes de enviar las credenciales.
@@ -53,7 +60,9 @@ function validateForm() {
  * Ejecuta el proceso de autenticación y carga los datos del usuario.
  */
 async function handleLogin() {
-  errorMessage.value = ''
+  apiErrorMessage.value = null
+  emailError.value = ''
+  passwordError.value = ''
 
   if (!validateForm()) {
     return
@@ -74,7 +83,7 @@ async function handleLogin() {
     const roles = await getOperationalRoles()
     authStore.setOperationalRoles(roles)
 
-    const redirect = router.currentRoute.value.query.redirect
+    const redirect = route.query.redirect
 
     if (typeof redirect === 'string') {
       await router.replace(redirect)
@@ -93,12 +102,22 @@ async function handleLogin() {
     authStore.clearSession()
 
     if (apiError.status === 401 && credentialsAccepted) {
-      errorMessage.value =
-        'No se pudo establecer la sesión. Volvé a ingresar.'
+      apiErrorMessage.value = {
+        ...apiError,
+        message: 'No se pudo establecer la sesión. Volvé a ingresar.',
+        canRetry: false,
+      }
     } else {
-      // El backend informa "Credenciales inválidas" sin
-      // distinguir entre correo y contraseña incorrectos.
-      errorMessage.value = apiError.message
+      const fields = apiError.fieldErrors ?? {}
+
+      emailError.value = fields.email ?? ''
+      passwordError.value = fields.password ?? ''
+
+      // Si los errores ya se muestran junto a los campos,
+      // no repetimos el mensaje general.
+      if (!emailError.value && !passwordError.value) {
+        apiErrorMessage.value = apiError
+      }
     }
   } finally {
     loading.value = false
@@ -110,6 +129,15 @@ async function handleLogin() {
   <main class="login-container">
     <section class="login-card">
       <h1>Iniciar sesión</h1>
+
+      <p
+        v-if="logoutWarning"
+        class="logout-warning"
+        role="status"
+      >
+        La sesión local se cerró, pero no se pudo confirmar el cierre
+        en el servidor.
+      </p>
 
       <form @submit.prevent="handleLogin" novalidate>
         <div class="form-field">
@@ -155,9 +183,10 @@ async function handleLogin() {
           </p>
         </div>
 
-        <p v-if="errorMessage" class="error-message" role="alert">
-          {{ errorMessage }}
-        </p>
+        <ApiErrorMessage
+          :error="apiErrorMessage"
+          @retry="handleLogin"
+        />
 
         <button type="submit" :disabled="loading">
           {{ loading ? 'Ingresando...' : 'Ingresar' }}
@@ -193,6 +222,16 @@ h1 {
   margin-bottom: 24px;
   color: #1d4ed8;
   text-align: center;
+}
+
+.logout-warning {
+  margin-bottom: 18px;
+  padding: 12px;
+  color: #854d0e;
+  background-color: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 6px;
+  font-size: 14px;
 }
 
 .form-field {
@@ -246,11 +285,6 @@ button:hover {
 
 button:disabled {
   cursor: wait;
-}
-
-.error-message {
-  margin-bottom: 16px;
-  color: #c62828;
 }
 
 @media (max-width: 600px) {

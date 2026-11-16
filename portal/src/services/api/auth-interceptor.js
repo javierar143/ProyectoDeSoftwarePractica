@@ -10,8 +10,6 @@ const AUTH_ENDPOINTS = [
   '/auth/logout',
 ]
 
-let restoreSessionPromise = null
-
 /**
  * Determina si una petición corresponde a un endpoint de autenticación.
  *
@@ -25,8 +23,8 @@ function isAuthEndpoint(url = '') {
 /**
  * Registra el tratamiento global de respuestas 401.
  *
- * Intenta recuperar la sesión y repetir la petición original.
- * Si la sesión no puede recuperarse, la elimina y redirige al login.
+ * Ante un 401 de una operación protegida, elimina la sesión local
+ * y redirige al login conservando la ruta actual.
  *
  * @param {import('axios').AxiosInstance} apiClient - Cliente HTTP.
  * @param {object} authStore - Store de autenticación.
@@ -42,55 +40,27 @@ export function registerAuthResponseInterceptor(
     async (error) => {
       const originalRequest = error.config
 
-      if (error.response?.status !== 401 || !originalRequest) {
+      if (
+        error.response?.status !== 401 ||
+        !originalRequest ||
+        isAuthEndpoint(originalRequest.url)
+      ) {
         return Promise.reject(error)
       }
 
-      if (isAuthEndpoint(originalRequest.url)) {
-        return Promise.reject(error)
-      }
+      const currentRoute = router.currentRoute.value
+      const redirect = currentRoute.fullPath
 
-      if (originalRequest._retry) {
-        authStore.clearSession()
+      authStore.clearSession()
+
+      if (currentRoute.name !== 'login') {
         await router.replace({
           name: 'login',
-          query: { redirect: router.currentRoute.value.fullPath },
+          query: { redirect },
         })
-
-        return Promise.reject(error)
       }
 
-      originalRequest._retry = true
-
-      try {
-        if (!restoreSessionPromise) {
-          restoreSessionPromise = authStore.restoreSession().finally(() => {
-            restoreSessionPromise = null
-          })
-        }
-
-        const sessionRestored = await restoreSessionPromise
-
-        if (!sessionRestored) {
-          authStore.clearSession()
-          await router.replace({
-            name: 'login',
-            query: { redirect: router.currentRoute.value.fullPath },
-          })
-
-          return Promise.reject(error)
-        }
-
-        return apiClient(originalRequest)
-      } catch (restoreError) {
-        authStore.clearSession()
-        await router.replace({
-          name: 'login',
-          query: { redirect: router.currentRoute.value.fullPath },
-        })
-
-        return Promise.reject(restoreError)
-      }
+      return Promise.reject(error)
     },
   )
 }

@@ -16,7 +16,11 @@ api_roles_bp = Blueprint(
 
 @api_roles_bp.before_request
 def require_token():
-    """Exige un token Bearer válido para consultar los roles."""
+    """Exige un token Bearer válido, excepto en las peticiones OPTIONS."""
+
+    # El preflight CORS no lleva credenciales de autenticación.
+    if request.method == "OPTIONS":
+        return None
 
     authorization = request.headers.get("Authorization", "")
 

@@ -18,6 +18,18 @@ app.use(pinia)
 // Obtiene el store asociado a la instancia de Pinia.
 const authStore = useAuthStore(pinia)
 
+// Define la navegación cuando vence definitivamente la sesión.
+authStore.setSessionExpiredHandler(async () => {
+  const currentRoute = router.currentRoute.value
+
+  if (currentRoute.name !== 'login') {
+    await router.replace({
+      name: 'login',
+      query: { redirect: currentRoute.fullPath },
+    })
+  }
+})
+
 // Registra el tratamiento global de respuestas 401.
 registerAuthResponseInterceptor(apiClient, authStore, router)
 

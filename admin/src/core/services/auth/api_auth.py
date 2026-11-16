@@ -11,47 +11,53 @@ from src.core.security.password import verify_password
 from src.core.services.auth.api_token import hash_token
 from src.core.services.auth import jwt_service
 
+class UsuarioBloqueadoError(Exception):
+    """Indica que las credenciales son correctas pero la cuenta está bloqueada."""
 
 def login(email: str, password: str) -> dict[str, str] | None:
     """Autentica al usuario y genera los tokens de acceso y renovación."""
     stored_user = usuario.get_by_email(email)
-    tokens = None
 
-    if stored_user is not None and stored_user.isActive:
-        if verify_password(password, stored_user.password_hash):
-            now = datetime.now(timezone.utc)
+    if stored_user is None:
+        return None
 
-            access_token = jwt_service.generate_access_token(
-                stored_user.id_user
-            )
-            refresh_token = jwt_service.generate_refresh_token(
-                stored_user.id_user
-            )
+    if not verify_password(password, stored_user.password_hash):
+        return None
 
-            access_entity = ApiToken(
-                token_hash=hash_token(access_token),
-                token_type="access",
-                id_user=stored_user.id_user,
-                created_at=now,
-                expires_at=now + jwt_service.ACCESS_TOKEN_DURATION,
-            )
+    if not stored_user.isActive:
+        raise UsuarioBloqueadoError
 
-            refresh_entity = ApiToken(
-                token_hash=hash_token(refresh_token),
-                token_type="refresh",
-                id_user=stored_user.id_user,
-                created_at=now,
-                expires_at=now + jwt_service.REFRESH_TOKEN_DURATION,
-            )
+    now = datetime.now(timezone.utc)
 
-            api_token.create_many([access_entity, refresh_entity])
+    access_token = jwt_service.generate_access_token(
+        stored_user.id_user
+    )
+    refresh_token = jwt_service.generate_refresh_token(
+        stored_user.id_user
+    )
 
-            tokens = {
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-            }
+    access_entity = ApiToken(
+        token_hash=hash_token(access_token),
+        token_type="access",
+        id_user=stored_user.id_user,
+        created_at=now,
+        expires_at=now + jwt_service.ACCESS_TOKEN_DURATION,
+    )
 
-    return tokens
+    refresh_entity = ApiToken(
+        token_hash=hash_token(refresh_token),
+        token_type="refresh",
+        id_user=stored_user.id_user,
+        created_at=now,
+        expires_at=now + jwt_service.REFRESH_TOKEN_DURATION,
+    )
+
+    api_token.create_many([access_entity, refresh_entity])
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+    }
 
 def refresh_access_token(token: str) -> str | None:
     """Genera un nuevo token de acceso a partir de un refresh token válido."""
