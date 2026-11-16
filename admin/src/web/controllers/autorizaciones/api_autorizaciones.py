@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request, session, current_app
+from flask import Blueprint, jsonify, request, session, current_app, Response
 from src.core.services.autorizaciones import autorizaciones as autorizaciones_service
 from src.core.services.autorizaciones.autorizaciones import (
     RecursoNoEncontradoError,
@@ -40,6 +40,7 @@ def listar_autorizaciones():
         "sector": request.args.get("sector", type=int),
         "tipo_comida": request.args.get("tipo_comida", type=int),
         "tipo_menu": request.args.get("tipo_menu", type=int),
+        "condicion": request.args.get("condicion"),
         "estado": request.args.get("estado"),
     }
     try:
@@ -126,17 +127,32 @@ def rechazar_pedido(request_id: int):
 
 @api_autorizaciones_controller.route("/authorized-meals", methods=["GET"])
 def listar_comidas_autorizadas():
-    """Consulta comidas autorizadas por fecha, DNI, nombre/apellido, sector o tipo de comida"""
+    """Consulta comidas autorizadas por fecha, DNI, nombre/apellido, sector o tipo de comida, o exporta CSV"""
 
+    formato = request.args.get("formato")
     filtros = {
         "fecha": request.args.get("fecha"),
+        "fecha_desde": request.args.get("fecha_desde"),
+        "fecha_hasta": request.args.get("fecha_hasta"),
         "dni": request.args.get("dni"),
         "nya": request.args.get("nya"),
         "sector": request.args.get("sector", type=int),
         "tipo_comida": request.args.get("tipo_comida", type=int),
+        "tipo_menu": request.args.get("tipo_menu", type=int),
+        "condicion": request.args.get("condicion"),
+        "formato": formato,
     }
     try:
         resultado = autorizaciones_service.consultar_comidas_autorizadas(filtros)
+        if formato == "csv":
+            return Response(
+                resultado,
+                status=200,
+                mimetype="text/csv; charset=utf-8",
+                headers={
+                    "Content-Disposition": 'attachment; filename="personas_autorizadas.csv"'
+                },
+            )
         return jsonify(resultado), 200
     except ValueError as e:
         current_app.logger.warning(f"Filtros insuficientes o inválidos en authorized-meals: {str(e)}")
@@ -144,7 +160,6 @@ def listar_comidas_autorizadas():
     except Exception as e:
         current_app.logger.error(f"Error interno en authorized-meals: {str(e)}")
         return jsonify({"error": "Ocurrió un error interno en el servidor"}), 500
-
 
 @api_autorizaciones_controller.route("/authorized-meals/<int:person_id>", methods=["GET"])
 def comidas_autorizadas_por_persona(person_id: int):
@@ -292,8 +307,9 @@ def resumen_entregas():
 
 @api_autorizaciones_controller.route("/summaries/authorizations", methods=["GET"])
 def resumen_authorizations():
-    """Obtiene el resumen de autorizaciones (pedidos vs autorizados)"""
+    """Obtiene el resumen de autorizaciones (pedidos vs autorizados) en JSON o CSV"""
 
+    formato = request.args.get("formato")
     filtros = {
         "fecha_desde": request.args.get("fecha_desde"),
         "fecha_hasta": request.args.get("fecha_hasta"),
@@ -301,16 +317,27 @@ def resumen_authorizations():
         "tipo_comida": request.args.get("tipo_comida", type=int),
         "tipo_menu": request.args.get("tipo_menu", type=int),
         "condicion": request.args.get("condicion"),
+        "estado": request.args.get("estado"),
+        "formato": formato,
     }
     try:
         resultado = autorizaciones_service.resumen_autorizaciones_service(filtros)
+        if formato == "csv":
+            return Response(
+                resultado,
+                status=200,
+                mimetype="text/csv; charset=utf-8",
+                headers={
+                    "Content-Disposition": 'attachment; filename="totales_autorizaciones.csv"'
+                },
+            )
         return jsonify(resultado), 200
     except ValueError as e:
         current_app.logger.warning(f"Error de validación en resumen de autorizaciones: {str(e)}")
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         current_app.logger.error(f"Error al obtener resumen de autorizaciones: {str(e)}")
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": "Ocurrió un error interno en el servidor"}), 500
 
 @api_autorizaciones_controller.route("/authorization-dates", methods=["GET"])
 def listar_fechas_autorizaciones():

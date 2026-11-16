@@ -165,7 +165,7 @@
           <label for="filtro-sector">Sector</label>
           <select id="filtro-sector" v-model="filtros.sector">
             <option value="">Todos los sectores</option>
-            <option v-for="sec in sectoresCatalogo" :key="sec.id" :value="sec.id">
+            <option v-for="sec in sectoresDisponibles" :key="sec.id" :value="sec.id">
               {{ sec.nombre }}{{ sec.estado === 'inactivo' ? ' (Inactivo)' : '' }}
             </option>
           </select>
@@ -211,13 +211,99 @@
         </div>
       </div>
 
-      <div class="filtros-botones">
-        <button type="button" class="btn-primario" :disabled="cargando" @click="cargarTodo">
-          Buscar
-        </button>
-        <button type="button" :disabled="cargando" @click="limpiarFiltros">
-          Limpiar
-        </button>
+      <div class="filtros-acciones-barra">
+        <div class="filtros-botones">
+          <button type="button" class="btn-primario" :disabled="cargando" @click="cargarTodo">
+            Buscar
+          </button>
+          <button type="button" :disabled="cargando" @click="limpiarFiltros">
+            Limpiar
+          </button>
+        </div>
+
+        <div class="filtros-exportacion">
+          <button
+            type="button"
+            class="btn-secundario"
+            :disabled="cargando"
+            @click="mostrarResumen = !mostrarResumen"
+          >
+            {{ mostrarResumen ? 'Ocultar totales' : 'Ver totales del período' }}
+          </button>
+          <button
+            type="button"
+            class="btn-csv"
+            :disabled="cargando || exportandoCsv"
+            @click="descargarCsv('personas')"
+          >
+            Exportar Personas (CSV)
+          </button>
+          <button
+            type="button"
+            class="btn-csv"
+            :disabled="cargando || exportandoCsv"
+            @click="descargarCsv('totales')"
+          >
+            Exportar Totales (CSV)
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section
+      v-if="mostrarResumen && resumenPeriodo"
+      class="panel-resumen-totales"
+      aria-label="Totales pedidos y autorizados del período"
+    >
+      <div class="tarjetas-indicadores">
+        <div class="indicador-box">
+          <span class="ind-label">Total pedidas</span>
+          <strong class="ind-valor">{{ resumenPeriodo.total_pedido ?? 0 }}</strong>
+          <small>
+            Regulares: {{ resumenPeriodo.total_pedido_regulares ?? 0 }} · Excepción:
+            {{ resumenPeriodo.total_pedido_excepciones ?? 0 }}
+          </small>
+        </div>
+        <div class="indicador-box">
+          <span class="ind-label">Total autorizadas</span>
+          <strong class="ind-valor texto-verde">{{ resumenPeriodo.total_autorizado ?? 0 }}</strong>
+        </div>
+        <div class="indicador-box">
+          <span class="ind-label">Diferencia (Pedidas - Autorizadas)</span>
+          <strong class="ind-valor">{{ resumenPeriodo.diferencia ?? 0 }}</strong>
+        </div>
+      </div>
+
+      <div v-if="(resumenPeriodo.desglose || []).length > 0" class="tabla-contenedor tabla-resumen-margin">
+        <table class="tabla-pedidos">
+          <thead>
+            <tr>
+              <th scope="col">Sector</th>
+              <th scope="col">Comida</th>
+              <th scope="col">Tipo de menú</th>
+              <th scope="col">Regulares</th>
+              <th scope="col">Excepción</th>
+              <th scope="col">Pedidas</th>
+              <th scope="col">Autorizadas</th>
+              <th scope="col">Diferencia</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(item, idx) in resumenPeriodo.desglose"
+              :key="`${item.idSector}-${item.idTipoComida}-${item.idTipoMenu}-${idx}`"
+            >
+              <td>{{ item.sector }}</td>
+              <td>{{ item.comida }}</td>
+              <td>{{ item.tipo_menu }}</td>
+              <td class="dato-mono">{{ item.cantidad_pedida_regulares }}</td>
+              <td class="dato-mono">{{ item.cantidad_pedida_excepciones }}</td>
+              <td class="dato-mono">{{ item.cantidad_pedida }}</td>
+              <td class="dato-mono">{{ item.cantidad_autorizada }}</td>
+              <td class="dato-mono">{{ item.diferencia }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
@@ -276,7 +362,7 @@
       v-if="pedidoSeleccionado"
       :detalle="pedidoSeleccionado"
       :guardando="guardando"
-      :sectores="sectoresCatalogo"
+      :sectores="sectoresDisponibles"
       @cerrar="pedidoSeleccionado = null"
       @confirmar-autorizacion="prepararConfirmacion('autorizar', $event)"
       @confirmar-rechazo="prepararConfirmacion('rechazar', $event)"
@@ -352,11 +438,14 @@
 import { computed, onMounted, ref } from 'vue'
 import DetallePedido from '../components/DetallePedido.vue'
 import {
+  exportarPersonasAutorizadasCsv,
+  exportarTotalesAutorizacionesCsv,
   guardarAutorizacionPedido,
   listarFechasAutorizacion,
   listarPedidosAutorizacion,
   listarSectoresApi,
   obtenerDetalleAutorizacion,
+  obtenerResumenAutorizaciones,
   rechazarPedidoCompleto,
 } from '../services/autorizaciones'
 
@@ -439,14 +528,36 @@ const erroresFiltro = ref({
 
 const pedidos = ref([])
 const sectoresCatalogo = ref([])
+const sectoresDetectados = ref({})
 const fechasConPedidos = ref([])
+const resumenPeriodo = ref(null)
+const mostrarResumen = ref(false)
 const pedidoSeleccionado = ref(null)
 const confirmacionPendiente = ref(null)
 const cargando = ref(false)
 const guardando = ref(false)
+const exportandoCsv = ref(false)
 const mensajeFeedback = ref({ tipo: '', texto: '', puedeReintentar: false })
 
-const fechasConPedidosSet = computed(() => new Set(fechasConPedidos.value))
+const sectoresDisponibles = computed(() => {
+  if (sectoresCatalogo.value.length > 0) {
+    return sectoresCatalogo.value
+  }
+  return Object.entries(sectoresDetectados.value)
+    .map(([id, nombre]) => ({ id: Number(id), nombre, estado: 'activo' }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre))
+})
+
+const mapaSectores = computed(() => {
+  const map = { ...sectoresDetectados.value }
+  for (const sec of sectoresCatalogo.value) {
+    const id = sec?.id ?? sec?.idSector
+    if (id !== undefined && id !== null && sec?.nombre) {
+      map[Number(id)] = sec.nombre
+    }
+  }
+  return map
+})
 
 const diasConPedidosVisibles = computed(() => {
   const desde = filtros.value.fecha_desde || hoyIso
@@ -463,16 +574,20 @@ const diasConPedidosVisibles = computed(() => {
     .sort()
 })
 
-const mapaSectores = computed(() => {
-  const map = {}
-  for (const sec of sectoresCatalogo.value) {
-    const id = sec?.id ?? sec?.idSector
-    if (id !== undefined && id !== null && sec?.nombre) {
-      map[Number(id)] = sec.nombre
+function registrarSectoresDesdeDatos(listaPedidos = [], desgloseResumen = []) {
+  const nuevoMapa = { ...sectoresDetectados.value }
+  for (const p of listaPedidos) {
+    if (p?.idSector && p?.nombreSector && !String(p.nombreSector).startsWith('Sector #')) {
+      nuevoMapa[Number(p.idSector)] = p.nombreSector
     }
   }
-  return map
-})
+  for (const d of desgloseResumen) {
+    if (d?.idSector && d?.sector) {
+      nuevoMapa[Number(d.idSector)] = d.sector
+    }
+  }
+  sectoresDetectados.value = nuevoMapa
+}
 
 function sincronizarTextoDesdeIso() {
   filtrosTexto.value.fecha_desde = formatearFechaDdMmAaaa(filtros.value.fecha_desde)
@@ -676,12 +791,25 @@ async function cargarFechasCalendario() {
   }
 }
 
+async function cargarResumenPeriodo() {
+  if (typeof obtenerResumenAutorizaciones !== 'function') return
+  try {
+    const params = limpiarParametrosVacios(filtros.value)
+    const res = await obtenerResumenAutorizaciones(params)
+    resumenPeriodo.value = res
+    registrarSectoresDesdeDatos(pedidos.value, res?.desglose || [])
+  } catch {
+    resumenPeriodo.value = null
+  }
+}
+
 async function cargarPedidos() {
   cargando.value = true
   mensajeFeedback.value = { tipo: '', texto: '', puedeReintentar: false }
   try {
     const data = await listarPedidosAutorizacion(limpiarParametrosVacios(filtros.value))
     pedidos.value = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : []
+    registrarSectoresDesdeDatos(pedidos.value, resumenPeriodo.value?.desglose || [])
   } catch (err) {
     manejarErrorHttp(err, 'No se pudieron cargar los pedidos. Intentá nuevamente.')
   } finally {
@@ -691,7 +819,34 @@ async function cargarPedidos() {
 
 async function cargarTodo() {
   if (!validarFiltrosCliente()) return
-  await Promise.all([cargarPedidos(), cargarFechasCalendario()])
+  await Promise.all([cargarPedidos(), cargarFechasCalendario(), cargarResumenPeriodo()])
+}
+
+async function descargarCsv(tipo) {
+  if (!validarFiltrosCliente()) return
+  if (!filtros.value.fecha_desde || !filtros.value.fecha_hasta) {
+    mensajeFeedback.value = {
+      tipo: 'error',
+      texto: 'Indicá el rango de fechas (Desde y Hasta) para exportar a CSV.',
+      puedeReintentar: false,
+    }
+    return
+  }
+
+  exportandoCsv.value = true
+  mensajeFeedback.value = { tipo: '', texto: '', puedeReintentar: false }
+  try {
+    const params = limpiarParametrosVacios(filtros.value)
+    if (tipo === 'personas') {
+      await exportarPersonasAutorizadasCsv(params)
+    } else {
+      await exportarTotalesAutorizacionesCsv(params)
+    }
+  } catch (err) {
+    manejarErrorHttp(err, 'No se pudo exportar el archivo CSV.')
+  } finally {
+    exportandoCsv.value = false
+  }
 }
 
 function cambiarModoVista(nuevoModo) {
@@ -1076,11 +1231,65 @@ onMounted(async () => {
   color: #b91c1c;
 }
 
-.filtros-botones {
+.filtros-acciones-barra {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.filtros-botones,
+.filtros-exportacion {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
+}
+
+.panel-resumen-totales {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.1rem;
+}
+
+.tarjetas-indicadores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.75rem;
+}
+
+.indicador-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.ind-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.ind-valor {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.texto-verde {
+  color: #0f766e;
+}
+
+.tabla-resumen-margin {
+  margin-top: 0.85rem;
 }
 
 .tabla-contenedor {
@@ -1315,9 +1524,25 @@ button:hover:not(:disabled) {
   background: #115e59;
 }
 
+.btn-csv {
+  background: #f0fdfa;
+  border-color: #0f766e;
+  color: #0f766e;
+}
+
+.btn-csv:hover:not(:disabled) {
+  background: #ccfbf1;
+}
+
 button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+@media (max-width: 1024px) {
+  .autorizaciones-view {
+    padding: 1rem;
+  }
 }
 
 @media (max-width: 767px) {
@@ -1331,7 +1556,13 @@ button:disabled {
     flex: 1 1 100%;
   }
 
-  .filtros-botones button {
+  .filtros-botones,
+  .filtros-exportacion {
+    width: 100%;
+  }
+
+  .filtros-botones button,
+  .filtros-exportacion button {
     flex: 1;
   }
 

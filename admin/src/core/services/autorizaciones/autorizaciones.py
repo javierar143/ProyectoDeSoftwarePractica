@@ -6,6 +6,8 @@ from src.core.models.enums import EstadoAutorizacion, EstadoPedido
 from src.core.repositories.autorizaciones import solicitudes as repo_solicitudes
 from src.core.repositories.autorizaciones import entregas as repo_entregas
 from src.web.validators.autorizaciones import autorizaciones_validator as validador
+import csv
+import io
 
 # <------ Errores ------>
 
@@ -24,8 +26,8 @@ class ConflictoEstadoError(Exception):
 def listar_pedidos_para_autorizacion(filtros: dict):
     """Lista pedidos con cantidades pedidas y autorizadas diferenciadas"""
 
-    # Valido fechas, estado y filtros mediante el modulo validator
     filtros = validador.validar_filtros_autorizaciones(filtros)
+    mapa_sectores = repo_solicitudes.obtener_mapa_nombres_sectores()
 
     pedidos = repo_solicitudes.listar_pedidos_autorizacion(
         fecha_desde=filtros.get("fecha_desde"),
@@ -36,13 +38,27 @@ def listar_pedidos_para_autorizacion(filtros: dict):
         estado=filtros.get("estado_enum"),
     )
 
+    condicion_filtro = (filtros.get("condicion") or "").strip().lower()
     resultado = []
     for p in pedidos:
-        # Calculo los toltales individuales para cada pedido de la lista
         totales = repo_solicitudes.calcular_totales_pedido(p.idPedido)
+        if condicion_filtro in ("regular", "excepcion"):
+            tiene_condicion = any(
+                (
+                    s.condicionCupo.value
+                    if hasattr(s.condicionCupo, "value")
+                    else str(s.condicionCupo)
+                ).lower()
+                == condicion_filtro
+                for s in totales["solicitudes"]
+            )
+            if not tiene_condicion:
+                continue
+
         resultado.append({
             "idPedido": p.idPedido,
             "idSector": p.idSector,
+            "nombreSector": mapa_sectores.get(p.idSector, f"Sector #{p.idSector}"),
             "fecha_desde": p.fecha_desde.isoformat(),
             "periodicidad": p.periodicidad.value,
             "estado": p.estado_general.value,
@@ -167,19 +183,164 @@ def rechazar_pedido(id_pedido: int, id_evaluador: int | None = None, motivo: str
 
 # <------ Comidas Autorizadas y Entregas (Sector Comedor) ------>
 
+
+def _validar_formato_y_rango_csv(filtros_raw: dict) -> tuple[date, date]:
+    """Valida que formato sea 'csv' y que fecha_desde y fecha_hasta estén presentes y sean válidas"""
+
+    formato = filtros_raw.get("formato")
+    if formato is not None and formato != "csv":
+        raise ValueError("El parámetro 'formato' solo admite el valor 'csv'.")
+
+    f_desde_str = filtros_raw.get("fecha_desde") or filtros_raw.get("fecha")
+    f_hasta_str = filtros_raw.get("fecha_hasta") or filtros_raw.get("fecha")
+    if not f_desde_str or not f_hasta_str:
+        raise ValueError("El rango de fechas (fecha_desde y fecha_hasta) es obligatorio para exportar a CSV.")
+
+    f_desde = validador.validar_fecha_opcional(f_desde_str)
+    f_hasta = validador.validar_fecha_opcional(f_hasta_str)
+    if not f_desde or not f_hasta:
+        raise ValueError("El rango de fechas ingresado no es válido.")
+    if f_desde > f_hasta:
+        raise ValueError("La fecha 'fecha_desde' no puede ser posterior a 'fecha_hasta'.")
+
+    return f_desde, f_hasta
+
+
 def consultar_comidas_autorizadas(filtros: dict):
-    """Consulta comidas autorizadas pidiendo al menos un filtro"""
+    """Consulta comidas autorizadas (JSON) o genera el archivo CSV de personas autorizadas"""
 
-    # Fuerzo al menos 1 filtro y valido fecha en el validator
-    filtros = validador.validar_filtros_comidas_autorizadas(filtros)
+    formato = filtros.get("formato")
+    if formato is not None and formato != "csv":
+        raise ValueError("El parámetro 'formato' solo admite el valor 'csv'.")
 
+    if formato == "csv":
+        f_desde, f_hasta = _validar_formato_y_rango_csv(filtros)
+        filas = repo_solicitudes.buscar_comidas_autorizadas(
+            fecha_desde=f_desde,
+            fecha_hasta=f_hasta,
+            dni=filtros.get("dni"),
+            nya=filtros.get("nya"),
+            id_sector=filtros.get("sector"),
+            id_tipo_comida=filtros.get("tipo_comida"),
+            id_tipo_menu=filtros.get("tipo_menu"),
+            condicion=filtros.get("condicion"),
+        )
+        return generar_csv_personas_autorizadas(filas)
+
+    filtros_validados = validador.validar_filtros_comidas_autorizadas(filtros)
     return repo_solicitudes.buscar_comidas_autorizadas(
-        fecha=filtros.get("fecha"),
-        dni=filtros.get("dni"),
-        nya=filtros.get("nya"),
-        id_sector=filtros.get("sector"),
-        id_tipo_comida=filtros.get("tipo_comida"),
+        fecha=filtros_validados.get("fecha"),
+        dni=filtros_validados.get("dni"),
+        nya=filtros_validados.get("nya"),
+        id_sector=filtros_validados.get("sector"),
+        id_tipo_comida=filtros_validados.get("tipo_comida"),
     )
+
+
+def generar_csv_personas_autorizadas(filas: list[dict]) -> str:
+    """Genera el CSV con una fila por persona: apellido y nombre, DNI, sector, desayuno, almuerzo, merienda, cena y tipo de menú."""
+    agrupado = {}
+    for item in filas:
+        clave = (
+            item.get("idPersonal"),
+            item.get("fecha_vianda"),
+            item.get("idSector"),
+        )
+        if clave not in agrupado:
+            apellido = (item.get("apellido") or "").strip()
+            nombre = (item.get("nombre") or "").strip()
+            nya_texto = f"{apellido}, {nombre}".strip(", ")
+            agrupado[clave] = {
+                "apellido y nombre": nya_texto,
+                "DNI": item.get("dni") or "",
+                "sector": item.get("sector") or f"Sector #{item.get('idSector')}",
+                "desayuno": "No",
+                "almuerzo": "No",
+                "merienda": "No",
+                "cena": "No",
+                "tipo de menú": (item.get("menu") or "").lower(),
+            }
+
+        id_comida = item.get("idTipoComida")
+        nombre_comida = (item.get("comida") or "").strip().lower()
+        if id_comida == 1 or "desayuno" in nombre_comida:
+            agrupado[clave]["desayuno"] = "Sí"
+        elif id_comida == 2 or "almuerzo" in nombre_comida:
+            agrupado[clave]["almuerzo"] = "Sí"
+        elif id_comida == 3 or "merienda" in nombre_comida:
+            agrupado[clave]["merienda"] = "Sí"
+        elif id_comida == 4 or "cena" in nombre_comida:
+            agrupado[clave]["cena"] = "Sí"
+
+    output = io.StringIO()
+    columnas = [
+        "apellido y nombre",
+        "DNI",
+        "sector",
+        "desayuno",
+        "almuerzo",
+        "merienda",
+        "cena",
+        "tipo de menú",
+    ]
+    writer = csv.DictWriter(output, fieldnames=columnas)
+    writer.writeheader()
+    for fila in agrupado.values():
+        writer.writerow(fila)
+    return output.getvalue()
+
+
+def resumen_autorizaciones_service(filtros: dict):
+    """Obtiene el resumen de autorizaciones (pedidos vs autorizados) en JSON o CSV"""
+    
+    formato = filtros.get("formato")
+    if formato is not None and formato != "csv":
+        raise ValueError("El parámetro 'formato' solo admite el valor 'csv'.")
+
+    if formato == "csv":
+        _validar_formato_y_rango_csv(filtros)
+
+    filtros_validados = validador.validar_filtros_autorizaciones(filtros)
+    filtros_validados = _forzar_sector_jefe_servicio(filtros_validados)
+
+    resumen = repo_solicitudes.obtener_resumen_autorizaciones(
+        fecha_desde=filtros_validados.get("fecha_desde"),
+        fecha_hasta=filtros_validados.get("fecha_hasta"),
+        id_sector=filtros_validados.get("sector"),
+        id_tipo_comida=filtros_validados.get("tipo_comida"),
+        id_tipo_menu=filtros_validados.get("tipo_menu"),
+        condicion=filtros_validados.get("condicion"),
+        estado=filtros_validados.get("estado_enum"),
+    )
+
+    if formato == "csv":
+        output = io.StringIO()
+        columnas = [
+            "sector",
+            "comida",
+            "tipo de menú",
+            "pedidas regulares",
+            "pedidas excepción",
+            "total pedidas",
+            "total autorizadas",
+            "diferencia",
+        ]
+        writer = csv.DictWriter(output, fieldnames=columnas)
+        writer.writeheader()
+        for fila in resumen.get("desglose", []):
+            writer.writerow({
+                "sector": fila["sector"],
+                "comida": fila["comida"],
+                "tipo de menú": fila["tipo_menu"],
+                "pedidas regulares": fila["cantidad_pedida_regulares"],
+                "pedidas excepción": fila["cantidad_pedida_excepciones"],
+                "total pedidas": fila["cantidad_pedida"],
+                "total autorizadas": fila["cantidad_autorizada"],
+                "diferencia": fila["diferencia"],
+            })
+        return output.getvalue()
+
+    return resumen
 
 
 def consultar_comidas_autorizadas_persona(id_personal: int, fecha_consulta):
@@ -311,20 +472,6 @@ def _forzar_sector_jefe_servicio(filtros: dict):
     return filtros
 
 
-def resumen_autorizaciones_service(filtros: dict):
-    """Obtiene el resumen de autorizaciones (pedidos vs autorizados)"""
-
-    filtros = validador.validar_filtros_autorizaciones(filtros)
-    filtros = _forzar_sector_jefe_servicio(filtros)
-
-    return repo_solicitudes.obtener_resumen_autorizaciones(
-        fecha_desde=filtros.get("fecha_desde"),
-        fecha_hasta=filtros.get("fecha_hasta"),
-        id_sector=filtros.get("sector"),
-        id_tipo_comida=filtros.get("tipo_comida"),
-        id_tipo_menu=filtros.get("tipo_menu"),
-        condicion=filtros.get("condicion"),
-    )
 
 
 def resumen_entregas_generales_service(filtros: dict):
