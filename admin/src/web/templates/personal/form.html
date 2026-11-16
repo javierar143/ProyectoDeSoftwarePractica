@@ -29,6 +29,9 @@
                 name="dni" 
                 required 
                 inputmode="numeric"
+                minlength="7"
+                maxlength="10"
+                pattern="[0-9]{7,10}"
                 value="{{ valores.dni if valores else (persona.dni if persona else '') }}"
             >
         </div>
@@ -40,6 +43,9 @@
                 id="apellido" 
                 name="apellido" 
                 required 
+                minlength="2"
+                maxlength="50"
+                pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s'-]+"
                 value="{{ valores.apellido if valores else (persona.apellido if persona else '') }}"
             >
         </div>
@@ -51,6 +57,9 @@
                 id="nombre" 
                 name="nombre" 
                 required 
+                minlength="2"
+                maxlength="50"
+                pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s'-]+"
                 value="{{ valores.nombre if valores else (persona.nombre if persona else '') }}"
             >
         </div>

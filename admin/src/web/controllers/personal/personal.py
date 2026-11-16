@@ -172,7 +172,9 @@ def nuevo():
         )
 
     if persona_creada is None:
-        errores.append("Ya existe una persona registrada con ese DNI.")
+        errores.append(
+            "Ya existe una persona registrada con ese DNI o fue utilizada anteriormente en el sistema."
+        )
         return (
             render_template(
                 "personal/form.html",
