@@ -1,3 +1,4 @@
+
 /**
  * Rutas del módulo Servicio de Alimentación.
  *
@@ -7,6 +8,11 @@ export const servicioAlimentacionRoutes = [
   {
     path: '/inicio/servicio-alimentacion',
     name: 'inicio-servicio-alimentacion',
+
+    // TEMPORAL: eliminar esta vista y su importación
+    // cuando se implemente la pantalla definitiva.
+    component: () => import('./temporalServicioAlimentacion.vue'),
+
     meta: {
       requiresAuth: true,
       roles: ['servicioAlimentacion'],

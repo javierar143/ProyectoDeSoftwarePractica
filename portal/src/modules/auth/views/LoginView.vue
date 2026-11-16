@@ -26,10 +26,57 @@ const emailInput = ref(null)
 const apiErrorMessage = ref(null)
 const loading = ref(false)
 
-// Indica si el servidor no pudo confirmar el cierre de sesión anterior.
 const logoutWarning = computed(
   () => route.query.logout === 'incomplete',
 )
+
+/**
+ * Determina el destino después del login.
+ *
+ * Si el usuario puede acceder a la ruta solicitada,
+ * conserva el redirect.
+ *
+ * Si tiene otro rol operativo, lo dirige a su pantalla inicial.
+ *
+ * Si no tiene un rol operativo habilitado, muestra acceso denegado.
+ */
+function getPostLoginDestination() {
+  const redirect = route.query.redirect
+  const roleKey = authStore.operationalRoleKey
+
+  if (typeof redirect === 'string' && redirect.trim()) {
+    const requestedPath = redirect.trim()
+
+    const redirectPath = requestedPath.startsWith('/')
+      ? requestedPath
+      : `/${requestedPath}`
+
+    if (!redirectPath.startsWith('//')) {
+      const resolvedRoute = router.resolve(redirectPath)
+
+      const requiredRoles = resolvedRoute.meta.roles
+
+      const roleIsAuthorized =
+        !requiredRoles ||
+        (Array.isArray(requiredRoles) &&
+          requiredRoles.includes(roleKey))
+
+      if (
+        resolvedRoute.matched.length > 0 &&
+        resolvedRoute.name !== 'login' &&
+        roleIsAuthorized
+      ) {
+        return resolvedRoute.fullPath
+      }
+    }
+  }
+
+  const destination = getRoleHomeRoute(roleKey)
+
+  return destination
+    ? { name: destination }
+    : { name: 'access-denied' }
+}
 
 /**
  * Valida los campos antes de enviar las credenciales.
@@ -83,19 +130,9 @@ async function handleLogin() {
     const roles = await getOperationalRoles()
     authStore.setOperationalRoles(roles)
 
-    const redirect = route.query.redirect
+    const destination = getPostLoginDestination()
 
-    if (typeof redirect === 'string') {
-      await router.replace(redirect)
-    } else {
-      const destination = getRoleHomeRoute(authStore.operationalRoleKey)
-
-      await router.replace(
-        destination
-          ? { name: destination }
-          : { name: 'access-denied' },
-      )
-    }
+    await router.replace(destination)
   } catch (error) {
     const apiError = normalizeApiError(error)
 
@@ -113,8 +150,6 @@ async function handleLogin() {
       emailError.value = fields.email ?? ''
       passwordError.value = fields.password ?? ''
 
-      // Si los errores ya se muestran junto a los campos,
-      // no repetimos el mensaje general.
       if (!emailError.value && !passwordError.value) {
         apiErrorMessage.value = apiError
       }
