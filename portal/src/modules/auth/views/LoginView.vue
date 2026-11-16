@@ -2,41 +2,103 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { login } from '../services/auth'
 
+import { useAuthStore } from '@/stores/auth'
+import { getRoleHomeRoute } from '@/router/navigation'
+import { normalizeApiError } from '@/services/api/error-handler'
+
+import {
+  login,
+  getCurrentUser,
+  getOperationalRoles,
+} from '../services/auth'
+
+const authStore = useAuthStore()
 const router = useRouter()
 
 const email = ref('')
 const password = ref('')
+const emailError = ref('')
+const passwordError = ref('')
+const emailInput = ref(null)
 const errorMessage = ref('')
 const loading = ref(false)
 
+/**
+ * Valida los campos antes de enviar las credenciales.
+ */
+function validateForm() {
+  emailError.value = ''
+  passwordError.value = ''
+
+  if (!email.value.trim()) {
+    emailError.value = 'El email es obligatorio.'
+    return false
+  }
+
+  if (!emailInput.value.checkValidity()) {
+    emailError.value = 'Ingresá un email válido.'
+    return false
+  }
+
+  if (!password.value) {
+    passwordError.value = 'La contraseña es obligatoria.'
+    return false
+  }
+
+  return true
+}
+
+/**
+ * Ejecuta el proceso de autenticación y carga los datos del usuario.
+ */
 async function handleLogin() {
   errorMessage.value = ''
 
-  if (!email.value.trim() || !password.value) {
-    errorMessage.value = 'Completá el email y la contraseña.'
+  if (!validateForm()) {
     return
   }
 
   loading.value = true
+  let credentialsAccepted = false
 
   try {
     const data = await login(email.value.trim(), password.value)
 
-    localStorage.setItem('token', data.access_token)
+    authStore.setToken(data.access_token)
+    credentialsAccepted = true
 
-    
-  } catch (error) {
-    if (error.response?.status === 401) {
-      errorMessage.value = 'Email o contraseña incorrectos.'
-    } else if (error.response?.status === 400) {
-      errorMessage.value =
-        error.response.data.description ||
-        error.response.data.message ||
-        'Los datos enviados no son válidos.'
+    const user = await getCurrentUser()
+    authStore.setUser(user)
+
+    const roles = await getOperationalRoles()
+    authStore.setOperationalRoles(roles)
+
+    const redirect = router.currentRoute.value.query.redirect
+
+    if (typeof redirect === 'string') {
+      await router.replace(redirect)
     } else {
-      errorMessage.value = 'No se pudo conectar con el servidor.'
+      const destination = getRoleHomeRoute(authStore.operationalRoleKey)
+
+      await router.replace(
+        destination
+          ? { name: destination }
+          : { name: 'access-denied' },
+      )
+    }
+  } catch (error) {
+    const apiError = normalizeApiError(error)
+
+    authStore.clearSession()
+
+    if (apiError.status === 401 && credentialsAccepted) {
+      errorMessage.value =
+        'No se pudo establecer la sesión. Volvé a ingresar.'
+    } else {
+      // El backend informa "Credenciales inválidas" sin
+      // distinguir entre correo y contraseña incorrectos.
+      errorMessage.value = apiError.message
     }
   } finally {
     loading.value = false
@@ -49,27 +111,48 @@ async function handleLogin() {
     <section class="login-card">
       <h1>Iniciar sesión</h1>
 
-      <form @submit.prevent="handleLogin">
+      <form @submit.prevent="handleLogin" novalidate>
         <div class="form-field">
           <label for="email">Email</label>
+
           <input
             id="email"
+            ref="emailInput"
             v-model="email"
             type="email"
             autocomplete="username"
             required
+            :aria-invalid="Boolean(emailError)"
+            :aria-describedby="emailError ? 'email-error' : undefined"
+            @input="emailError = ''"
           />
+
+          <p v-if="emailError" id="email-error" class="field-error">
+            {{ emailError }}
+          </p>
         </div>
 
         <div class="form-field">
           <label for="password">Contraseña</label>
+
           <input
             id="password"
             v-model="password"
             type="password"
             autocomplete="current-password"
             required
+            :aria-invalid="Boolean(passwordError)"
+            :aria-describedby="passwordError ? 'password-error' : undefined"
+            @input="passwordError = ''"
           />
+
+          <p
+            v-if="passwordError"
+            id="password-error"
+            class="field-error"
+          >
+            {{ passwordError }}
+          </p>
         </div>
 
         <p v-if="errorMessage" class="error-message" role="alert">
@@ -85,7 +168,6 @@ async function handleLogin() {
 </template>
 
 <style scoped>
-
 .login-container {
   min-height: 100vh;
   display: flex;
@@ -135,6 +217,16 @@ input {
 input:focus {
   border-color: #2563eb;
   outline: 2px solid rgba(37, 99, 235, 0.2);
+}
+
+input[aria-invalid='true'] {
+  border-color: #c62828;
+}
+
+.field-error {
+  color: #c62828;
+  font-size: 14px;
+  margin: 0;
 }
 
 button {

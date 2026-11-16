@@ -3,10 +3,28 @@ import { createPinia } from 'pinia'
 
 import App from './App.vue'
 import router from './router'
+import apiClient from './services/api/client'
+
+import { useAuthStore } from './stores/auth'
+import { registerAuthResponseInterceptor } from './services/api/auth-interceptor'
+import { registerMaintenanceInterceptor } from './services/api/maintenance-interceptor'
 
 const app = createApp(App)
 
-app.use(createPinia())
+const pinia = createPinia()
+
+app.use(pinia)
+
+// Obtiene el store asociado a la instancia de Pinia.
+const authStore = useAuthStore(pinia)
+
+// Registra el tratamiento global de respuestas 401.
+registerAuthResponseInterceptor(apiClient, authStore, router)
+
+// Registra el tratamiento global de respuestas 503.
+registerMaintenanceInterceptor(apiClient, router)
+
+// Instala el router después de registrar el interceptor.
 app.use(router)
 
 app.mount('#app')
