@@ -1,11 +1,11 @@
-from datetime import date
+from datetime import datetime, date
 from sqlalchemy import select, or_, update
 from src.core.database import db
 from src.core.models.Pedido import Pedido
 from src.core.models.Solicitud import Solicitud
 from src.core.models.Entrega import Entrega
 from src.core.models.Personal import Personal
-from src.core.models.enums import EstadoAutorizacion, EstadoPedido
+from src.core.models.enums import EstadoAutorizacion, EstadoPedido, CondicionCupo
 
 
 def get_pedido_by_id(id_pedido: int):
@@ -81,53 +81,62 @@ def calcular_totales_pedido(id_pedido: int):
     }
 
 
-def autorizar_solicitudes_pedido(pedido: Pedido, decisiones: dict, id_evaluador: int):
-    """Actualiza de forma nominada las solicitudes de un pedido"""
+def autorizar_solicitudes_pedido(pedido, decisiones: dict, id_evaluador: int):
+    """Actualiza de forma nominada las solicitudes de un pedido"""  
 
-    # Recorro y actualizo 
+    ahora = datetime.now()
     for id_sol, nuevo_estado in decisiones.items():
+        valores_sol = {
+            "estadoAutorizacion": nuevo_estado,
+            "idUserEvaluador": id_evaluador,
+        }
+        if hasattr(Solicitud, "fecha_evaluacion"):
+            valores_sol["fecha_evaluacion"] = ahora
+
         db.session.execute(
             update(Solicitud)
-            .where(
-                Solicitud.idSolicitud == id_sol,
-                Solicitud.idPedido == pedido.idPedido,
-            )
-            .values(
-                estadoAutorizacion=nuevo_estado,
-                idUserEvaluador=id_evaluador,
-            )
+            .where(Solicitud.idSolicitud == id_sol)
+            .values(**valores_sol)
         )
 
-    # Actualizo el estado general del pedido a autorizado
+    valores_ped = {"estado_general": EstadoPedido.AUTORIZADO}
+    if hasattr(Pedido, "updated_at"):
+        valores_ped["updated_at"] = ahora
+
     db.session.execute(
         update(Pedido)
         .where(Pedido.idPedido == pedido.idPedido)
-        .values(estado_general=EstadoPedido.AUTORIZADO)
+        .values(**valores_ped)
     )
     db.session.commit()
     db.session.expire_all()
     return get_pedido_by_id(pedido.idPedido)
 
 
-def rechazar_pedido_completo(pedido: Pedido, id_evaluador: int | None = None):
+def rechazar_pedido_completo(pedido, id_evaluador: int | None = None, motivo: str = ""):
     """Marca un pedido como RECHAZADO y todas sus solicitudes como NO_AUTORIZADA"""
 
-    valores_solicitud = {"estadoAutorizacion": EstadoAutorizacion.NO_AUTORIZADA}
+    ahora = datetime.now()
+    vals_sol = {"estadoAutorizacion": EstadoAutorizacion.NO_AUTORIZADA}
     if id_evaluador:
-        valores_solicitud["idUserEvaluador"] = id_evaluador
+        vals_sol["idUserEvaluador"] = id_evaluador
 
-    # Rechazo todas las solicitudes asociadas al pedido
     db.session.execute(
         update(Solicitud)
         .where(Solicitud.idPedido == pedido.idPedido)
-        .values(**valores_solicitud)
+        .values(**vals_sol)
     )
 
-    # Marco el pedido entero como rechazado
+    vals_ped = {"estado_general": EstadoPedido.RECHAZADO}
+    if hasattr(Pedido, "motivo_rechazo"):
+        vals_ped["motivo_rechazo"] = motivo
+    if hasattr(Pedido, "updated_at"):
+        vals_ped["updated_at"] = ahora
+
     db.session.execute(
         update(Pedido)
         .where(Pedido.idPedido == pedido.idPedido)
-        .values(estado_general=EstadoPedido.RECHAZADO)
+        .values(**vals_ped)
     )
     db.session.commit()
     db.session.expire_all()
@@ -193,10 +202,20 @@ def buscar_comidas_autorizadas(fecha=None, dni=None, nya=None, id_sector=None, i
     return resultados
 
 
-def obtener_resumen_autorizaciones(fecha_desde=None, fecha_hasta=None, id_sector=None, id_tipo_comida=None, id_tipo_menu=None):
-    """Calcula totales de pedidos vs autorizados con su diferencia"""
+def obtener_resumen_autorizaciones(
+    fecha_desde=None,
+    fecha_hasta=None,
+    id_sector=None,
+    id_tipo_comida=None,
+    id_tipo_menu=None,
+    condicion=None,
+):
 
-    stmt = select(Solicitud).join(Pedido, Solicitud.idPedido == Pedido.idPedido)
+    stmt = (
+        select(Solicitud, Pedido)
+        .join(Pedido, Solicitud.idPedido == Pedido.idPedido)
+        .where(Solicitud.activo.is_(True), Pedido.activo.is_(True))
+    )
     if fecha_desde:
         stmt = stmt.where(Solicitud.fecha_vianda >= fecha_desde)
     if fecha_hasta:
@@ -207,13 +226,32 @@ def obtener_resumen_autorizaciones(fecha_desde=None, fecha_hasta=None, id_sector
         stmt = stmt.where(Solicitud.idTipoComida == id_tipo_comida)
     if id_tipo_menu:
         stmt = stmt.where(Solicitud.idTipoMenu == id_tipo_menu)
+    if condicion and condicion != "todas":
+        try:
+            cond_enum = CondicionCupo[condicion.upper()]
+            stmt = stmt.where(Solicitud.condicionCupo == cond_enum)
+        except KeyError:
+            pass
 
-    solicitudes = db.session.scalars(stmt).all()
-    total_pedido = len(solicitudes)
-    total_autorizado = sum(1 for s in solicitudes if s.estadoAutorizacion == EstadoAutorizacion.AUTORIZADA)
+    filas = db.session.execute(stmt).all()
+    total_pedido = len(filas)
+    total_autorizado = 0
+    regulares_ped = 0
+    excepciones_ped = 0
+
+    for s, _ in filas:
+        if s.estadoAutorizacion == EstadoAutorizacion.AUTORIZADA:
+            total_autorizado += 1
+        val_cond = s.condicionCupo.value if hasattr(s.condicionCupo, "value") else str(s.condicionCupo)
+        if val_cond.lower() == "excepcion":
+            excepciones_ped += 1
+        else:
+            regulares_ped += 1
 
     return {
         "total_pedido": total_pedido,
+        "total_pedido_regulares": regulares_ped,
+        "total_pedido_excepciones": excepciones_ped,
         "total_autorizado": total_autorizado,
         "diferencia": total_pedido - total_autorizado,
     }

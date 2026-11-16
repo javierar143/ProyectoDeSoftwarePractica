@@ -13,24 +13,49 @@ def verificar_entrega_existente(id_solicitud: int) -> bool:
     statement = select(Entrega).where(Entrega.idSolicitud == id_solicitud)
     return db.session.scalars(statement).first() is not None
 
+def pedido_tiene_entregas(id_pedido: int) -> bool:
+    """Verifica si alguna solicitud perteneciente al pedido ya fue entregada"""
 
-def registrar_entregas_multiples(id_user: int, ids_solicitudes: list[int], id_personal_retira: int):
-    """Registra la entrega física de una o varias viandas en una misma operacion"""
+    stmt = (
+        select(Entrega)
+        .join(Solicitud, Entrega.idSolicitud == Solicitud.idSolicitud)
+        .where(Solicitud.idPedido == id_pedido)
+    )
+    return db.session.scalars(stmt).first() is not None
 
+
+def registrar_entregas_multiples(
+    id_user: int,
+    ids_solicitudes: list[int],
+    id_personal_retira: int | None = None,
+    dni_tercero: str | None = None,
+    nombre_tercero: str | None = None,
+):
     ahora = datetime.now()
     nuevas_entregas = []
 
-    # Recorro cada ID de solicitud y le preparo un registro de entrega
+    # Si enviaron un tercero (sin id_personal_retira), buscamos si existe por DNI en Personal;
+    # Si no existe y la columna idPersonal en Entrega es NOT NULL, tomamos el idPersonal de la solicitud.
+    if not id_personal_retira and dni_tercero:
+        from src.core.models.Personal import Personal
+        pers_tercero = db.session.scalars(
+            select(Personal).where(Personal.dni == dni_tercero)
+        ).first()
+        if pers_tercero:
+            id_personal_retira = pers_tercero.idPersonal
+
     for id_sol in ids_solicitudes:
+        sol_obj = db.session.get(Solicitud, id_sol)
+        id_pers_efectivo = id_personal_retira or (sol_obj.idPersonal if sol_obj else 1)
+
         nueva_entrega = Entrega(
             idUser=id_user,
             idSolicitud=id_sol,
-            idPersonal=id_personal_retira,
+            idPersonal=id_pers_efectivo,
             fecha_hora=ahora,
         )
         db.session.add(nueva_entrega)
         nuevas_entregas.append(nueva_entrega)
-
     db.session.commit()
     return nuevas_entregas
 
