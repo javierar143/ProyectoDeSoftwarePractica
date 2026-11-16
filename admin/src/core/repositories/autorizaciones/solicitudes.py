@@ -286,3 +286,36 @@ def obtener_resumen_entregas_generales(fecha_desde=None, fecha_hasta=None, id_se
         "total_entregado": total_entregado,
         "diferencia": total_autorizado - total_entregado,
     }
+
+def listar_fechas_autorizacion(
+    fecha_desde=None,
+    fecha_hasta=None,
+    id_sector=None,
+    id_tipo_comida=None,
+    id_tipo_menu=None,
+    estado=None,
+):
+    """Devuelve las fechas distintas que tienen pedidos/solicitudes segun los filtros"""
+
+    stmt = (
+        select(Solicitud.fecha_vianda)
+        .join(Pedido, Solicitud.idPedido == Pedido.idPedido)
+        .where(Solicitud.activo.is_(True), Pedido.activo.is_(True))
+    )
+
+    if fecha_desde:
+        stmt = stmt.where(Solicitud.fecha_vianda >= fecha_desde)
+    if fecha_hasta:
+        stmt = stmt.where(Solicitud.fecha_vianda <= fecha_hasta)
+    if id_sector:
+        stmt = stmt.where(Pedido.idSector == id_sector)
+    if id_tipo_comida:
+        stmt = stmt.where(Solicitud.idTipoComida == id_tipo_comida)
+    if id_tipo_menu:
+        stmt = stmt.where(Solicitud.idTipoMenu == id_tipo_menu)
+    if estado:
+        stmt = stmt.where(Pedido.estado_general == estado)
+
+    stmt = stmt.distinct().order_by(Solicitud.fecha_vianda.asc())
+    fechas = db.session.scalars(stmt).all()
+    return [f.isoformat() for f in fechas if f is not None]

@@ -1,30 +1,64 @@
 <template>
-  <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="titulo-detalle-pedido">
+  <div
+    class="modal-backdrop"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="titulo-detalle-pedido"
+  >
     <div class="modal-panel">
       <header class="modal-header">
         <div>
           <div class="header-titulo-fila">
             <h2 id="titulo-detalle-pedido">Pedido #{{ detalle.idPedido }}</h2>
-            <span class="estado-pill">{{ detalle.estado }}</span>
+            <span :class="['estado-pill', `estado-${detalle.estado}`]">
+              {{ formatearEstadoPedido(detalle.estado) }}
+            </span>
+            <span v-if="esDiaAnterior" class="lectura-pill">Solo lectura (fecha pasada)</span>
           </div>
           <p class="origen-pedido">
             <strong>Sector:</strong> {{ nombreSector }}
-            <span v-if="detalle.fecha_desde"> · <strong>Desde:</strong> {{ detalle.fecha_desde.slice(0, 10) }}</span>
+            <span v-if="detalle.fecha_desde">
+              · <strong>Fecha:</strong> {{ formatearFechaDdMmAaaa(detalle.fecha_desde) }}
+            </span>
+            <span v-if="detalle.periodicidad">
+              · <strong>Periodicidad:</strong> {{ detalle.periodicidad }}
+            </span>
           </p>
           <p class="subtitulo">
-            Estado actual: <strong>{{ detalle.estado }}</strong>
-            <span v-if="detalle.motivo_rechazo"> · Motivo: {{ detalle.motivo_rechazo }}</span>
+            Estado actual: <strong>{{ formatearEstadoPedido(detalle.estado) }}</strong>
+            <span v-if="detalle.motivo_rechazo">
+              · <strong>Motivo de rechazo:</strong> {{ detalle.motivo_rechazo }}
+            </span>
           </p>
         </div>
-        <button type="button" class="btn-cerrar" :disabled="guardando" @click="$emit('cerrar')">
+        <button
+          type="button"
+          class="btn-cerrar"
+          aria-label="Cerrar detalle del pedido"
+          :disabled="guardando"
+          @click="$emit('cerrar')"
+        >
           ✕
         </button>
       </header>
 
-      <section class="resumen-comparador" aria-label="Comparador de cantidades">
+      <section
+        v-if="esDiaAnterior || detalle.estado === 'rechazado'"
+        class="aviso-solo-lectura"
+        role="note"
+      >
+        <span v-if="esDiaAnterior">
+          Este pedido corresponde a una fecha anterior a hoy y se muestra en modo de solo lectura.
+        </span>
+        <span v-else>
+          Este pedido fue rechazado y no admite modificaciones de autorización.
+        </span>
+      </section>
+
+      <section class="resumen-comparador" aria-label="Cantidades pedidas y autorizadas">
         <div class="stat-box">
-          <span>Total Pedido</span>
-          <strong>{{ totalSolicitudes }}</strong>
+          <span>Solicitudes Pedidas</span>
+          <strong>{{ totalSolicitudesPedidas }}</strong>
         </div>
         <div class="stat-box destacado">
           <span>Quedarán Autorizadas</span>
@@ -32,13 +66,27 @@
         </div>
       </section>
 
-      <section class="acciones-masivas" aria-label="Acciones rápidas">
+      <section
+        v-if="desgloseAgrupado.length > 0"
+        class="desglose-box"
+        aria-label="Totales por comida y tipo de menú"
+      >
+        <span class="acciones-etiqueta">Totales por comida y menú (simulado)</span>
+        <div class="desglose-chips">
+          <div v-for="item in desgloseAgrupado" :key="item.clave" class="chip-desglose">
+            <span>{{ item.comida }} · {{ item.menu }}</span>
+            <strong>{{ item.autorizadas }} / {{ item.pedidas }} aut.</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="acciones-masivas" aria-label="Acciones masivas de autorización">
         <span class="acciones-etiqueta">Acciones rápidas</span>
         <div class="acciones-masivas-botones">
           <button
             type="button"
             class="btn-accion btn-regulares"
-            :disabled="guardando || bloqueadoPorFecha"
+            :disabled="guardando || bloqueadoEdicion"
             @click="autorizarSoloRegulares"
           >
             Autorizar todas las Regulares
@@ -46,7 +94,7 @@
           <button
             type="button"
             class="btn-accion btn-todo"
-            :disabled="guardando || bloqueadoPorFecha"
+            :disabled="guardando || bloqueadoEdicion"
             @click="autorizarTodo"
           >
             Autorizar pedido completo
@@ -54,7 +102,7 @@
           <button
             type="button"
             class="btn-accion btn-ninguna"
-            :disabled="guardando || bloqueadoPorFecha"
+            :disabled="guardando || bloqueadoEdicion"
             @click="desautorizarTodo"
           >
             Marcar todas como No autorizadas
@@ -62,15 +110,16 @@
         </div>
       </section>
 
-      <div class="lista-solicitudes">
+      <section class="lista-solicitudes" aria-label="Detalle nominado de solicitudes">
         <table class="tabla-sol">
           <thead>
             <tr>
-              <th>Solicitud</th>
-              <th>Personal</th>
-              <th>Comida</th>
-              <th>Condición</th>
-              <th>Autorización</th>
+              <th scope="col">Solicitud</th>
+              <th scope="col">Personal</th>
+              <th scope="col">Comida</th>
+              <th scope="col">Tipo de menú</th>
+              <th scope="col">Condición</th>
+              <th scope="col">Autorización</th>
             </tr>
           </thead>
           <tbody>
@@ -87,6 +136,9 @@
                 <span class="nombre-principal">{{ resolverNombreComida(sol) }}</span>
               </td>
               <td>
+                <span class="menu-badge">{{ resolverNombreMenu(sol) }}</span>
+              </td>
+              <td>
                 <span :class="['tag-cond', esExcepcion(sol) ? 'excepcion' : 'regular']">
                   {{ esExcepcion(sol) ? 'Excepción' : 'Regular' }}
                 </span>
@@ -99,7 +151,7 @@
                     sol.estado === 'AUTORIZADA' ? 'autorizada' : 'no-autorizada',
                   ]"
                   :aria-pressed="sol.estado === 'AUTORIZADA'"
-                  :disabled="guardando || bloqueadoPorFecha"
+                  :disabled="guardando || bloqueadoEdicion"
                   @click="alternarSolicitud(sol, sol.estado !== 'AUTORIZADA')"
                 >
                   <span class="icono-estado">
@@ -113,9 +165,12 @@
             </tr>
           </tbody>
         </table>
-      </div>
+      </section>
 
-      <section class="bloque-rechazo" v-if="detalle.estado === 'confirmado' && !bloqueadoPorFecha">
+      <section
+        v-if="detalle.estado === 'confirmado' && !bloqueadoEdicion"
+        class="bloque-rechazo"
+      >
         <label for="motivo-rechazo">Rechazar pedido completo (motivo obligatorio)</label>
         <div class="fila-rechazo">
           <input
@@ -124,6 +179,7 @@
             type="text"
             placeholder="Ej: Supera el cupo asignado sin justificación"
             :disabled="guardando"
+            @input="errorMotivoLocal = ''"
           />
           <button
             type="button"
@@ -134,16 +190,25 @@
             Rechazar pedido
           </button>
         </div>
+        <p v-if="errorMotivoLocal" class="error-campo" role="alert">
+          {{ errorMotivoLocal }}
+        </p>
       </section>
 
       <footer class="modal-footer">
-        <button type="button" class="btn-cancelar" :disabled="guardando" @click="$emit('cerrar')">
-          Cancelar
-        </button>
         <button
           type="button"
+          class="btn-cancelar"
+          :disabled="guardando"
+          @click="$emit('cerrar')"
+        >
+          {{ bloqueadoEdicion ? 'Cerrar' : 'Cancelar' }}
+        </button>
+        <button
+          v-if="!bloqueadoEdicion"
+          type="button"
           class="btn-confirmar"
-          :disabled="guardando || bloqueadoPorFecha"
+          :disabled="guardando"
           @click="solicitarConfirmacionAutorizacion"
         >
           {{ guardando ? 'Guardando...' : 'Confirmar autorización' }}
@@ -165,18 +230,13 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  sectores: {
+    type: Array,
+    default: () => [],
+  },
 })
 
 const emit = defineEmits(['cerrar', 'confirmar-autorizacion', 'confirmar-rechazo'])
-
-const SECTORES_POR_ID = {
-  1: 'Administración',
-  2: 'Guardia',
-  3: 'Quirófano',
-  4: 'Internación',
-  5: 'Laboratorio',
-  6: 'Servicio de Alimentación',
-}
 
 const PERSONAL_POR_ID = {
   1: 'Soyadmin, Juan',
@@ -193,13 +253,21 @@ const COMIDAS_POR_ID = {
   4: 'Cena',
 }
 
+const MENUS_POR_ID = {
+  1: 'General',
+  2: 'Vegetariano',
+  3: 'Celíaco',
+}
+
 const solicitudesEditables = ref([])
 const motivoRechazo = ref('')
+const errorMotivoLocal = ref('')
 
 watch(
   () => props.detalle,
   (nuevoDetalle) => {
     motivoRechazo.value = nuevoDetalle?.motivo_rechazo || ''
+    errorMotivoLocal.value = ''
     solicitudesEditables.value = (nuevoDetalle?.solicitudes || []).map((s) => ({
       ...s,
       estado: s.estadoAutorizacion === 'autorizada' ? 'AUTORIZADA' : 'NO_AUTORIZADA',
@@ -216,15 +284,44 @@ function fechaLocalIso() {
   return `${anio}-${mes}-${dia}`
 }
 
+function formatearFechaDdMmAaaa(valorFecha) {
+  if (!valorFecha) return '-'
+  const iso = String(valorFecha).slice(0, 10)
+  const partes = iso.split('-')
+  if (partes.length !== 3) return valorFecha
+  return `${partes[2]}/${partes[1]}/${partes[0]}`
+}
+
+function formatearEstadoPedido(estado) {
+  const mapa = {
+    confirmado: 'Confirmado',
+    autorizado: 'Autorizado',
+    rechazado: 'Rechazado',
+  }
+  return mapa[String(estado || '').toLowerCase()] || estado || '-'
+}
+
+const mapaSectoresModal = computed(() => {
+  const map = {}
+  for (const sec of props.sectores || []) {
+    if (sec?.id !== undefined) {
+      map[Number(sec.id)] = sec.nombre
+    }
+  }
+  return map
+})
+
 const nombreSector = computed(() => {
+  if (props.detalle?.nombreSector) return props.detalle.nombreSector
   const idSector = Number(props.detalle?.idSector)
-  if (Number.isInteger(idSector) && SECTORES_POR_ID[idSector]) {
-    return SECTORES_POR_ID[idSector]
+  if (Number.isInteger(idSector) && mapaSectoresModal.value[idSector]) {
+    return mapaSectoresModal.value[idSector]
   }
   return idSector ? `Sector #${idSector}` : 'Sin sector'
 })
 
 function resolverNombrePersonal(sol) {
+  if (sol?.nombrePersonal) return sol.nombrePersonal
   const id = Number(sol?.idPersonal)
   if (Number.isInteger(id) && PERSONAL_POR_ID[id]) {
     return PERSONAL_POR_ID[id]
@@ -233,6 +330,7 @@ function resolverNombrePersonal(sol) {
 }
 
 function resolverNombreComida(sol) {
+  if (sol?.nombreTipoComida) return sol.nombreTipoComida
   const id = Number(sol?.idTipoComida)
   if (Number.isInteger(id) && COMIDAS_POR_ID[id]) {
     return COMIDAS_POR_ID[id]
@@ -240,12 +338,26 @@ function resolverNombreComida(sol) {
   return id ? `Comida #${id}` : 'Sin comida'
 }
 
-const bloqueadoPorFecha = computed(() => {
+function resolverNombreMenu(sol) {
+  if (sol?.nombreTipoMenu) return sol.nombreTipoMenu
+  const id = Number(sol?.idTipoMenu)
+  if (Number.isInteger(id) && MENUS_POR_ID[id]) {
+    return MENUS_POR_ID[id]
+  }
+  return id ? `Menú #${id}` : 'Menú estándar'
+}
+
+const esDiaAnterior = computed(() => {
   if (!props.detalle?.fecha_desde) return false
-  return props.detalle.fecha_desde.slice(0, 10) < fechaLocalIso()
+  return String(props.detalle.fecha_desde).slice(0, 10) < fechaLocalIso()
 })
 
-const totalSolicitudes = computed(() => {
+const bloqueadoEdicion = computed(() => {
+  const estado = String(props.detalle?.estado || '').toLowerCase()
+  return esDiaAnterior.value || estado === 'rechazado'
+})
+
+const totalSolicitudesPedidas = computed(() => {
   if (typeof props.detalle?.cantidad_pedida === 'number') {
     return props.detalle.cantidad_pedida
   }
@@ -256,34 +368,57 @@ const totalSimuladoAutorizado = computed(() =>
   solicitudesEditables.value.filter((s) => s.estado === 'AUTORIZADA').length
 )
 
+const desgloseAgrupado = computed(() => {
+  const mapa = new Map()
+  for (const sol of solicitudesEditables.value) {
+    const comida = resolverNombreComida(sol)
+    const menu = resolverNombreMenu(sol)
+    const clave = `${comida}__${menu}`
+    if (!mapa.has(clave)) {
+      mapa.set(clave, { clave, comida, menu, pedidas: 0, autorizadas: 0 })
+    }
+    const entry = mapa.get(clave)
+    entry.pedidas += 1
+    if (sol.estado === 'AUTORIZADA') {
+      entry.autorizadas += 1
+    }
+  }
+  return Array.from(mapa.values())
+})
+
 function esExcepcion(sol) {
   const cond = String(sol.condicionCupo || '').toLowerCase()
   return cond === 'excepcion'
 }
 
 function alternarSolicitud(sol, marcada) {
+  if (bloqueadoEdicion.value) return
   sol.estado = marcada ? 'AUTORIZADA' : 'NO_AUTORIZADA'
 }
 
 function autorizarSoloRegulares() {
+  if (bloqueadoEdicion.value) return
   solicitudesEditables.value.forEach((s) => {
     s.estado = esExcepcion(s) ? 'NO_AUTORIZADA' : 'AUTORIZADA'
   })
 }
 
 function autorizarTodo() {
+  if (bloqueadoEdicion.value) return
   solicitudesEditables.value.forEach((s) => {
     s.estado = 'AUTORIZADA'
   })
 }
 
 function desautorizarTodo() {
+  if (bloqueadoEdicion.value) return
   solicitudesEditables.value.forEach((s) => {
     s.estado = 'NO_AUTORIZADA'
   })
 }
 
 function solicitarConfirmacionAutorizacion() {
+  if (bloqueadoEdicion.value) return
   emit('confirmar-autorizacion', {
     idPedido: props.detalle.idPedido,
     ultima_modificacion: props.detalle.ultima_modificacion ?? null,
@@ -295,14 +430,20 @@ function solicitarConfirmacionAutorizacion() {
       idSolicitud: s.idSolicitud,
       persona: resolverNombrePersonal(s),
       comida: resolverNombreComida(s),
+      menu: resolverNombreMenu(s),
       estado: s.estado,
     })),
   })
 }
 
 function solicitarRechazo() {
+  if (bloqueadoEdicion.value) return
   const limpio = motivoRechazo.value.trim()
-  if (!limpio) return
+  if (!limpio) {
+    errorMotivoLocal.value = 'Debe ingresar un motivo obligatorio para rechazar el pedido.'
+    return
+  }
+  errorMotivoLocal.value = ''
   emit('confirmar-rechazo', {
     idPedido: props.detalle.idPedido,
     motivo: limpio,
@@ -329,7 +470,7 @@ function solicitarRechazo() {
   border: 1px solid #e2e8f0;
   box-shadow: 0 22px 48px rgba(15, 23, 42, 0.22);
   width: 100%;
-  max-width: 790px;
+  max-width: 840px;
   max-height: 90vh;
   overflow-y: auto;
   padding: 1.35rem;
@@ -349,8 +490,9 @@ function solicitarRechazo() {
 
 .header-titulo-fila {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.55rem;
 }
 
 .header-titulo-fila h2 {
@@ -364,7 +506,29 @@ function solicitarRechazo() {
   color: #334155;
   border: 1px solid #cbd5e1;
   border-radius: 999px;
-  padding: 0.18rem 0.6rem;
+  padding: 0.18rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.estado-pill.estado-autorizado {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #86efac;
+}
+
+.estado-pill.estado-rechazado {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fca5a5;
+}
+
+.lectura-pill {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  border-radius: 999px;
+  padding: 0.18rem 0.65rem;
   font-size: 0.78rem;
   font-weight: 700;
 }
@@ -379,6 +543,16 @@ function solicitarRechazo() {
   margin: 0.2rem 0 0;
   color: #475569;
   font-size: 0.86rem;
+}
+
+.aviso-solo-lectura {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.86rem;
+  font-weight: 600;
 }
 
 .resumen-comparador {
@@ -414,6 +588,7 @@ function solicitarRechazo() {
   color: #0f766e;
 }
 
+.desglose-box,
 .acciones-masivas {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -422,6 +597,24 @@ function solicitarRechazo() {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.desglose-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.chip-desglose {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #1e293b;
 }
 
 .acciones-etiqueta {
@@ -477,13 +670,13 @@ function solicitarRechazo() {
 .tabla-sol {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
 .tabla-sol th {
   background: #f8fafc;
   color: #475569;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   padding: 0.65rem 0.75rem;
@@ -517,6 +710,17 @@ function solicitarRechazo() {
   color: #0f172a;
 }
 
+.menu-badge {
+  display: inline-block;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.16rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 .tag-cond {
   display: inline-block;
   padding: 0.2rem 0.55rem;
@@ -538,8 +742,8 @@ function solicitarRechazo() {
 }
 
 .btn-toggle-autorizacion {
-  min-height: 34px;
-  padding: 0.3rem 0.7rem;
+  min-height: 36px;
+  padding: 0.3rem 0.75rem;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
@@ -595,7 +799,8 @@ function solicitarRechazo() {
 
 .fila-rechazo input {
   flex: 1;
-  padding: 0.52rem 0.75rem;
+  min-height: 40px;
+  padding: 0.5rem 0.75rem;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   font-size: 0.9rem;
@@ -604,6 +809,13 @@ function solicitarRechazo() {
 .fila-rechazo input:focus {
   outline: none;
   border-color: #0f766e;
+}
+
+.error-campo {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #b91c1c;
 }
 
 .modal-footer {
@@ -615,8 +827,8 @@ function solicitarRechazo() {
 }
 
 button {
-  min-height: 38px;
-  padding: 0.45rem 0.9rem;
+  min-height: 40px;
+  padding: 0.45rem 0.95rem;
   border-radius: 8px;
   font-size: 0.86rem;
   font-weight: 600;
@@ -628,8 +840,8 @@ button {
 }
 
 .btn-cerrar {
-  min-height: 34px;
-  width: 34px;
+  min-height: 36px;
+  width: 36px;
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -664,5 +876,23 @@ button {
 button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+@media (max-width: 767px) {
+  .resumen-comparador {
+    grid-template-columns: 1fr;
+  }
+
+  .fila-rechazo {
+    flex-direction: column;
+  }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .modal-footer button {
+    width: 100%;
+  }
 }
 </style>

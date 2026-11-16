@@ -311,3 +311,25 @@ def resumen_authorizations():
     except Exception as e:
         current_app.logger.error(f"Error al obtener resumen de autorizaciones: {str(e)}")
         return jsonify({"error": str(e)}), 400
+
+@api_autorizaciones_controller.route("/authorization-dates", methods=["GET"])
+def listar_fechas_autorizaciones():
+    """Devuelve las fechas con pedidos para marcar en el calendario de autorizacion"""
+
+    filtros = {
+        "fecha_desde": request.args.get("fecha_desde"),
+        "fecha_hasta": request.args.get("fecha_hasta"),
+        "sector": request.args.get("sector", type=int),
+        "tipo_comida": request.args.get("tipo_comida", type=int),
+        "tipo_menu": request.args.get("tipo_menu", type=int),
+        "estado": request.args.get("estado"),
+    }
+    try:
+        fechas = autorizaciones_service.listar_fechas_para_autorizacion(filtros)
+        return jsonify({"fechas": fechas}), 200
+    except ValueError as e:
+        current_app.logger.warning(f"Error de validación en authorization-dates: {str(e)}")
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        current_app.logger.error(f"Error interno en authorization-dates: {str(e)}")
+        return jsonify({"error": "Ocurrió un error interno en el servidor"}), 500

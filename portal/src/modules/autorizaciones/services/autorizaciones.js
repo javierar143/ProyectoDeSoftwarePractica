@@ -1,53 +1,31 @@
 import apiClient from '@/services/api/client'
 
-function normalizarError(err) {
-  const status = err?.response?.status ?? null
-  const mensaje =
-    err?.response?.data?.message ||
-    err?.response?.data?.error ||
-    err?.message ||
-    'Error al comunicarse con el servidor.'
-
-  return {
-    status,
-    message: mensaje,
-    isConflict: status === 409,
-    isNotFound: status === 404,
-  }
-}
-
 export async function listarPedidosAutorizacion(params = {}) {
-  try {
-    const response = await apiClient.get('authorizations', { params })
-    return response.data
-  } catch (err) {
-    throw normalizarError(err)
-  }
+  const { data } = await apiClient.get('/authorizations', { params })
+  return data
 }
 
-export async function obtenerDetalleAutorizacion(requestId) {
-  try {
-    const response = await apiClient.get(`authorizations/${requestId}`)
-    return response.data
-  } catch (err) {
-    throw normalizarError(err)
-  }
+export async function obtenerDetalleAutorizacion(idPedido) {
+  const { data } = await apiClient.get(`/authorizations/${idPedido}`)
+  return data
 }
 
-export async function guardarAutorizacionPedido(requestId, payload) {
-  try {
-    const response = await apiClient.put(`authorizations/${requestId}`, payload)
-    return response.data
-  } catch (err) {
-    throw normalizarError(err)
-  }
+export async function guardarAutorizacionPedido(idPedido, payload) {
+  const { data } = await apiClient.put(`/authorizations/${idPedido}`, payload)
+  return data
 }
 
-export async function rechazarPedidoCompleto(requestId, payload) {
-  try {
-    const response = await apiClient.post(`authorizations/${requestId}/reject`, payload)
-    return response.data
-  } catch (err) {
-    throw normalizarError(err)
-  }
+export async function rechazarPedidoCompleto(idPedido, payload) {
+  const { data } = await apiClient.post(`/authorizations/${idPedido}/reject`, payload)
+  return data
+}
+
+export async function listarFechasAutorizacion(params = {}) {
+  const { data } = await apiClient.get('/authorization-dates', { params })
+  return data
+}
+
+export async function listarSectoresApi(estado = 'todos') {
+  const { data } = await apiClient.get('/sectors', { params: { estado } })
+  return data
 }

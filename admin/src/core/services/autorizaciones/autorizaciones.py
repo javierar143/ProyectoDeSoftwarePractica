@@ -341,3 +341,18 @@ def resumen_entregas_generales_service(filtros: dict):
         id_tipo_menu=filtros.get("tipo_menu"),
         condicion=filtros.get("condicion"),
     )
+
+def listar_fechas_para_autorizacion(filtros: dict):
+    """Lista las fechas que poseen pedidos para marcar en el calendario """
+
+    filtros = validador.validar_filtros_autorizaciones(filtros)
+    filtros = _forzar_sector_jefe_servicio(filtros)
+
+    return repo_solicitudes.listar_fechas_autorizacion(
+        fecha_desde=filtros.get("fecha_desde"),
+        fecha_hasta=filtros.get("fecha_hasta"),
+        id_sector=filtros.get("sector"),
+        id_tipo_comida=filtros.get("tipo_comida"),
+        id_tipo_menu=filtros.get("tipo_menu"),
+        estado=filtros.get("estado_enum"),
+    )
