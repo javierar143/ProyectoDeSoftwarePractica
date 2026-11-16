@@ -1,42 +1,158 @@
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { login } from '../services/auth'
+import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
+import { useAuthStore } from '@/stores/auth'
+import { getRoleHomeRoute } from '@/router/navigation'
+import { normalizeApiError } from '@/services/api/error-handler'
+import ApiErrorMessage from '@/modules/shared/components/ApiErrorMessage.vue'
+
+import {
+  login,
+  getCurrentUser,
+  getOperationalRoles,
+} from '../services/auth'
+
+const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 
 const email = ref('')
 const password = ref('')
-const errorMessage = ref('')
+const emailError = ref('')
+const passwordError = ref('')
+const emailInput = ref(null)
+const apiErrorMessage = ref(null)
 const loading = ref(false)
 
-async function handleLogin() {
-  errorMessage.value = ''
+const logoutWarning = computed(
+  () => route.query.logout === 'incomplete',
+)
 
-  if (!email.value.trim() || !password.value) {
-    errorMessage.value = 'Completá el email y la contraseña.'
+/**
+ * Determina el destino después del login.
+ *
+ * Si el usuario puede acceder a la ruta solicitada,
+ * conserva el redirect.
+ *
+ * Si tiene otro rol operativo, lo dirige a su pantalla inicial.
+ *
+ * Si no tiene un rol operativo habilitado, muestra acceso denegado.
+ */
+function getPostLoginDestination() {
+  const redirect = route.query.redirect
+  const roleKey = authStore.operationalRoleKey
+
+  if (typeof redirect === 'string' && redirect.trim()) {
+    const requestedPath = redirect.trim()
+
+    const redirectPath = requestedPath.startsWith('/')
+      ? requestedPath
+      : `/${requestedPath}`
+
+    if (!redirectPath.startsWith('//')) {
+      const resolvedRoute = router.resolve(redirectPath)
+
+      const requiredRoles = resolvedRoute.meta.roles
+
+      const roleIsAuthorized =
+        !requiredRoles ||
+        (Array.isArray(requiredRoles) &&
+          requiredRoles.includes(roleKey))
+
+      if (
+        resolvedRoute.matched.length > 0 &&
+        resolvedRoute.name !== 'login' &&
+        roleIsAuthorized
+      ) {
+        return resolvedRoute.fullPath
+      }
+    }
+  }
+
+  const destination = getRoleHomeRoute(roleKey)
+
+  return destination
+    ? { name: destination }
+    : { name: 'access-denied' }
+}
+
+/**
+ * Valida los campos antes de enviar las credenciales.
+ */
+function validateForm() {
+  emailError.value = ''
+  passwordError.value = ''
+
+  if (!email.value.trim()) {
+    emailError.value = 'El email es obligatorio.'
+    return false
+  }
+
+  if (!emailInput.value.checkValidity()) {
+    emailError.value = 'Ingresá un email válido.'
+    return false
+  }
+
+  if (!password.value) {
+    passwordError.value = 'La contraseña es obligatoria.'
+    return false
+  }
+
+  return true
+}
+
+/**
+ * Ejecuta el proceso de autenticación y carga los datos del usuario.
+ */
+async function handleLogin() {
+  apiErrorMessage.value = null
+  emailError.value = ''
+  passwordError.value = ''
+
+  if (!validateForm()) {
     return
   }
 
   loading.value = true
+  let credentialsAccepted = false
 
   try {
     const data = await login(email.value.trim(), password.value)
 
-    localStorage.setItem('token', data.access_token)
+    authStore.setToken(data.access_token)
+    credentialsAccepted = true
 
-    
+    const user = await getCurrentUser()
+    authStore.setUser(user)
+
+    const roles = await getOperationalRoles()
+    authStore.setOperationalRoles(roles)
+
+    const destination = getPostLoginDestination()
+
+    await router.replace(destination)
   } catch (error) {
-    if (error.response?.status === 401) {
-      errorMessage.value = 'Email o contraseña incorrectos.'
-    } else if (error.response?.status === 400) {
-      errorMessage.value =
-        error.response.data.description ||
-        error.response.data.message ||
-        'Los datos enviados no son válidos.'
+    const apiError = normalizeApiError(error)
+
+    authStore.clearSession()
+
+    if (apiError.status === 401 && credentialsAccepted) {
+      apiErrorMessage.value = {
+        ...apiError,
+        message: 'No se pudo establecer la sesión. Volvé a ingresar.',
+        canRetry: false,
+      }
     } else {
-      errorMessage.value = 'No se pudo conectar con el servidor.'
+      const fields = apiError.fieldErrors ?? {}
+
+      emailError.value = fields.email ?? ''
+      passwordError.value = fields.password ?? ''
+
+      if (!emailError.value && !passwordError.value) {
+        apiErrorMessage.value = apiError
+      }
     }
   } finally {
     loading.value = false
@@ -49,32 +165,63 @@ async function handleLogin() {
     <section class="login-card">
       <h1>Iniciar sesión</h1>
 
-      <form @submit.prevent="handleLogin">
+      <p
+        v-if="logoutWarning"
+        class="logout-warning"
+        role="status"
+      >
+        La sesión local se cerró, pero no se pudo confirmar el cierre
+        en el servidor.
+      </p>
+
+      <form @submit.prevent="handleLogin" novalidate>
         <div class="form-field">
           <label for="email">Email</label>
+
           <input
             id="email"
+            ref="emailInput"
             v-model="email"
             type="email"
             autocomplete="username"
             required
+            :aria-invalid="Boolean(emailError)"
+            :aria-describedby="emailError ? 'email-error' : undefined"
+            @input="emailError = ''"
           />
+
+          <p v-if="emailError" id="email-error" class="field-error">
+            {{ emailError }}
+          </p>
         </div>
 
         <div class="form-field">
           <label for="password">Contraseña</label>
+
           <input
             id="password"
             v-model="password"
             type="password"
             autocomplete="current-password"
             required
+            :aria-invalid="Boolean(passwordError)"
+            :aria-describedby="passwordError ? 'password-error' : undefined"
+            @input="passwordError = ''"
           />
+
+          <p
+            v-if="passwordError"
+            id="password-error"
+            class="field-error"
+          >
+            {{ passwordError }}
+          </p>
         </div>
 
-        <p v-if="errorMessage" class="error-message" role="alert">
-          {{ errorMessage }}
-        </p>
+        <ApiErrorMessage
+          :error="apiErrorMessage"
+          @retry="handleLogin"
+        />
 
         <button type="submit" :disabled="loading">
           {{ loading ? 'Ingresando...' : 'Ingresar' }}
@@ -85,7 +232,6 @@ async function handleLogin() {
 </template>
 
 <style scoped>
-
 .login-container {
   min-height: 100vh;
   display: flex;
@@ -113,6 +259,16 @@ h1 {
   text-align: center;
 }
 
+.logout-warning {
+  margin-bottom: 18px;
+  padding: 12px;
+  color: #854d0e;
+  background-color: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
 .form-field {
   display: flex;
   flex-direction: column;
@@ -137,6 +293,16 @@ input:focus {
   outline: 2px solid rgba(37, 99, 235, 0.2);
 }
 
+input[aria-invalid='true'] {
+  border-color: #c62828;
+}
+
+.field-error {
+  color: #c62828;
+  font-size: 14px;
+  margin: 0;
+}
+
 button {
   width: 100%;
   padding: 10px 16px;
@@ -154,11 +320,6 @@ button:hover {
 
 button:disabled {
   cursor: wait;
-}
-
-.error-message {
-  margin-bottom: 16px;
-  color: #c62828;
 }
 
 @media (max-width: 600px) {
