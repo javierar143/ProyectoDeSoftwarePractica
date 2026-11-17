@@ -1,6 +1,6 @@
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
@@ -10,9 +10,16 @@ import ApiErrorMessage from '@/modules/shared/components/ApiErrorMessage.vue'
 
 import {
   login,
+  loginWithGoogle,
   getCurrentUser,
   getOperationalRoles,
 } from '../services/auth'
+
+const GOOGLE_SCRIPT_URL = 'https://accounts.google.com/gsi/client'
+const GOOGLE_BUTTON_MIN_WIDTH = 120
+const GOOGLE_BUTTON_MAX_WIDTH = 400
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+let googleScriptPromise = null
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -25,6 +32,8 @@ const passwordError = ref('')
 const emailInput = ref(null)
 const apiErrorMessage = ref(null)
 const loading = ref(false)
+const googleButton = ref(null)
+const googleMessage = ref('')
 
 const logoutWarning = computed(
   () => route.query.logout === 'incomplete',
@@ -103,6 +112,111 @@ function validateForm() {
   return true
 }
 
+/** Carga una sola vez el SDK oficial de Google Identity Services. */
+function loadGoogleIdentityServices() {
+  if (window.google?.accounts?.id) {
+    return Promise.resolve(window.google)
+  }
+
+  if (googleScriptPromise) {
+    return googleScriptPromise
+  }
+
+  googleScriptPromise = new Promise((resolve, reject) => {
+    let script = document.querySelector(`script[src="${GOOGLE_SCRIPT_URL}"]`)
+    const rejectAndRemoveScript = (error) => {
+      script?.remove()
+      reject(error)
+    }
+
+    const handleLoad = () => {
+      if (window.google?.accounts?.id) {
+        resolve(window.google)
+      } else {
+        rejectAndRemoveScript(
+          new Error('Google Identity Services no está disponible.'),
+        )
+      }
+    }
+
+    const handleError = () => {
+      rejectAndRemoveScript(
+        new Error('No se pudo cargar Google Identity Services.'),
+      )
+    }
+
+    if (!script) {
+      script = document.createElement('script')
+      script.src = GOOGLE_SCRIPT_URL
+      script.async = true
+      script.defer = true
+      script.addEventListener('load', handleLoad, { once: true })
+      script.addEventListener('error', handleError, { once: true })
+      document.head.appendChild(script)
+      return
+    }
+
+    script.addEventListener('load', handleLoad, { once: true })
+    script.addEventListener('error', handleError, { once: true })
+  }).catch((error) => {
+    googleScriptPromise = null
+    throw error
+  })
+
+  return googleScriptPromise
+}
+
+/** Configura GIS y dibuja su botón cuando existe un Client ID. */
+async function initializeGoogleLogin() {
+  if (!googleClientId) {
+    googleMessage.value =
+      'El inicio de sesión con Google no está configurado para este entorno.'
+    return
+  }
+
+  try {
+    const google = await loadGoogleIdentityServices()
+    const buttonWidth = Math.min(
+      Math.max(
+        Math.floor(googleButton.value.clientWidth),
+        GOOGLE_BUTTON_MIN_WIDTH,
+      ),
+      GOOGLE_BUTTON_MAX_WIDTH,
+    )
+
+    google.accounts.id.initialize({
+      client_id: googleClientId,
+      callback: handleGoogleCredential,
+    })
+    google.accounts.id.renderButton(googleButton.value, {
+      type: 'standard',
+      theme: 'outline',
+      size: 'large',
+      text: 'signin_with',
+      shape: 'rectangular',
+      width: buttonWidth,
+    })
+  } catch {
+    googleMessage.value =
+      'No se pudo cargar el inicio de sesión con Google. Podés ingresar con email y contraseña.'
+  }
+}
+
+/** Continúa con el flujo local solo si GIS entregó un credential. */
+function handleGoogleCredential(response) {
+  if (typeof response?.credential !== 'string' || !response.credential) {
+    apiErrorMessage.value = {
+      message: 'Google no devolvió una credencial válida. Intentá nuevamente.',
+      canRetry: false,
+    }
+    return
+  }
+
+  executeLogin(() => loginWithGoogle(response.credential))
+}
+
+onMounted(initializeGoogleLogin)
+
 /**
  * Ejecuta el proceso de autenticación y carga los datos del usuario.
  */
@@ -115,11 +229,21 @@ async function handleLogin() {
     return
   }
 
+  executeLogin(() => login(email.value.trim(), password.value))
+}
+
+/** Comparte la carga de sesión y el manejo de errores entre ambos accesos. */
+async function executeLogin(authenticate) {
+  if (loading.value) {
+    return
+  }
+
+  apiErrorMessage.value = null
   loading.value = true
   let credentialsAccepted = false
 
   try {
-    const data = await login(email.value.trim(), password.value)
+    const data = await authenticate()
 
     authStore.setToken(data.access_token)
     credentialsAccepted = true
@@ -226,6 +350,14 @@ async function handleLogin() {
         <button type="submit" :disabled="loading">
           {{ loading ? 'Ingresando...' : 'Ingresar' }}
         </button>
+
+        <template v-if="googleClientId">
+          <div class="login-divider" aria-hidden="true">o</div>
+          <div ref="googleButton" class="google-button"></div>
+        </template>
+        <p v-if="googleMessage" class="google-message" role="status">
+          {{ googleMessage }}
+        </p>
       </form>
     </section>
   </main>
@@ -301,6 +433,25 @@ input[aria-invalid='true'] {
   color: #c62828;
   font-size: 14px;
   margin: 0;
+}
+
+.login-divider {
+  margin: 16px 0;
+  color: #6b7280;
+  text-align: center;
+}
+
+.google-button {
+  display: flex;
+  justify-content: center;
+  min-height: 40px;
+}
+
+.google-message {
+  margin: 10px 0 0;
+  color: #4b5563;
+  font-size: 14px;
+  text-align: center;
 }
 
 button {

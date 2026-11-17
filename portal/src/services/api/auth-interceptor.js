@@ -4,6 +4,7 @@
  */
 const AUTH_ENDPOINTS = [
   '/auth/login',
+  '/auth/google',
   '/auth/me',
   '/roles/operational',
   '/auth/refresh',

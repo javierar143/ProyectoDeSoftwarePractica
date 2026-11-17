@@ -14,6 +14,17 @@ export async function login(email, password) {
 }
 
 /**
+ * Autentica al usuario mediante un ID token de Google.
+ */
+export async function loginWithGoogle(idToken) {
+  const response = await apiClient.post('/auth/google', {
+    id_token: idToken,
+  })
+
+  return response.data
+}
+
+/**
  * Obtiene los datos del usuario autenticado.
  */
 export async function getCurrentUser() {
