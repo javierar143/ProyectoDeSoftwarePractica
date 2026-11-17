@@ -7,8 +7,14 @@
 
     <p>Esta pantalla es temporal y se eliminará cuando se implemente
       la vista definitiva.</p>
+     <LogoutButton />
   </main>
+ 
 </template>
+
+<script setup>
+import LogoutButton from '@/modules/auth/components/LogoutButton.vue'
+</script>
 
 <style scoped>
 .temporal-sector-comedor {
