@@ -230,6 +230,9 @@ def registrar_entrega():
 def listar_entregas():
     """Lista las entregas realizadas filtrando por fecha, sector o tipo de comida"""
 
+    from src.core.database import db
+    from src.core.models.Personal import Personal
+
     filtros = {
         "fecha": request.args.get("fecha"),
         "sector": request.args.get("sector", type=int),
@@ -238,20 +241,36 @@ def listar_entregas():
 
     try:
         filas = autorizaciones_service.listar_entregas_service(filtros)
-        resultado = [
-            {
+        resultado = []
+        for entrega, solicitud, pedido in filas:
+            comensal = db.session.get(Personal, solicitud.idPersonal)
+            responsable = db.session.get(Personal, entrega.idPersonal)
+
+            nombre_comensal = (
+                f"{comensal.apellido}, {comensal.nombre}" if comensal else f"Personal #{solicitud.idPersonal}"
+            )
+            dni_comensal = getattr(comensal, "dni", None) if comensal else None
+
+            nombre_responsable = (
+                f"{responsable.apellido}, {responsable.nombre}" if responsable else f"Personal #{entrega.idPersonal}"
+            )
+            dni_responsable = getattr(responsable, "dni", None) if responsable else None
+
+            resultado.append({
                 "idEntrega": entrega.idEntrega,
                 "fecha_hora": entrega.fecha_hora.isoformat(),
                 "idUser": entrega.idUser,
                 "idPersonalResponsable": entrega.idPersonal,
+                "responsable_nombre": nombre_responsable,
+                "responsable_dni": dni_responsable,
                 "idSolicitud": solicitud.idSolicitud,
                 "idPersonaComensal": solicitud.idPersonal,
+                "comensal_nombre": nombre_comensal,
+                "comensal_dni": dni_comensal,
                 "idTipoComida": solicitud.idTipoComida,
                 "idTipoMenu": solicitud.idTipoMenu,
                 "idSector": pedido.idSector,
-            }
-            for entrega, solicitud, pedido in filas
-        ]
+            })
         return jsonify(resultado), 200
     except ValueError as e:
         current_app.logger.warning(f"Filtro de fecha inválido al listar entregas: {str(e)}")
