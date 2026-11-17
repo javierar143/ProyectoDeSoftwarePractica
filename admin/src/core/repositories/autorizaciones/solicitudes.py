@@ -220,11 +220,14 @@ def buscar_comidas_autorizadas(
     filas = db.session.execute(stmt).all()
     resultados = []
     for solicitud, pedido, personal, sector, comida, menu in filas:
-        entregada = (
-            db.session.scalars(
-                select(Entrega).where(Entrega.idSolicitud == solicitud.idSolicitud)
-            ).first()
-            is not None
+        entrega_obj = db.session.scalars(
+            select(Entrega).where(Entrega.idSolicitud == solicitud.idSolicitud)
+        ).first()
+        entregada = entrega_obj is not None
+        hora_entrega = (
+            entrega_obj.fecha_hora.strftime("%H:%M")
+            if entrega_obj and getattr(entrega_obj, "fecha_hora", None)
+            else None
         )
         cond_val = (
             solicitud.condicionCupo.value
@@ -247,9 +250,9 @@ def buscar_comidas_autorizadas(
             "menu": menu.nombre,
             "condicionCupo": cond_val,
             "entregada": entregada,
+            "hora_entrega": hora_entrega,
         })
     return resultados
-
 
 def obtener_resumen_autorizaciones(
     fecha_desde=None,
