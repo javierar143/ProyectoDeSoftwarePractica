@@ -10,9 +10,57 @@ from src.core.repositories.usuarios import usuario
 from src.core.security.password import verify_password
 from src.core.services.auth.api_token import hash_token
 from src.core.services.auth import jwt_service
+from src.core.services.auth import google_identity
+from src.core.services.usuarios import rol as rol_service
 
 class UsuarioBloqueadoError(Exception):
     """Indica que las credenciales son correctas pero la cuenta está bloqueada."""
+
+
+class GoogleLoginTokenInvalidError(Exception):
+    """El ID token de Google no es válido o no tiene email verificado."""
+
+
+class GoogleLoginAccessDeniedError(Exception):
+    """El usuario local no existe, está inactivo o no tiene rol permitido."""
+
+
+GOOGLE_ALLOWED_ROLES = {
+    "Jefe de Servicio",
+    "Servicio de Alimentación",
+    "Sector Comedor",
+}
+
+
+def _issue_tokens(user_id: int) -> dict[str, str]:
+    """Genera y persiste los tokens locales de acceso y renovación."""
+    now = datetime.now(timezone.utc)
+
+    access_token = jwt_service.generate_access_token(user_id)
+    refresh_token = jwt_service.generate_refresh_token(user_id)
+
+    access_entity = ApiToken(
+        token_hash=hash_token(access_token),
+        token_type="access",
+        id_user=user_id,
+        created_at=now,
+        expires_at=now + jwt_service.ACCESS_TOKEN_DURATION,
+    )
+
+    refresh_entity = ApiToken(
+        token_hash=hash_token(refresh_token),
+        token_type="refresh",
+        id_user=user_id,
+        created_at=now,
+        expires_at=now + jwt_service.REFRESH_TOKEN_DURATION,
+    )
+
+    api_token.create_many([access_entity, refresh_entity])
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+    }
 
 def login(email: str, password: str) -> dict[str, str] | None:
     """Autentica al usuario y genera los tokens de acceso y renovación."""
@@ -27,37 +75,26 @@ def login(email: str, password: str) -> dict[str, str] | None:
     if not stored_user.isActive:
         raise UsuarioBloqueadoError
 
-    now = datetime.now(timezone.utc)
+    return _issue_tokens(stored_user.id_user)
 
-    access_token = jwt_service.generate_access_token(
-        stored_user.id_user
-    )
-    refresh_token = jwt_service.generate_refresh_token(
-        stored_user.id_user
-    )
 
-    access_entity = ApiToken(
-        token_hash=hash_token(access_token),
-        token_type="access",
-        id_user=stored_user.id_user,
-        created_at=now,
-        expires_at=now + jwt_service.ACCESS_TOKEN_DURATION,
-    )
+def login_with_google(id_token: str) -> dict[str, str]:
+    """Autentica un usuario local habilitado a partir de un ID token Google."""
+    try:
+        email = google_identity.get_verified_email(id_token)
+    except google_identity.InvalidGoogleTokenError as error:
+        raise GoogleLoginTokenInvalidError from error
 
-    refresh_entity = ApiToken(
-        token_hash=hash_token(refresh_token),
-        token_type="refresh",
-        id_user=stored_user.id_user,
-        created_at=now,
-        expires_at=now + jwt_service.REFRESH_TOKEN_DURATION,
-    )
+    stored_user = usuario.get_by_email(email)
 
-    api_token.create_many([access_entity, refresh_entity])
+    if stored_user is None or not stored_user.isActive:
+        raise GoogleLoginAccessDeniedError
 
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-    }
+    role = rol_service.get_by_id(stored_user.idRol)
+    if role is None or role.nombre not in GOOGLE_ALLOWED_ROLES:
+        raise GoogleLoginAccessDeniedError
+
+    return _issue_tokens(stored_user.id_user)
 
 def refresh_access_token(token: str) -> str | None:
     """Genera un nuevo token de acceso a partir de un refresh token válido."""

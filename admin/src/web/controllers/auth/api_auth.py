@@ -4,6 +4,7 @@
 from flask import Blueprint, abort, current_app, jsonify, request
 
 from src.core.services.auth import api_auth
+from src.core.services.auth import google_identity
 from src.core.services.personal import personal as personal_service
 from src.core.services.sectores import sector as sector_service
 from src.core.services.usuarios import rol as rol_service
@@ -14,6 +15,25 @@ api_auth_controller = Blueprint(
     __name__,
     url_prefix="/api/auth",
 )
+
+
+def _response_with_tokens(tokens: dict[str, str]):
+    """Devuelve el access token y establece la cookie refresh de la API."""
+    response = jsonify({
+        "access_token": tokens["access_token"]
+    })
+
+    response.set_cookie(
+        "refresh_token",
+        tokens["refresh_token"],
+        httponly=True,
+        secure=current_app.config["COOKIE_SECURE"],
+        samesite="Lax",
+        max_age=12 * 60 * 60,
+        path="/api/auth",
+    )
+
+    return response, 200
 
 
 @api_auth_controller.post("/login")
@@ -44,21 +64,33 @@ def login():
     if tokens is None:
         abort(401, description="Credenciales inválidas.")
 
-    response = jsonify({
-        "access_token": tokens["access_token"]
-    })
+    return _response_with_tokens(tokens)
 
-    response.set_cookie(
-        "refresh_token",
-        tokens["refresh_token"],
-        httponly=True,
-        secure=current_app.config["COOKIE_SECURE"],
-        samesite="Lax",
-        max_age=12 * 60 * 60,
-        path="/api/auth",
-    )
 
-    return response, 200
+@api_auth_controller.post("/google")
+def login_google():
+    """Autentica un usuario existente mediante un ID token de Google."""
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        abort(400, description="El cuerpo de la solicitud debe ser un objeto JSON.")
+
+    id_token = data.get("id_token")
+    if not isinstance(id_token, str) or not id_token.strip():
+        abort(400, description="El ID token de Google es obligatorio.")
+
+    try:
+        tokens = api_auth.login_with_google(id_token)
+    except api_auth.GoogleLoginTokenInvalidError:
+        abort(401, description="El token de Google no es válido.")
+    except api_auth.GoogleLoginAccessDeniedError:
+        abort(403, description="La cuenta no tiene acceso habilitado.")
+    except google_identity.GoogleIdentityConfigurationError:
+        abort(500, description="La autenticación con Google no está disponible.")
+    except google_identity.GoogleIdentityUnavailableError:
+        abort(500, description="La autenticación con Google no está disponible.")
+
+    return _response_with_tokens(tokens)
 
 
 @api_auth_controller.post("/logout")

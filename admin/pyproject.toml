@@ -16,6 +16,7 @@ bcrypt = "^5.0.0"
 flask-session = "^0.8.0"
 flask-cors = "^6.0.5"
 pyjwt = "^2.15.1"
+google-auth = {extras = ["requests"], version = "^2.62.2"}
 
 
 [tool.poetry.group.test.dependencies]

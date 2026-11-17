@@ -6,6 +6,7 @@ class Config:
     TESTING = False
     SESSION_TYPE = "filesystem"
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
+    GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
     COOKIE_SECURE = False
 
 
