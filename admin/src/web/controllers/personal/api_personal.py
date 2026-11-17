@@ -351,7 +351,10 @@ def crear_persona():
 
     if nueva_persona is None:
         return jsonify({
-            "error": "Ya existe una persona registrada con el mismo DNI"
+            "error": (
+                "Ya existe una persona registrada con ese DNI o fue utilizada "
+                "anteriormente en el sistema"
+            )
         }), 409
 
     return jsonify(_serializar_persona(nueva_persona)), 201

@@ -1,4 +1,3 @@
-
 /**
  * Rutas del módulo Sector Comedor.
  *
@@ -9,11 +8,7 @@ export const sectorComedorRoutes = [
   {
     path: '/inicio/sector-comedor',
     name: 'inicio-sector-comedor',
-
-    // TEMPORAL: eliminar esta vista y su importación
-    // cuando se implemente la pantalla definitiva.
-    component: () => import('./temporalSectorComedor.vue'),
-
+    component: () => import('@/modules/entregas/views/EntregasView.vue'),
     meta: {
       requiresAuth: true,
       roles: ['sectorComedor'],

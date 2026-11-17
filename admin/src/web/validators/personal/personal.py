@@ -1,5 +1,12 @@
 """Validador de datos de personal."""
 
+import re
+
+
+PATRON_NOMBRE = re.compile(
+    r"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s'-]+$"
+)
+
 
 def validar_datos_personal(
     datos: dict,
@@ -23,10 +30,26 @@ def validar_datos_personal(
 
     if not dni or not dni.isdigit():
         errores.append("El DNI es obligatorio y debe contener solo números.")
+    elif not 7 <= len(dni) <= 10:
+        errores.append("El DNI debe tener entre 7 y 10 dígitos.")
+
     if not nombre:
         errores.append("El nombre es obligatorio.")
+    elif not 2 <= len(nombre) <= 50:
+        errores.append("El nombre debe tener entre 2 y 50 caracteres.")
+    elif not PATRON_NOMBRE.fullmatch(nombre):
+        errores.append(
+            "El nombre solo puede contener letras, espacios, guiones y apóstrofes."
+        )
+
     if not apellido:
         errores.append("El apellido es obligatorio.")
+    elif not 2 <= len(apellido) <= 50:
+        errores.append("El apellido debe tener entre 2 y 50 caracteres.")
+    elif not PATRON_NOMBRE.fullmatch(apellido):
+        errores.append(
+            "El apellido solo puede contener letras, espacios, guiones y apóstrofes."
+        )
 
     # Validación de Tipo de Personal
     tipo_sel = None

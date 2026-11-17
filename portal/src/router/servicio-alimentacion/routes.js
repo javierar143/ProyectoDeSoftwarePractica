@@ -1,21 +1,30 @@
-
 /**
  * Rutas del módulo Servicio de Alimentación.
  *
- * Incluye el acceso a los pedidos pendientes de autorización del día.
+ * Incluye el acceso a los pedidos pendientes de autorización del día
+ * y una vista temporal para probar autorizar o rechazar pedidos.
  */
+
 export const servicioAlimentacionRoutes = [
   {
     path: '/inicio/servicio-alimentacion',
     name: 'inicio-servicio-alimentacion',
-
-    // TEMPORAL: eliminar esta vista y su importación
-    // cuando se implemente la pantalla definitiva.
-    component: () => import('./temporalServicioAlimentacion.vue'),
-
+    component: () => import('@/modules/autorizaciones/views/AutorizacionesView.vue'),
     meta: {
       requiresAuth: true,
       roles: ['servicioAlimentacion'],
     },
   },
+  {
+    // TEMPORAL (BORRAR CUANDO ESTRE CRUD DE PEDIDOS): para crear pedidos de prueba y luego autorizarlos/rechazarlos
+    path: '/temporal/crear-pedido',
+    name: 'temporal-crear-pedido',
+    component: () => import('@/modules/pedidos/views/CrearPedidoView.vue'),
+    meta: {
+      requiresAuth: true,
+      roles: ['jefeServicio'],
+    },
+  },
 ]
+
+export default servicioAlimentacionRoutes

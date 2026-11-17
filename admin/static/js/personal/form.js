@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const selectSector = document.getElementById("idSector");
     const seccionErrores = document.getElementById("erroresCliente");
     const listaErrores = document.getElementById("listaErroresCliente");
+    const patronNombre = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s'-]+$/;
 
     function obtenerNombreTipo() {
         if (!selectTipo || selectTipo.selectedIndex < 0) {
@@ -59,14 +60,24 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (!dni || !/^\d+$/.test(dni)) {
                 errores.push("El DNI es obligatorio y debe contener solo números.");
+            } else if (dni.length < 7 || dni.length > 10) {
+                errores.push("El DNI debe tener entre 7 y 10 dígitos.");
             }
 
             if (!nombre) {
                 errores.push("El nombre es obligatorio.");
+            } else if (nombre.length < 2 || nombre.length > 50) {
+                errores.push("El nombre debe tener entre 2 y 50 caracteres.");
+            } else if (!patronNombre.test(nombre)) {
+                errores.push("El nombre solo puede contener letras, espacios, guiones y apóstrofes.");
             }
 
             if (!apellido) {
                 errores.push("El apellido es obligatorio.");
+            } else if (apellido.length < 2 || apellido.length > 50) {
+                errores.push("El apellido debe tener entre 2 y 50 caracteres.");
+            } else if (!patronNombre.test(apellido)) {
+                errores.push("El apellido solo puede contener letras, espacios, guiones y apóstrofes.");
             }
 
             if (!selectTipo || !selectTipo.value) {
