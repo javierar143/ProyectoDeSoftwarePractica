@@ -17,6 +17,7 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token'))
   const user = ref(null)
   const operationalRoles = ref(null)
+  const accountBlocked = ref(false)
 
   let refreshTimer = null
   let refreshPromise = null
@@ -108,6 +109,7 @@ export const useAuthStore = defineStore('auth', () => {
    * Guarda el access token y actualiza su renovación programada.
    */
   function setToken(accessToken) {
+    accountBlocked.value = false
     token.value = accessToken
     localStorage.setItem('token', accessToken)
 
@@ -154,6 +156,14 @@ export const useAuthStore = defineStore('auth', () => {
     operationalRoles.value = null
 
     localStorage.removeItem('token')
+  }
+
+  function markAccountBlocked() {
+    if (accountBlocked.value) return false
+
+    accountBlocked.value = true
+    clearSession()
+    return true
   }
 
   /**
@@ -203,6 +213,11 @@ export const useAuthStore = defineStore('auth', () => {
 
         setToken(data.access_token)
       } catch (error) {
+        if (error.response?.data?.code === 'ACCOUNT_BLOCKED') {
+          markAccountBlocked()
+          return
+        }
+
         // Si el refresh token fue rechazado, finaliza la sesión.
         if (error.response?.status === 401) {
           if (token.value === tokenBeingRenewed) {
@@ -274,7 +289,9 @@ export const useAuthStore = defineStore('auth', () => {
       await loadSessionData()
       return true
     } catch (error) {
-      if (error.response?.status === 401) {
+      if (error.response?.data?.code === 'ACCOUNT_BLOCKED') {
+        markAccountBlocked()
+      } else if (error.response?.status === 401) {
         clearSession()
       }
 
@@ -286,6 +303,7 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     user,
     operationalRoles,
+    accountBlocked,
     isAuthenticated,
     operationalRoleKey,
     setToken,
@@ -293,6 +311,7 @@ export const useAuthStore = defineStore('auth', () => {
     setOperationalRoles,
     setSessionExpiredHandler,
     clearSession,
+    markAccountBlocked,
     restoreSession,
     logoutSession,
   }

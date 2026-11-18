@@ -1,8 +1,10 @@
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
 
 from src.core.services import configuracion as config_service
+from src.core.services.auth import api_auth
 from src.core.repositories import configuracion as config_repository
 from src.web import create_app
 from src.web.handlers import maintenance
@@ -169,6 +171,141 @@ def test_unknown_resource_remains_404(app, monkeypatch):
     response = app.test_client().get("/api/no-such-resource")
 
     assert response.status_code == 404
+
+
+def test_blocked_account_is_rejected_before_authorized_meals_query(app, monkeypatch):
+    from src.core.services.autorizaciones import autorizaciones as autorizaciones_service
+
+    monkeypatch.setattr(
+        api_auth,
+        "get_authenticated_user_status",
+        lambda _token: (None, api_auth.ACCOUNT_BLOCKED_CODE),
+    )
+    monkeypatch.setattr(
+        autorizaciones_service,
+        "consultar_comidas_autorizadas",
+        lambda _filters: pytest.fail("La consulta no debe ejecutarse para una cuenta bloqueada"),
+    )
+
+    response = app.test_client().get(
+        "/api/authorized-meals?dni=12345678",
+        headers={"Authorization": "Bearer token-anteriormente-valido"},
+    )
+
+    assert response.status_code == 401
+    assert response.json["code"] == "ACCOUNT_BLOCKED"
+    assert response.json["error"] == "La cuenta está bloqueada. Contactá al administrador."
+
+
+def test_blocked_account_is_rejected_before_delivery_registration(app, monkeypatch):
+    from src.core.services.autorizaciones import autorizaciones as autorizaciones_service
+
+    monkeypatch.setattr(
+        api_auth,
+        "get_authenticated_user_status",
+        lambda _token: (None, api_auth.ACCOUNT_BLOCKED_CODE),
+    )
+    monkeypatch.setattr(
+        autorizaciones_service,
+        "registrar_entrega_comedor",
+        lambda *_args, **_kwargs: pytest.fail("La entrega no debe registrarse para una cuenta bloqueada"),
+    )
+
+    response = app.test_client().post(
+        "/api/deliveries",
+        headers={"Authorization": "Bearer token-anteriormente-valido"},
+        json={"ids_solicitudes": [1], "id_personal": 10},
+    )
+
+    assert response.status_code == 401
+    assert response.json["code"] == "ACCOUNT_BLOCKED"
+
+
+def test_invalid_token_is_not_reported_as_blocked_account(app, monkeypatch):
+    monkeypatch.setattr(api_auth, "get_authenticated_user_status", lambda _token: (None, None))
+
+    response = app.test_client().get(
+        "/api/authorized-meals?dni=12345678",
+        headers={"Authorization": "Bearer token-invalido"},
+    )
+
+    assert response.status_code == 401
+    assert "code" not in response.json
+    assert response.json["error"] == "Token inválido o expirado."
+
+
+def test_auth_me_identifies_a_blocked_account(app, monkeypatch):
+    monkeypatch.setattr(
+        api_auth,
+        "get_authenticated_user_status",
+        lambda _token: (None, api_auth.ACCOUNT_BLOCKED_CODE),
+    )
+
+    response = app.test_client().get(
+        "/api/auth/me",
+        headers={"Authorization": "Bearer token-anteriormente-valido"},
+    )
+
+    assert response.status_code == 401
+    assert response.json["code"] == "ACCOUNT_BLOCKED"
+
+
+def test_refresh_identifies_a_blocked_account(app, monkeypatch):
+    def reject_blocked_refresh(_token):
+        raise api_auth.UsuarioBloqueadoError
+
+    monkeypatch.setattr(api_auth, "refresh_access_token", reject_blocked_refresh)
+    client = app.test_client()
+    client.set_cookie("refresh_token", "refresh-anteriormente-valido", path="/api/auth")
+
+    response = client.post("/api/auth/refresh")
+
+    assert response.status_code == 401
+    assert response.json["code"] == "ACCOUNT_BLOCKED"
+
+
+def test_access_token_status_distinguishes_blocked_user_from_invalid_token(monkeypatch):
+    now = datetime.now(timezone.utc)
+    stored_token = SimpleNamespace(
+        token_type="access",
+        revoked_at=None,
+        expires_at=now + timedelta(minutes=5),
+        id_user=42,
+    )
+    blocked_user = SimpleNamespace(isActive=False)
+    monkeypatch.setattr(api_auth.jwt_service, "decode_access_token", lambda _token: {"sub": "42"})
+    monkeypatch.setattr(api_auth, "hash_token", lambda _token: "stored-hash")
+    monkeypatch.setattr(api_auth.api_token, "get_by_hash", lambda _hash: stored_token)
+    monkeypatch.setattr(api_auth.usuario, "get_by_id", lambda _user_id: blocked_user)
+
+    assert api_auth.get_authenticated_user_status("valid-signed-token") == (
+        None,
+        api_auth.ACCOUNT_BLOCKED_CODE,
+    )
+
+    monkeypatch.setattr(api_auth.jwt_service, "decode_access_token", lambda _token: None)
+    assert api_auth.get_authenticated_user_status("invalid-token") == (None, None)
+
+
+def test_refresh_token_status_identifies_blocked_user(monkeypatch):
+    now = datetime.now(timezone.utc)
+    stored_token = SimpleNamespace(
+        token_type="refresh",
+        revoked_at=None,
+        expires_at=now + timedelta(minutes=5),
+        id_user=42,
+    )
+    monkeypatch.setattr(api_auth.jwt_service, "decode_refresh_token", lambda _token: {"sub": "42"})
+    monkeypatch.setattr(api_auth, "hash_token", lambda _token: "stored-hash")
+    monkeypatch.setattr(api_auth.api_token, "get_by_hash", lambda _hash: stored_token)
+    monkeypatch.setattr(
+        api_auth.usuario,
+        "get_by_id",
+        lambda _user_id: SimpleNamespace(isActive=False),
+    )
+
+    with pytest.raises(api_auth.UsuarioBloqueadoError):
+        api_auth.refresh_access_token("valid-refresh-token")
 
 
 def test_default_maintenance_message_fits_existing_column_and_is_used_for_blank_values(monkeypatch):

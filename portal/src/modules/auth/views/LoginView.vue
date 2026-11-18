@@ -1,6 +1,6 @@
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
@@ -25,6 +25,9 @@ const authStore = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 
+const ACCOUNT_BLOCKED_MESSAGE =
+  'La cuenta está bloqueada. Contactá al administrador.'
+
 const email = ref('')
 const password = ref('')
 const emailError = ref('')
@@ -38,6 +41,19 @@ const googleMessage = ref('')
 
 const logoutWarning = computed(
   () => route.query.logout === 'incomplete',
+)
+
+watch(
+  () => route.query.auth_error,
+  (authError) => {
+    if (authError === 'account_blocked') {
+      apiErrorMessage.value = {
+        message: ACCOUNT_BLOCKED_MESSAGE,
+        canRetry: false,
+      }
+    }
+  },
+  { immediate: true },
 )
 
 /**
@@ -296,7 +312,15 @@ async function executeLogin(authenticate) {
   } catch (error) {
     const apiError = normalizeApiError(error)
 
-    if (apiError.status === 401 && credentialsAccepted) {
+    if (apiError.code === 'ACCOUNT_BLOCKED') {
+      authStore.markAccountBlocked()
+      apiErrorMessage.value = {
+        ...apiError,
+        message: ACCOUNT_BLOCKED_MESSAGE,
+        canRetry: false,
+      }
+      retryLoginOperation.value = null
+    } else if (apiError.status === 401 && credentialsAccepted) {
       authStore.clearSession()
     }
 

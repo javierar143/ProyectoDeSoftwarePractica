@@ -1,13 +1,14 @@
 
 """Controladores REST relacionados con autenticación."""
 
-from flask import Blueprint, abort, current_app, jsonify, request
+from flask import Blueprint, abort, current_app, g, jsonify, request
 
 from src.core.services.auth import api_auth
 from src.core.services.auth import google_identity
 from src.core.services.personal import personal as personal_service
 from src.core.services.sectores import sector as sector_service
 from src.core.services.usuarios import rol as rol_service
+from src.web.decorators.api import authenticate_api_request
 
 
 api_auth_controller = Blueprint(
@@ -121,17 +122,11 @@ def logout():
 @api_auth_controller.get("/me")
 def me():
     """Devuelve los datos del usuario autenticado mediante Bearer token."""
+    auth_error = authenticate_api_request()
+    if auth_error is not None:
+        return auth_error
 
-    authorization = request.headers.get("Authorization", "")
-
-    if not authorization.startswith("Bearer "):
-        abort(401, description="Token de autenticación requerido.")
-
-    token = authorization[7:]
-    user = api_auth.get_authenticated_user(token)
-
-    if user is None:
-        abort(401, description="Token inválido o expirado.")
+    user = g.user
 
     personal = personal_service.get_by_id(user.idPersonal)
     rol = rol_service.get_by_id(user.idRol)
@@ -163,7 +158,13 @@ def refresh():
     response = None
 
     if refresh_token:
-        access_token = api_auth.refresh_access_token(refresh_token)
+        try:
+            access_token = api_auth.refresh_access_token(refresh_token)
+        except api_auth.UsuarioBloqueadoError:
+            return jsonify({
+                "code": api_auth.ACCOUNT_BLOCKED_CODE,
+                "error": "La cuenta está bloqueada. Contactá al administrador.",
+            }), 401
 
         if access_token is not None:
             response = jsonify({"access_token": access_token}), 200

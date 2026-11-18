@@ -14,6 +14,17 @@ export function registerNavigationGuard(router) {
     const authStore = useAuthStore()
     const maintenanceStore = useMaintenanceStore()
 
+    if (authStore.accountBlocked) {
+      if (to.name === 'login' && to.query.auth_error === 'account_blocked') {
+        return true
+      }
+
+      return {
+        name: 'login',
+        query: { auth_error: 'account_blocked' },
+      }
+    }
+
     if (to.name === 'maintenance') return true
     if (maintenanceStore.isTransitioning) return false
 
@@ -46,6 +57,13 @@ export function registerNavigationGuard(router) {
       const sessionRestored = await authStore.restoreSession()
 
       if (!sessionRestored) {
+        if (authStore.accountBlocked) {
+          return {
+            name: 'login',
+            query: { auth_error: 'account_blocked' },
+          }
+        }
+
         // Si el backend respondió 401, restoreSession
         // ya eliminó la sesión local.
         if (!authStore.token) {

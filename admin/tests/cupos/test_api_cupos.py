@@ -51,10 +51,10 @@ def test_crear_cupo_sin_token(client):
 
 
 @patch("src.web.controllers.cupos.api_cupos.get_by_id")
-@patch("src.web.controllers.cupos.api_cupos.api_auth.get_authenticated_user")
+@patch("src.core.services.auth.api_auth.get_authenticated_user_status")
 def test_crear_cupo_rol_invalido_403(mock_get_user, mock_get_rol, client):
     """Verifica que un Jefe de Servicio no pueda crear cupos (403)."""
-    mock_get_user.return_value = MockUser()
+    mock_get_user.return_value = (MockUser(), None)
     mock_get_rol.return_value = MockRol(nombre="jefe")
 
     response = client.post(
@@ -69,10 +69,10 @@ def test_crear_cupo_rol_invalido_403(mock_get_user, mock_get_rol, client):
 
 @patch("src.web.controllers.cupos.api_cupos.cupos.create")
 @patch("src.web.controllers.cupos.api_cupos.get_by_id")
-@patch("src.web.controllers.cupos.api_cupos.api_auth.get_authenticated_user")
+@patch("src.core.services.auth.api_auth.get_authenticated_user_status")
 def test_crear_cupo_exito_201(mock_get_user, mock_get_rol, mock_create, client):
     """Verifica que el Servicio de Alimentación pueda crear un cupo (201)."""
-    mock_get_user.return_value = MockUser()
+    mock_get_user.return_value = (MockUser(), None)
     mock_get_rol.return_value = MockRol(nombre="alimentacion")
 
     class MockCupo:
@@ -99,10 +99,10 @@ def test_crear_cupo_exito_201(mock_get_user, mock_get_rol, mock_create, client):
 
 
 @patch("src.web.controllers.cupos.api_cupos.get_by_id")
-@patch("src.web.controllers.cupos.api_cupos.api_auth.get_authenticated_user")
+@patch("src.core.services.auth.api_auth.get_authenticated_user_status")
 def test_crear_cupo_cantidad_invalida_400(mock_get_user, mock_get_rol, client):
     """Verifica que el validador rechace con 400 una cantidad menor o igual a cero."""
-    mock_get_user.return_value = MockUser()
+    mock_get_user.return_value = (MockUser(), None)
     mock_get_rol.return_value = MockRol(nombre="alimentacion")
 
     response = client.post(
@@ -118,12 +118,12 @@ def test_crear_cupo_cantidad_invalida_400(mock_get_user, mock_get_rol, client):
 @patch("src.web.controllers.cupos.api_cupos.cupos.listar")
 @patch("src.web.controllers.cupos.api_cupos.get_sector_asignado")
 @patch("src.web.controllers.cupos.api_cupos.get_by_id")
-@patch("src.web.controllers.cupos.api_cupos.api_auth.get_authenticated_user")
+@patch("src.core.services.auth.api_auth.get_authenticated_user_status")
 def test_listar_cupos_jefe_filtra_sector_automaticamente(
     mock_get_user, mock_get_rol, mock_get_sector, mock_listar, client
 ):
     """Verifica que al listar cupos como Jefe se filtre por su propio sector."""
-    mock_get_user.return_value = MockUser()
+    mock_get_user.return_value = (MockUser(), None)
     mock_get_rol.return_value = MockRol(nombre="jefe")
 
     class MockSector:
@@ -143,12 +143,12 @@ def test_listar_cupos_jefe_filtra_sector_automaticamente(
 
 @patch("src.web.controllers.cupos.api_cupos.cupos.eliminar")
 @patch("src.web.controllers.cupos.api_cupos.get_by_id")
-@patch("src.web.controllers.cupos.api_cupos.api_auth.get_authenticated_user")
+@patch("src.core.services.auth.api_auth.get_authenticated_user_status")
 def test_eliminar_cupo_baja_logica_exito(
     mock_get_user, mock_get_rol, mock_eliminar, client
 ):
     """Verifica la baja lógica de un cupo mediante DELETE /api/quotas/<id>."""
-    mock_get_user.return_value = MockUser()
+    mock_get_user.return_value = (MockUser(), None)
     mock_get_rol.return_value = MockRol(nombre="alimentacion")
 
     class MockCupoInactivo:
@@ -168,12 +168,12 @@ def test_eliminar_cupo_baja_logica_exito(
 
 @patch("src.web.controllers.cupos.api_cupos.cupos.eliminar")
 @patch("src.web.controllers.cupos.api_cupos.get_by_id")
-@patch("src.web.controllers.cupos.api_cupos.api_auth.get_authenticated_user")
+@patch("src.core.services.auth.api_auth.get_authenticated_user_status")
 def test_eliminar_cupo_inexistente_404(
     mock_get_user, mock_get_rol, mock_eliminar, client
 ):
     """Verifica que intentar dar de baja un cupo inexistente devuelva 404."""
-    mock_get_user.return_value = MockUser()
+    mock_get_user.return_value = (MockUser(), None)
     mock_get_rol.return_value = MockRol(nombre="alimentacion")
     mock_eliminar.side_effect = lambda *a, **kw: abort(
         404, description="El cupo con ID 99 no existe."

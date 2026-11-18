@@ -1,10 +1,10 @@
 
 """Endpoints de la API para consultar los roles operativos."""
 
-from flask import Blueprint, abort, jsonify, request
+from flask import Blueprint, jsonify
 
-from src.core.services.auth import api_auth
 from src.core.services.usuarios import rol as rol_service
+from src.web.decorators.api import authenticate_api_request
 
 
 api_roles_bp = Blueprint(
@@ -17,20 +17,7 @@ api_roles_bp = Blueprint(
 @api_roles_bp.before_request
 def require_token():
     """Exige un token Bearer válido, excepto en las peticiones OPTIONS."""
-
-    # El preflight CORS no lleva credenciales de autenticación.
-    if request.method == "OPTIONS":
-        return None
-
-    authorization = request.headers.get("Authorization", "")
-
-    if not authorization.startswith("Bearer "):
-        abort(401, description="Token de autenticación requerido.")
-
-    user = api_auth.get_authenticated_user(authorization[7:])
-
-    if user is None or not user.isActive:
-        abort(401, description="Token inválido o expirado.")
+    return authenticate_api_request()
 
 
 @api_roles_bp.get("/operational")

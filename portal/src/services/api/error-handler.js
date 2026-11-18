@@ -54,6 +54,7 @@ export function normalizeApiError(error) {
 
   return {
     status,
+    code: data.code ?? null,
     message,
     fieldErrors,
     isNetworkError,
