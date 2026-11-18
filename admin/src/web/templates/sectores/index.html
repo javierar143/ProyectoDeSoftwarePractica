@@ -56,6 +56,7 @@
                         <th scope="col">{{ sort_link('nombre', 'Nombre') }}</th>
                         <th scope="col">Descripción</th>
                         <th scope="col">Estado</th>
+                        <th scope="col">Jefes</th>  
                         <th scope="col">{{ sort_link('fecha', 'Creado') }}</th>
                         <th scope="col">Acciones</th>
                     </tr>
@@ -66,6 +67,14 @@
                             <td>{{ sector.nombre }}</td>
                             <td>{{ sector.descripcion or '—' }}</td>
                             <td>{{ 'Activo' if sector.isActive else 'Inactivo' }}</td>
+                            <td>
+                                {% set jefes_sector = jefes_por_sector.get(sector.idSector, []) %}
+                                {% if jefes_sector %}
+                                    {{ jefes_sector | map(attribute='alias') | join(', ') }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
                             <td><time datetime="{{ sector.inserted_at.isoformat() }}">{{ sector.inserted_at.strftime('%d/%m/%Y') }}</time></td>
                             <td class="actions">
                                 <a href="{{ url_for('sectores.editar_form', id=sector.idSector) }}">Editar</a>
