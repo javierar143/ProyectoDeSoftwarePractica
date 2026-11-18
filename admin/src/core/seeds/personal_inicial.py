@@ -58,6 +58,32 @@ PERSONAL_INICIAL = (
         "sector": "Quirófano",
         "usuario": None,
     },
+    {
+        "dni": "55555555",
+        "nombre": "Ana",
+        "apellido": "Alimentos",
+        "sector": "Alimentación",
+        "usuario": {
+            "email": "alimentacion@ejemplo.com",
+            "alias": "Servicio de Alimentación",
+            "rol": "Servicio de Alimentación",
+            "password": "1234",
+            "es_admin": False,
+        },
+    },
+    {
+        "dni": "66666666",
+        "nombre": "Carlos",
+        "apellido": "Comedor",
+        "sector": "Alimentación",  # sector del personal; el usuario Comedor no lleva idSector
+        "usuario": {
+            "email": "comedor@ejemplo.com",
+            "alias": "Sector Comedor",
+            "rol": "Sector Comedor",
+            "password": "1234",
+            "es_admin": False,
+        },
+    },
 )
 
 

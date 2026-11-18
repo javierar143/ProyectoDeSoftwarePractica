@@ -15,6 +15,10 @@ PERMISOS_USUARIOS = (
     "user_destroy",
 )
 
+PERMISOS_SECTORES = (
+    "sector_index",  # listar y ver detalle de sectores
+)
+
 PERMISOS_PERSONAL = (
     "personal_index",
     "personal_new",
@@ -27,7 +31,7 @@ PERMISOS_PERSONAL = (
 
 PERMISOS_POR_ROL = {
     "Administrador": PERMISOS_USUARIOS + PERMISOS_PERSONAL,
-    "Servicio de Alimentación": PERMISOS_PERSONAL,
+    "Servicio de Alimentación": PERMISOS_PERSONAL + PERMISOS_SECTORES,
     "Jefe de Servicio": (
         "personal_index",
         "personal_new",
@@ -38,7 +42,7 @@ PERMISOS_POR_ROL = {
     "Sector Comedor": (
         "personal_index",
         "personal_manage_all_sectors",
-    ),
+    )+ PERMISOS_SECTORES,
 }
 
 

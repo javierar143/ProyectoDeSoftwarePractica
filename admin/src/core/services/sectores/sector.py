@@ -27,6 +27,14 @@ def get_by_id(id_sector: int) -> Sector | None:
     """Obtiene un sector por su identificador."""
     return repo_sector.get_by_id(id_sector)
 
+def assert_sector_usable(id_sector: int) -> Sector:
+    """Devuelve el sector si existe y está activo; si no, lanza SectorError."""
+    sector = repo_sector.get_by_id(id_sector)
+    if sector is None:
+        raise SectorError("El sector no existe.")
+    if not sector.isActive:
+        raise SectorError("No se puede usar un sector inactivo.")
+    return sector
 
 def _get_id_rol_jefe() -> int:
     """Obtiene el id del rol Jefe de Servicio o falla si no fue cargado."""
@@ -53,8 +61,11 @@ def get_todos_los_jefes() -> list[Usuario]:
 
 def _validar_jefes(ids_jefes: list[int], id_sector: int | None, sector_activo: bool) -> list[Usuario]:
     """Verifica que cada usuario exista, sea Jefe de Servicio y no pertenezca a otro sector."""
-    if ids_jefes and not sector_activo:
-        raise SectorError("No se pueden asignar Jefes de Servicio a un sector inactivo.")
+    if ids_jefes:
+        if id_sector is not None:
+            assert_sector_usable(id_sector)
+        elif not sector_activo:
+            raise SectorError("No se pueden asignar Jefes de Servicio a un sector inactivo.")
 
     id_rol_jefe = _get_id_rol_jefe()
     jefes = []
