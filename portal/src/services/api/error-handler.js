@@ -18,6 +18,8 @@ export function normalizeApiError(error) {
 
   const isNetworkError = !error.response
   const isServerError = status >= 500
+  const requestMethod = error.config?.method?.toLowerCase()
+  const isWriteOperation = ['post', 'put', 'patch', 'delete'].includes(requestMethod)
 
   let message
 
@@ -27,6 +29,16 @@ export function normalizeApiError(error) {
     message = 'El sistema se encuentra en mantenimiento.'
   } else if (isServerError) {
     message = 'Ocurrió un error en el servidor. Intentá nuevamente.'
+  } else if (status === 401) {
+    message = backendMessage || 'Tu sesión no está autorizada. Volvé a iniciar sesión.'
+  } else if (status === 403) {
+    message = backendMessage || 'No tenés permisos para realizar esta operación.'
+  } else if (status === 404) {
+    message = backendMessage || 'No se encontró el recurso solicitado.'
+  } else if (status === 409) {
+    message = backendMessage || 'El recurso cambió y la operación entró en conflicto. Actualizá los datos.'
+  } else if (status === 400) {
+    message = backendMessage || 'Los datos enviados no son válidos.'
   } else {
     message = backendMessage || 'Ocurrió un error inesperado.'
   }
@@ -49,6 +61,6 @@ export function normalizeApiError(error) {
     isNotFound: status === 404,
     isConflict: status === 409,
     isServerError,
-    canRetry: isNetworkError || isServerError,
+    canRetry: !isWriteOperation && (isNetworkError || (isServerError && status !== 503)),
   }
 }

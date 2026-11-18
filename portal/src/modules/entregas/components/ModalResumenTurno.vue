@@ -37,6 +37,7 @@
         </button>
       </div>
 
+      <ApiErrorMessage :error="errorApi" @retry="reintentarCarga" />
       <div v-if="cargando" class="caja-estado-vacio">Cargando información del día...</div>
 
       <div v-else-if="tabActiva === 'totales'">
@@ -145,6 +146,8 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import ApiErrorMessage from '@/modules/shared/components/ApiErrorMessage.vue'
+import { normalizeApiError } from '@/services/api/error-handler'
 import { listarEntregasTurno, obtenerResumenEntregasDia } from '../services/entregas'
 
 const props = defineProps({
@@ -187,6 +190,8 @@ const NOMBRES_MENUS = {
 
 const tabActiva = ref('totales')
 const cargando = ref(false)
+const errorApi = ref(null)
+const parametrosReintento = ref(null)
 const resumenDia = ref(null)
 const entregasTurno = ref([])
 
@@ -247,25 +252,52 @@ function extraerHora(iso) {
   return d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
-async function cargarTab(tab) {
+async function cargarTab(tab, paramsOverride = null) {
   tabActiva.value = tab
   cargando.value = true
+  errorApi.value = null
+  const params = paramsOverride || (tab === 'totales'
+    ? { fecha: props.fechaHoyIso }
+    : { fecha: props.fechaHoyIso, tipo_comida: props.comidaActual.id })
   try {
     if (tab === 'totales') {
-      resumenDia.value = await obtenerResumenEntregasDia({ fecha: props.fechaHoyIso })
+      resumenDia.value = await obtenerResumenEntregasDia(params)
     } else {
-      const lista = await listarEntregasTurno({
-        fecha: props.fechaHoyIso,
-        tipo_comida: props.comidaActual.id,
-      })
+      const lista = await listarEntregasTurno(params)
       entregasTurno.value = Array.isArray(lista) ? lista : []
     }
-  } catch {
-    // Mantenemos estado vacío
+    parametrosReintento.value = null
+  } catch (err) {
+    const status = err?.response?.status ?? err?.status
+    if (status !== 503) {
+      errorApi.value = normalizeApiError(err)
+      parametrosReintento.value = { tab, params }
+    }
   } finally {
     cargando.value = false
   }
 }
+
+function reintentarCarga() {
+  if (cargando.value || !parametrosReintento.value) return
+  return cargarTab(parametrosReintento.value.tab, parametrosReintento.value.params)
+}
+
+function recargarDatosAfectados() {
+  if (tabActiva.value === 'totales') {
+    return obtenerResumenEntregasDia({ fecha: props.fechaHoyIso }).then((data) => {
+      resumenDia.value = data
+    })
+  }
+  return listarEntregasTurno({
+    fecha: props.fechaHoyIso,
+    tipo_comida: props.comidaActual.id,
+  }).then((data) => {
+    entregasTurno.value = Array.isArray(data) ? data : []
+  })
+}
+
+defineExpose({ recargarDatosAfectados })
 
 onMounted(() => {
   cargarTab('totales')

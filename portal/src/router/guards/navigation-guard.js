@@ -1,5 +1,6 @@
 
 import { useAuthStore } from '@/stores/auth'
+import { getPublicConfiguration, saveMaintenanceReturnRoute } from '@/modules/system/services/configuration'
 import { getRoleHomeRoute } from '../navigation'
 
 /**
@@ -10,6 +11,22 @@ import { getRoleHomeRoute } from '../navigation'
 export function registerNavigationGuard(router) {
   router.beforeEach(async (to) => {
     const authStore = useAuthStore()
+
+    if (to.name === 'maintenance') return true
+
+    try {
+      const configuration = await getPublicConfiguration()
+      if (configuration.modo_mantenimiento) {
+        saveMaintenanceReturnRoute(to.fullPath)
+        return { name: 'maintenance', replace: true }
+      }
+    } catch (error) {
+      if (error.response?.status === 503) {
+        saveMaintenanceReturnRoute(to.fullPath)
+        return { name: 'maintenance', replace: true }
+      }
+      // Una falla al consultar configuración no invalida una sesión ni bloquea el acceso.
+    }
 
     // Determina si la ruta requiere autenticación.
     const requiresAuth = to.meta.requiresAuth ?? !to.meta.guestOnly

@@ -9,7 +9,6 @@ import {
 } from '@/modules/auth/services/auth'
 
 const TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000
-const TOKEN_REFRESH_RETRY_MS = 30 * 1000
 
 /**
  * Centraliza el estado de autenticación del portal.
@@ -213,18 +212,13 @@ export const useAuthStore = defineStore('auth', () => {
           return
         }
 
-        // Ante errores de red o servidor, vuelve a intentar en 30 segundos.
-        if (!error.response || error.response.status >= 500) {
-          if (
-            token.value === tokenBeingRenewed &&
-            operationalRoleKey.value === 'sectorComedor'
-          ) {
-            refreshTimer = setTimeout(() => {
-              refreshTimer = null
-              renewSectorAccessToken()
-            }, TOKEN_REFRESH_RETRY_MS)
-          }
+        // La falta de permisos no demuestra que la sesión haya vencido.
+        if (error.response?.status === 403) {
+          return
+        }
 
+        // El refresh crea un registro de token; no se repite si el resultado es incierto.
+        if (!error.response || error.response.status >= 500) {
           return
         }
 

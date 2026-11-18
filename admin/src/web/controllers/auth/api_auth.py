@@ -48,10 +48,10 @@ def login():
     password = data.get("password")
 
     if not isinstance(email, str) or not email.strip():
-        abort(400, description="El email es obligatorio.")
+        return jsonify({"error": "El email es obligatorio.", "field_errors": {"email": "El email es obligatorio."}}), 400
 
     if not isinstance(password, str) or not password:
-        abort(400, description="La contraseña es obligatoria.")
+        return jsonify({"error": "La contraseña es obligatoria.", "field_errors": {"password": "La contraseña es obligatoria."}}), 400
 
     try:
         tokens = api_auth.login(email.strip(), password)

@@ -15,7 +15,10 @@ from src.web.controllers.auth.api_auth import api_auth_controller
 from src.web.controllers.autorizaciones.api_autorizaciones import (
     api_autorizaciones_controller,
 )
-from src.web.controllers.configuracion.config import config_controller
+from src.web.controllers.configuracion.config import (
+    api_configuration_controller,
+    config_controller,
+)
 from src.web.controllers.cupos.api_cupos import bp_cupos
 from src.web.controllers.pedidos.api_pedidos import (
     bp_pedidos,
@@ -53,6 +56,7 @@ def _register_blueprints(app: Flask) -> None:
 
     # Configuración y autorizaciones
     app.register_blueprint(config_controller)
+    app.register_blueprint(api_configuration_controller)
     app.register_blueprint(api_autorizaciones_controller)
     app.register_blueprint(api_roles_bp)
 

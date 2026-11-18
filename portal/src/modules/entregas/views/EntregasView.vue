@@ -52,6 +52,7 @@
         role="alert"
       >
         <span>{{ alerta.texto }}</span>
+        <button v-if="reintentoConsulta" type="button" :disabled="buscando" @click="reintentarConsulta">Reintentar</button>
         <button type="button" class="btn-cerrar-alerta" @click="alerta.texto = ''">Cerrar</button>
       </div>
 
@@ -252,12 +253,14 @@
       :personas="personasEnRetiro"
       :items="itemsResumenConfirmacion"
       :enviando="enviandoEntrega"
+      :resultado-incierto="entregaResultadoIncierto"
       @cerrar="modalConfirmacionAbierto = false"
       @confirmar="confirmarEntregaDefinitiva"
     />
 
     <ModalResumenTurno
       v-if="menuDiscretoAbierto"
+      ref="resumenTurnoRef"
       :fecha-hoy-iso="fechaHoyIso"
       :fecha-texto="fechaActualTexto"
       :comida-actual="comidaEnCursoObj"
@@ -276,6 +279,7 @@ import FichaComensalRetiro from '../components/FichaComensalRetiro.vue'
 import ModalConfirmarEntrega from '../components/ModalConfirmarEntrega.vue'
 import ModalResumenTurno from '../components/ModalResumenTurno.vue'
 import TecladoDniKiosko from '../components/TecladoDniKiosko.vue'
+import { normalizeApiError } from '@/services/api/error-handler'
 import {
   buscarComidasAutorizadas,
   cerrarSesionApi,
@@ -332,9 +336,17 @@ const solicitudesSeleccionadasIds = ref([])
 const modalConfirmacionAbierto = ref(false)
 const menuDiscretoAbierto = ref(false)
 const enviandoEntrega = ref(false)
+const entregaResultadoIncierto = ref(false)
 const alerta = ref({ tipo: '', texto: '' })
+const resumenTurnoRef = ref(null)
+const reintentoConsulta = ref(null)
 const segundosInactividad = ref(SEGUNDOS_LIMITE_INACTIVIDAD)
 const conexionActiva = ref(true)
+
+function esReintentableSinAfectarMantenimiento(error) {
+  const status = error?.response?.status ?? error?.status
+  return !error?.response || status === 500
+}
 
 let timerReloj = null
 let timerHealth = null
@@ -475,8 +487,9 @@ function agregarPersonaAlRetiro(persona) {
 async function buscarPorDni() {
   buscando.value = true
   alerta.value = { tipo: '', texto: '' }
+  const params = { fecha: fechaHoyIso.value, dni: dniInput.value }
   try {
-    const data = await buscarComidasAutorizadas({ fecha: fechaHoyIso.value, dni: dniInput.value })
+    const data = await buscarComidasAutorizadas(params)
     const personas = consolidarPersonas(Array.isArray(data) ? data : [])
     const encontrada = personas.find((p) => p.dni === dniInput.value) || personas[0]
     if (!encontrada) {
@@ -489,7 +502,9 @@ async function buscarPorDni() {
     agregarPersonaAlRetiro(encontrada)
     dniInput.value = ''
   } catch (err) {
-    alerta.value = { tipo: 'error', texto: err?.message || 'Error al consultar el DNI.' }
+    const apiError = normalizeApiError(err)
+    reintentoConsulta.value = esReintentableSinAfectarMantenimiento(err) ? () => repetirBusquedaDni(params) : null
+    alerta.value = { tipo: 'error', texto: apiError.message }
   } finally {
     buscando.value = false
   }
@@ -498,12 +513,15 @@ async function buscarPorDni() {
 async function buscarPorNombre() {
   buscando.value = true
   busquedaSinResultados.value = false
+  const params = { fecha: fechaHoyIso.value, nya: nyaInput.value.trim() }
   try {
-    const data = await buscarComidasAutorizadas({ fecha: fechaHoyIso.value, nya: nyaInput.value.trim() })
+    const data = await buscarComidasAutorizadas(params)
     resultadosNombre.value = consolidarPersonas(Array.isArray(data) ? data : [])
     busquedaSinResultados.value = resultadosNombre.value.length === 0
   } catch (err) {
-    alerta.value = { tipo: 'error', texto: err?.message || 'Error al buscar por nombre.' }
+    const apiError = normalizeApiError(err)
+    reintentoConsulta.value = esReintentableSinAfectarMantenimiento(err) ? () => repetirBusquedaNombre(params) : null
+    alerta.value = { tipo: 'error', texto: apiError.message }
   } finally {
     buscando.value = false
   }
@@ -515,18 +533,73 @@ async function buscarPorSector() {
     return
   }
   buscando.value = true
+  const params = { fecha: fechaHoyIso.value, sector: sectorFiltroId.value }
   try {
-    const data = await buscarComidasAutorizadas({ fecha: fechaHoyIso.value, sector: sectorFiltroId.value })
+    const data = await buscarComidasAutorizadas(params)
     resultadosSector.value = consolidarPersonas(Array.isArray(data) ? data : []).filter((p) =>
       Object.entries(p.comidas).some(
         ([idComida, c]) => c && !c.entregada && !esTurnoComidaVencido(Number(idComida))
       )
     )
   } catch (err) {
-    alerta.value = { tipo: 'error', texto: err?.message || 'Error al consultar el sector.' }
+    const apiError = normalizeApiError(err)
+    reintentoConsulta.value = esReintentableSinAfectarMantenimiento(err) ? () => repetirBusquedaSector(params) : null
+    alerta.value = { tipo: 'error', texto: apiError.message }
   } finally {
     buscando.value = false
   }
+}
+
+async function reintentarConsulta() {
+  if (buscando.value || typeof reintentoConsulta.value !== 'function') return
+  await reintentoConsulta.value()
+}
+
+async function repetirBusquedaDni(params) {
+  buscando.value = true
+  try {
+    const data = await buscarComidasAutorizadas(params)
+    const personas = consolidarPersonas(Array.isArray(data) ? data : [])
+    const encontrada = personas.find((p) => p.dni === params.dni) || personas[0]
+    if (encontrada) agregarPersonaAlRetiro(encontrada)
+    reintentoConsulta.value = null
+    alerta.value = { tipo: encontrada ? '' : 'advertencia', texto: encontrada ? '' : `No se encontraron comidas autorizadas para hoy con el DNI ${params.dni}.` }
+  } catch (err) {
+    const apiError = normalizeApiError(err)
+    alerta.value = { tipo: 'error', texto: apiError.message }
+    reintentoConsulta.value = esReintentableSinAfectarMantenimiento(err) ? () => repetirBusquedaDni(params) : null
+  } finally { buscando.value = false }
+}
+
+async function repetirBusquedaNombre(params) {
+  buscando.value = true
+  try {
+    const data = await buscarComidasAutorizadas(params)
+    resultadosNombre.value = consolidarPersonas(Array.isArray(data) ? data : [])
+    busquedaSinResultados.value = resultadosNombre.value.length === 0
+    reintentoConsulta.value = null
+    alerta.value = { tipo: '', texto: '' }
+  } catch (err) {
+    const apiError = normalizeApiError(err)
+    alerta.value = { tipo: 'error', texto: apiError.message }
+    reintentoConsulta.value = esReintentableSinAfectarMantenimiento(err) ? () => repetirBusquedaNombre(params) : null
+  } finally { buscando.value = false }
+}
+
+async function repetirBusquedaSector(params) {
+  buscando.value = true
+  try {
+    const data = await buscarComidasAutorizadas(params)
+    resultadosSector.value = consolidarPersonas(Array.isArray(data) ? data : []).filter((p) =>
+      Object.entries(p.comidas).some(([idComida, c]) => c && !c.entregada && !esTurnoComidaVencido(Number(idComida)))
+    )
+    reintentoConsulta.value = null
+    alerta.value = { tipo: '', texto: '' }
+  } catch (err) {
+    const apiError = normalizeApiError(err)
+    alerta.value = { tipo: 'error', texto: apiError.message }
+    reintentoConsulta.value = esReintentableSinAfectarMantenimiento(err) ? () => repetirBusquedaSector(params) : null
+  } finally { buscando.value = false }
 }
 
 function quitarPersona(idPersonal) {
@@ -547,6 +620,7 @@ function toggleSeleccionComida(persona, idComida) {
 }
 
 async function confirmarEntregaDefinitiva(datosResponsable) {
+  if (enviandoEntrega.value || entregaResultadoIncierto.value) return
   enviandoEntrega.value = true
   alerta.value = { tipo: '', texto: '' }
   const payload = {
@@ -566,10 +640,24 @@ async function confirmarEntregaDefinitiva(datosResponsable) {
       alerta.value = { tipo: '', texto: '' }
     }, 3000)
   } catch (err) {
-    modalConfirmacionAbierto.value = false
-    alerta.value = {
-      tipo: err?.status === 409 || err?.response?.status === 409 ? 'advertencia' : 'error',
-      texto: err?.response?.data?.error || err?.message || 'No se pudo registrar la entrega.',
+    const apiError = normalizeApiError(err)
+    const esConflicto = apiError.isConflict
+    alerta.value = { tipo: esConflicto ? 'advertencia' : 'error', texto: apiError.message }
+    if (!esConflicto && (!err?.response || (err?.response?.status ?? err?.status) === 500)) {
+      entregaResultadoIncierto.value = true
+      alerta.value.texto += ' No vuelvas a enviar hasta comprobar el estado de estas solicitudes.'
+    }
+    if (esConflicto) {
+      try {
+        const actualizadas = await buscarComidasAutorizadas({ fecha: fechaHoyIso.value })
+        const porPersona = new Map(consolidarPersonas(Array.isArray(actualizadas) ? actualizadas : []).map((p) => [Number(p.idPersonal), p]))
+        personasEnRetiro.value = personasEnRetiro.value.map((p) => porPersona.get(Number(p.idPersonal)) || p)
+        if (menuDiscretoAbierto.value) await resumenTurnoRef.value?.recargarDatosAfectados()
+      } catch (refreshError) {
+        const refreshApiError = normalizeApiError(refreshError)
+        alerta.value.texto = `${apiError.message} Además, no se pudieron actualizar los datos: ${refreshApiError.message}`
+      }
+      // POST /deliveries no ofrece reintento automático/manual hasta contar con idempotencia backend.
     }
   } finally {
     enviandoEntrega.value = false

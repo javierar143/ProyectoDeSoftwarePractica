@@ -11,6 +11,11 @@ class Configuracion(BaseModel):
     modo_mantenimiento: Mapped[bool] = mapped_column(default=False)
     mensaje_mantenimiento: Mapped[str] = mapped_column(
         String(255),
-        default="El sistema se encuentra en mantenimiento temporalmente.",
+        default=(
+            "La aplicación se encuentra temporalmente en mantenimiento. Estamos "
+            "trabajando para restablecer el servicio. Cuando finalice el mantenimiento, "
+            "la aplicación volverá a estar disponible automáticamente. No necesitás "
+            "realizar ninguna acción."
+        ),
         nullable=False
     )

@@ -1,3 +1,5 @@
+import { saveMaintenanceReturnRoute } from '@/modules/system/services/configuration'
+
 /**
  * Registra el tratamiento global de respuestas 503.
  *
@@ -12,7 +14,9 @@ export function registerMaintenanceInterceptor(apiClient, router) {
     (response) => response,
     async (error) => {
       if (error.response?.status === 503) {
-        if (router.currentRoute.value.name !== 'maintenance') {
+        const currentRoute = router.currentRoute.value
+        if (currentRoute.name !== 'maintenance') {
+          saveMaintenanceReturnRoute(currentRoute.fullPath)
           await router.replace({ name: 'maintenance' })
         }
       }

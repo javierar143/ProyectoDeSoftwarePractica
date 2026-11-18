@@ -144,6 +144,10 @@ def test_crear_pedido_faltan_datos(
 
     assert response.status_code == 400
     assert "Faltan datos obligatorios" in response.json["error"]
+    assert response.json["field_errors"] == {
+        "periodicidad": "Este campo es obligatorio.",
+        "comidas": "Este campo es obligatorio.",
+    }
 
 
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.crear_pedido")

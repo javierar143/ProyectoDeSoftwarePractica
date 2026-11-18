@@ -10,7 +10,12 @@ def obtener_configuracion():
         config = Configuracion(
             elementos_por_pagina=10, 
             modo_mantenimiento=False,
-            mensaje_mantenimiento="El sistema se encuentra en mantenimiento temporalmente."
+            mensaje_mantenimiento=(
+                "La aplicación se encuentra temporalmente en mantenimiento. Estamos "
+                "trabajando para restablecer el servicio. Cuando finalice el mantenimiento, "
+                "la aplicación volverá a estar disponible automáticamente. No necesitás "
+                "realizar ninguna acción."
+            ),
         )
         db.session.add(config)
         db.session.commit()

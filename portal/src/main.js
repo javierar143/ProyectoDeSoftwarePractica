@@ -22,7 +22,7 @@ const authStore = useAuthStore(pinia)
 authStore.setSessionExpiredHandler(async () => {
   const currentRoute = router.currentRoute.value
 
-  if (currentRoute.name !== 'login') {
+  if (currentRoute.name !== 'login' && currentRoute.name !== 'maintenance') {
     await router.replace({
       name: 'login',
       query: { redirect: currentRoute.fullPath },

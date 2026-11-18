@@ -135,6 +135,11 @@ def crear_nuevo_pedido():
         current_app.logger.warning(
             f"Datos inválidos al crear pedido en sector ID {id_sector}: {resultado}"
         )
+        if isinstance(resultado, dict):
+            mensaje = "Faltan datos obligatorios" if all(
+                m == "Este campo es obligatorio." for m in resultado.values()
+            ) else "Revisá los campos indicados."
+            return jsonify({"error": mensaje, "field_errors": resultado}), 400
         abort(400, description=str(resultado))
 
     datos = resultado  # type: ignore[assignment]
