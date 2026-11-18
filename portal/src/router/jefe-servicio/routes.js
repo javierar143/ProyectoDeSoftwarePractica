@@ -3,7 +3,7 @@
  * Rutas del módulo Jefe de Servicio.
  *
  * Incluye el acceso a la funcionalidad de carga de pedidos
- * correspondientes a su sector.
+ * y gestión de personal correspondientes a su sector.
  */
 export const jefeServicioRoutes = [
   {
@@ -14,6 +14,15 @@ export const jefeServicioRoutes = [
     // cuando se implemente la pantalla definitiva.
     component: () => import('./temporalJefeServicio.vue'),
 
+    meta: {
+      requiresAuth: true,
+      roles: ['jefeServicio'],
+    },
+  },
+  {
+    path: '/jefe-servicio/personal',
+    name: 'jefe-servicio-personal',
+    component: () => import('@/modules/personal/views/PersonalView.vue'),
     meta: {
       requiresAuth: true,
       roles: ['jefeServicio'],

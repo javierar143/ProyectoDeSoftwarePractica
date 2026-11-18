@@ -1,7 +1,6 @@
 
 """Controladores REST para la gestión de Personal."""
 
-from datetime import date
 
 from flask import Blueprint, g, jsonify, request
 
@@ -172,16 +171,6 @@ def listar_personal_de_sector(sector_id: int):
 
     if sector is None:
         return jsonify({"error": "El sector indicado no existe"}), 404
-
-    fecha_str = request.args.get("fecha")
-
-    if fecha_str:
-        try:
-            date.fromisoformat(fecha_str)
-        except ValueError:
-            return jsonify({
-                "error": "Formato de fecha inválido. Use YYYY-MM-DD"
-            }), 400
 
     try:
         page = int(request.args.get("page", 1))
