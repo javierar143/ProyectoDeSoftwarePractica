@@ -7,14 +7,13 @@
  * @param {import('axios').AxiosInstance} apiClient - Cliente HTTP.
  * @param {import('vue-router').Router} router - Router de la aplicación.
  */
-export function registerMaintenanceInterceptor(apiClient, router) {
+export function registerMaintenanceInterceptor(apiClient, router, maintenanceStore) {
   apiClient.interceptors.response.use(
     (response) => response,
     async (error) => {
       if (error.response?.status === 503) {
-        if (router.currentRoute.value.name !== 'maintenance') {
-          await router.replace({ name: 'maintenance' })
-        }
+        const currentRoute = router.currentRoute.value
+        maintenanceStore.beginTransition(router, currentRoute.fullPath)
       }
 
       return Promise.reject(error)

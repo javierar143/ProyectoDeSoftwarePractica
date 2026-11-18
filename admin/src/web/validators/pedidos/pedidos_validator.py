@@ -65,38 +65,36 @@ def validar_creacion_pedido(
         return False, "Faltan datos obligatorios"
 
     campos_requeridos = ("fecha_desde", "periodicidad", "comidas")
-    if not all(k in data and data[k] is not None for k in campos_requeridos):
-        return False, "Faltan datos obligatorios"
+    faltantes = {k: "Este campo es obligatorio." for k in campos_requeridos if k not in data or data[k] is None}
+    if faltantes:
+        return False, faltantes
 
     try:
         fecha_desde = date.fromisoformat(str(data["fecha_desde"]))
     except (ValueError, TypeError):
-        return False, "Formato de fecha inválido. Use YYYY-MM-DD"
+        return False, {"fecha_desde": "Formato inválido. Use YYYY-MM-DD."}
 
     fecha_hasta: date | None = None
     if data.get("fecha_hasta") is not None:
         try:
             fecha_hasta = date.fromisoformat(str(data["fecha_hasta"]))
         except (ValueError, TypeError):
-            return False, "Formato de fecha inválido. Use YYYY-MM-DD"
+            return False, {"fecha_hasta": "Formato inválido. Use YYYY-MM-DD."}
         if fecha_hasta < fecha_desde:
-            return (
-                False,
-                "La fecha hasta no puede ser anterior a la fecha desde.",
-            )
+            return False, {"fecha_hasta": "No puede ser anterior a fecha_desde."}
 
     periodicidad_str = str(data["periodicidad"]).strip().lower()
     try:
         Periodicidad(periodicidad_str)
     except ValueError:
-        return False, "La periodicidad indicada no es válida."
+        return False, {"periodicidad": "La periodicidad indicada no es válida."}
 
     comidas_ok, comidas_res = _validar_diccionario_comidas(
         data["comidas"],
         "El pedido debe incluir al menos una solicitud de comida.",
     )
     if not comidas_ok:
-        return False, comidas_res
+        return False, {"comidas": comidas_res}
 
     return True, {
         "fecha_desde": fecha_desde,

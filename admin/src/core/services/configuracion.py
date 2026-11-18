@@ -5,7 +5,14 @@ from src.core.repositories import configuracion as repo_config
 MIN_ELEMENTOS_POR_PAGINA = 1
 MAX_ELEMENTOS_POR_PAGINA = 25
 ELEMENTOS_POR_PAGINA_DEFAULT = 10
-MENSAJE_MANTENIMIENTO_DEFAULT = "El sistema se encuentra en mantenimiento temporalmente. Por favor, intente más tarde."
+MENSAJE_MANTENIMIENTO_DEFAULT = (
+    "La aplicación se encuentra temporalmente en mantenimiento. Estamos trabajando "
+    "para restablecer el servicio. Cuando finalice el mantenimiento, la aplicación "
+    "volverá a estar disponible automáticamente. No necesitás realizar ninguna acción."
+)
+MENSAJE_MANTENIMIENTO_ANTERIOR = (
+    "El sistema se encuentra en mantenimiento temporalmente. Por favor, intente más tarde."
+)
 
 
 def obtener_configuracion():
@@ -19,7 +26,12 @@ def obtener_configuracion():
         elementos = MAX_ELEMENTOS_POR_PAGINA
 
     mensaje = config.mensaje_mantenimiento
-    if not mensaje or not isinstance(mensaje, str) or not mensaje.strip():
+    if (
+        not mensaje
+        or not isinstance(mensaje, str)
+        or not mensaje.strip()
+        or mensaje == MENSAJE_MANTENIMIENTO_ANTERIOR
+    ):
         mensaje = MENSAJE_MANTENIMIENTO_DEFAULT
 
     if elementos != config.elementos_por_pagina or mensaje != config.mensaje_mantenimiento:

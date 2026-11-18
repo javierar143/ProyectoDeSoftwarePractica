@@ -42,6 +42,26 @@ export function registerAuthResponseInterceptor(
       const originalRequest = error.config
 
       if (
+        error.response?.status === 401 &&
+        error.response?.data?.code === 'ACCOUNT_BLOCKED' &&
+        originalRequest
+      ) {
+        const firstBlockedResponse = authStore.markAccountBlocked()
+        // The guard or login flow completes navigation for session restoration calls.
+        const sessionRestorationRequest = ['/auth/me', '/roles/operational']
+          .some((endpoint) => originalRequest.url?.includes(endpoint))
+
+        if (firstBlockedResponse && !sessionRestorationRequest) {
+          await router.replace({
+            name: 'login',
+            query: { auth_error: 'account_blocked' },
+          })
+        }
+
+        return Promise.reject(error)
+      }
+
+      if (
         error.response?.status !== 401 ||
         !originalRequest ||
         isAuthEndpoint(originalRequest.url)

@@ -1,10 +1,21 @@
-from flask import Blueprint, render_template, request, flash, redirect, url_for, current_app
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, url_for
 from src.core.services import configuracion as config_service
 from src.core.security.permissions import require_permission
 from src.core.security.session import require_authentication
 
 
 config_controller = Blueprint("config", __name__, url_prefix="/config")
+api_configuration_controller = Blueprint("api_configuration", __name__, url_prefix="/api")
+
+
+@api_configuration_controller.get("/configuration")
+def obtener_configuracion_publica():
+    """Expone solo el estado y mensaje de mantenimiento, también durante el 503."""
+    config = config_service.obtener_configuracion()
+    return jsonify({
+        "modo_mantenimiento": bool(config.modo_mantenimiento),
+        "mensaje_mantenimiento": config.mensaje_mantenimiento,
+    }), 200
 
 @config_controller.before_request
 def require_auth():

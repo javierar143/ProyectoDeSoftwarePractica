@@ -12,6 +12,9 @@
 
     <div v-if="aviso.texto" :class="['aviso', aviso.tipo]" role="alert">
       <span>{{ aviso.texto }}</span>
+      <span v-if="resultadoPedidoIncierto" class="field-error">
+        No vuelvas a enviar el pedido hasta comprobar en Autorizaciones si la solicitud llegó a guardarse.
+      </span>
       <router-link v-if="pedidoCreadoId" class="btn-ir-autorizar" to="/inicio/servicio-alimentacion">
         Revisar pedido #{{ pedidoCreadoId }} en Autorizaciones
       </router-link>
@@ -30,10 +33,12 @@
         <label>
           Fecha desde
           <input v-model="form.fecha_desde" type="date" />
+          <small v-if="fieldErrors.fecha_desde" class="field-error">{{ fieldErrors.fecha_desde }}</small>
         </label>
         <label>
           Fecha hasta
           <input v-model="form.fecha_hasta" type="date" />
+          <small v-if="fieldErrors.fecha_hasta" class="field-error">{{ fieldErrors.fecha_hasta }}</small>
         </label>
         <label>
           Periodicidad
@@ -42,6 +47,7 @@
             <option value="semanal">semanal</option>
             <option value="mensual">mensual</option>
           </select>
+          <small v-if="fieldErrors.periodicidad" class="field-error">{{ fieldErrors.periodicidad }}</small>
         </label>
         <label v-if="!modoLocal">
           Endpoint POST
@@ -130,6 +136,7 @@
       </div>
 
       <div class="payload-box">
+        <p v-if="fieldErrors.comidas" class="field-error">{{ fieldErrors.comidas }}</p>
         <strong>Payload armado:</strong>
         <pre>{{ payloadPreview }}</pre>
       </div>
@@ -138,7 +145,7 @@
         <button
           type="button"
           class="btn-enviar"
-          :disabled="enviando || filas.length === 0"
+          :disabled="enviando || resultadoPedidoIncierto || filas.length === 0"
           @click="crearPedido"
         >
           {{
@@ -157,6 +164,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import apiClient from '@/services/api/client'
+import { normalizeApiError } from '@/services/api/error-handler'
 
 const STORAGE_KEY = 'pedidos_prueba_locales'
 
@@ -254,6 +262,8 @@ const filas = ref([])
 const enviando = ref(false)
 const pedidoCreadoId = ref(null)
 const aviso = ref({ tipo: '', texto: '' })
+const fieldErrors = ref({})
+const resultadoPedidoIncierto = ref(false)
 
 function construirDiccionarioComidas() {
   const diccionario = {}
@@ -340,6 +350,8 @@ function guardarPedidoEnLocalStorage(body) {
 }
 
 async function crearPedido() {
+  if (resultadoPedidoIncierto.value) return
+  fieldErrors.value = {}
   enviando.value = true
   pedidoCreadoId.value = null
   aviso.value = { tipo: '', texto: '' }
@@ -364,12 +376,12 @@ async function crearPedido() {
     }
   } catch (err) {
     const status = err?.response?.status
-    const detalle =
-      err?.response?.data?.error ||
-      err?.response?.data?.message ||
-      err?.response?.data?.description ||
-      err?.message ||
-      'Error al crear el pedido'
+    if (status === 400) fieldErrors.value = normalizeApiError(err).fieldErrors || {}
+    const apiError = normalizeApiError(err)
+    const detalle = status === 500 || !err?.response
+      ? apiError.message
+      : err?.response?.data?.error || err?.response?.data?.message || err?.response?.data?.description || 'Error al crear el pedido'
+    if (status === 500 || !err?.response) resultadoPedidoIncierto.value = true
     aviso.value = {
       tipo: 'err',
       texto: `Error (${status ?? 'red'}): ${detalle}.`,
