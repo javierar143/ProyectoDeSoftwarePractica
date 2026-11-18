@@ -41,6 +41,19 @@ def test_configuration_endpoint_is_public_during_maintenance(app, monkeypatch):
     }
 
 
+def test_public_configuration_returns_503_when_configuration_lookup_fails(app, monkeypatch):
+    monkeypatch.setattr(
+        config_service,
+        "obtener_configuracion",
+        lambda: (_ for _ in ()).throw(RuntimeError("configuration database unavailable")),
+    )
+
+    response = app.test_client().get("/api/configuration")
+
+    assert response.status_code == 503
+    assert response.json["modo_mantenimiento"] is True
+
+
 def test_public_configuration_reports_disabled_mode_and_keeps_custom_message(app, monkeypatch):
     message = "Mensaje personalizado"
     monkeypatch.setattr(
@@ -66,8 +79,17 @@ def test_maintenance_returns_503_for_regular_api_routes(app, monkeypatch):
             mensaje_mantenimiento=message,
         ),
     )
+    monkeypatch.setattr(
+        api_auth,
+        "get_authenticated_user_status",
+        lambda _token: (SimpleNamespace(id_user=17, isSystemAdmin=False), None),
+    )
+    monkeypatch.setattr(maintenance.permiso_service, "user_has_permission", lambda *_args: False)
 
-    response = app.test_client().get("/api/roles/operational")
+    response = app.test_client().get(
+        "/api/roles/operational",
+        headers={"Authorization": "Bearer token-operativo"},
+    )
 
     assert response.status_code == 503
     assert message.encode() in response.data
@@ -94,14 +116,11 @@ def test_options_preflight_is_not_blocked_or_consulting_configuration(app, monke
 def test_administrators_keep_backoffice_access_during_maintenance(
     app, monkeypatch, system_admin, has_user_index
 ):
-    from types import SimpleNamespace
-
     monkeypatch.setattr(
         config_service,
         "obtener_configuracion",
         lambda: SimpleNamespace(modo_mantenimiento=True, mensaje_mantenimiento="Mantenimiento"),
     )
-    monkeypatch.setattr(maintenance, "get_authenticated_user_id", lambda: 42)
     monkeypatch.setattr(
         maintenance.usuario_service,
         "get_by_id",
@@ -113,10 +132,163 @@ def test_administrators_keep_backoffice_access_during_maintenance(
         lambda _user_id, permission: permission == "user_index" and has_user_index,
     )
 
-    response = app.test_client().get("/test-backoffice")
+    client = app.test_client()
+    with client.session_transaction() as flask_session:
+        flask_session["user_id"] = 42
+
+    response = client.get("/test-backoffice")
 
     assert response.status_code == 200
     assert response.text == "backoffice ok"
+
+
+def test_operational_jwt_is_not_exempted_by_backoffice_admin_cookie(app, monkeypatch):
+    monkeypatch.setattr(
+        config_service,
+        "obtener_configuracion",
+        lambda: SimpleNamespace(modo_mantenimiento=True, mensaje_mantenimiento="Mantenimiento"),
+    )
+    monkeypatch.setattr(
+        api_auth,
+        "get_authenticated_user_status",
+        lambda _token: (SimpleNamespace(id_user=17, isSystemAdmin=False), None),
+    )
+    monkeypatch.setattr(maintenance.permiso_service, "user_has_permission", lambda *_args: False)
+    monkeypatch.setattr(
+        maintenance.usuario_service,
+        "get_by_id",
+        lambda _user_id: SimpleNamespace(isSystemAdmin=True, isActive=True, idPersonal=None),
+    )
+
+    client = app.test_client()
+    with client.session_transaction() as flask_session:
+        flask_session["user_id"] = 99
+
+    response = client.get(
+        "/api/roles/operational",
+        headers={"Authorization": "Bearer token-del-usuario-operativo"},
+    )
+
+    assert response.status_code == 503
+
+
+def test_operational_jwt_without_backoffice_cookie_gets_503(app, monkeypatch):
+    monkeypatch.setattr(
+        config_service,
+        "obtener_configuracion",
+        lambda: SimpleNamespace(modo_mantenimiento=True, mensaje_mantenimiento="Mantenimiento"),
+    )
+    monkeypatch.setattr(
+        api_auth,
+        "get_authenticated_user_status",
+        lambda _token: (SimpleNamespace(id_user=17, isSystemAdmin=False), None),
+    )
+    monkeypatch.setattr(maintenance.permiso_service, "user_has_permission", lambda *_args: False)
+
+    response = app.test_client().get(
+        "/api/roles/operational",
+        headers={"Authorization": "Bearer token-del-usuario-operativo"},
+    )
+
+    assert response.status_code == 503
+
+
+@pytest.mark.parametrize(
+    ("system_admin", "has_user_index"),
+    [(True, False), (False, True)],
+)
+def test_admin_jwt_keeps_api_access_during_maintenance(
+    app, monkeypatch, system_admin, has_user_index
+):
+    monkeypatch.setattr(
+        config_service,
+        "obtener_configuracion",
+        lambda: SimpleNamespace(modo_mantenimiento=True, mensaje_mantenimiento="Mantenimiento"),
+    )
+    admin = SimpleNamespace(id_user=42, isSystemAdmin=system_admin)
+    monkeypatch.setattr(api_auth, "get_authenticated_user_status", lambda _token: (admin, None))
+    monkeypatch.setattr(
+        maintenance.permiso_service,
+        "user_has_permission",
+        lambda user_id, permission: user_id == 42 and permission == "user_index" and has_user_index,
+    )
+    from src.core.services.usuarios import rol as rol_service
+
+    monkeypatch.setattr(
+        rol_service,
+        "get_all",
+        lambda: [
+            SimpleNamespace(nombre="Jefe de Servicio", idRol=1),
+            SimpleNamespace(nombre="Servicio de Alimentación", idRol=2),
+            SimpleNamespace(nombre="Sector Comedor", idRol=3),
+        ],
+    )
+
+    response = app.test_client().get(
+        "/api/roles/operational",
+        headers={"Authorization": "Bearer token-administrador"},
+    )
+
+    assert response.status_code == 200
+
+
+def test_configuration_lookup_failure_returns_controlled_503(app, monkeypatch):
+    def fail_configuration_lookup():
+        raise RuntimeError("configuration database unavailable")
+
+    monkeypatch.setattr(config_service, "obtener_configuracion", fail_configuration_lookup)
+    monkeypatch.setattr(
+        api_auth,
+        "get_authenticated_user_status",
+        lambda _token: (SimpleNamespace(id_user=17, isSystemAdmin=False), None),
+    )
+    monkeypatch.setattr(maintenance.permiso_service, "user_has_permission", lambda *_args: False)
+
+    response = app.test_client().get(
+        "/api/roles/operational",
+        headers={"Authorization": "Bearer token-operativo"},
+    )
+
+    assert response.status_code == 503
+
+
+def test_authentication_failure_after_configuration_failure_still_returns_503(app, monkeypatch):
+    def fail_configuration_lookup():
+        raise RuntimeError("configuration database unavailable")
+
+    def fail_api_authentication():
+        raise RuntimeError("authentication database unavailable")
+
+    monkeypatch.setattr(config_service, "obtener_configuracion", fail_configuration_lookup)
+    monkeypatch.setattr(maintenance, "authenticate_api_request", fail_api_authentication)
+
+    response = app.test_client().get(
+        "/api/roles/operational",
+        headers={"Authorization": "Bearer token-operativo"},
+    )
+
+    assert response.status_code == 503
+
+
+def test_account_blocked_code_is_not_hidden_by_maintenance(app, monkeypatch):
+    monkeypatch.setattr(
+        config_service,
+        "obtener_configuracion",
+        lambda: SimpleNamespace(modo_mantenimiento=True, mensaje_mantenimiento="Mantenimiento"),
+    )
+    monkeypatch.setattr(
+        api_auth,
+        "get_authenticated_user_status",
+        lambda _token: (None, api_auth.ACCOUNT_BLOCKED_CODE),
+    )
+
+    response = app.test_client().get(
+        "/api/authorized-meals?dni=12345678",
+        headers={"Authorization": "Bearer token-bloqueado"},
+    )
+
+    assert response.status_code == 401
+    assert response.json["code"] == "ACCOUNT_BLOCKED"
 
 
 def test_disabled_maintenance_does_not_intercept_api(app, monkeypatch):
@@ -159,6 +331,27 @@ def test_invalid_login_remains_401(app, monkeypatch):
     )
 
     assert response.status_code == 401
+
+
+def test_login_and_blocked_account_message_remain_available_during_maintenance(app, monkeypatch):
+    monkeypatch.setattr(
+        config_service,
+        "obtener_configuracion",
+        lambda: pytest.fail("El middleware no debe consultar configuración para login"),
+    )
+
+    def reject_blocked_user(_email, _password):
+        raise api_auth.UsuarioBloqueadoError
+
+    monkeypatch.setattr(api_auth, "login", reject_blocked_user)
+
+    response = app.test_client().post(
+        "/api/auth/login",
+        json={"email": "locked@example.test", "password": "correct-password"},
+    )
+
+    assert response.status_code == 403
+    assert "La cuenta está bloqueada. Contactá al administrador." in response.json["error"]
 
 
 def test_unknown_resource_remains_404(app, monkeypatch):

@@ -1,6 +1,7 @@
 """Pruebas integrales de los endpoints REST de autorizaciones, comidas autorizadas, entregas y resúmenes."""
 
 from datetime import date, timedelta
+from types import SimpleNamespace
 import pytest
 from dotenv import load_dotenv
 from sqlalchemy import text
@@ -12,7 +13,7 @@ from src.core.database import db
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
     """Configura un cliente de pruebas y prepara los datos base necesarios."""
     app = create_app()
     app.config["TESTING"] = True
@@ -78,7 +79,16 @@ def client():
         db.session.execute(text("SET session_replication_role = 'origin';"))
         db.session.commit()
 
+        from src.core.services.auth import api_auth
+
+        monkeypatch.setattr(
+            api_auth,
+            "get_authenticated_user_status",
+            lambda _token: (SimpleNamespace(id_user=1, isActive=True), None),
+        )
+
         with app.test_client() as test_client:
+            test_client.environ_base["HTTP_AUTHORIZATION"] = "Bearer test-operational-token"
             yield test_client
 
 

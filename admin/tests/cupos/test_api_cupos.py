@@ -20,8 +20,17 @@ def app():
 
 
 @pytest.fixture
-def client(app):
+def client(app, monkeypatch):
     """Devuelve el cliente de pruebas de Flask."""
+    from types import SimpleNamespace
+
+    from src.core.services import configuracion as config_service
+
+    monkeypatch.setattr(
+        config_service,
+        "obtener_configuracion",
+        lambda: SimpleNamespace(modo_mantenimiento=False, mensaje_mantenimiento=""),
+    )
     return app.test_client()
 
 

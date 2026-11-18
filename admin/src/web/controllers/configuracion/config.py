@@ -1,4 +1,5 @@
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, url_for
+from src.core import database
 from src.core.services import configuracion as config_service
 from src.core.security.permissions import require_permission
 from src.core.security.session import require_authentication
@@ -11,7 +12,22 @@ api_configuration_controller = Blueprint("api_configuration", __name__, url_pref
 @api_configuration_controller.get("/configuration")
 def obtener_configuracion_publica():
     """Expone solo el estado y mensaje de mantenimiento, también durante el 503."""
-    config = config_service.obtener_configuracion()
+    try:
+        config = config_service.obtener_configuracion()
+    except Exception:
+        current_app.logger.exception("No se pudo consultar la configuración pública.")
+        try:
+            database.db.session.rollback()
+        except Exception:
+            current_app.logger.exception("No se pudo revertir la sesión de configuración pública.")
+
+        mensaje = config_service.MENSAJE_MANTENIMIENTO_DEFAULT
+        return jsonify({
+            "error": mensaje,
+            "modo_mantenimiento": True,
+            "mensaje_mantenimiento": mensaje,
+        }), 503
+
     return jsonify({
         "modo_mantenimiento": bool(config.modo_mantenimiento),
         "mensaje_mantenimiento": config.mensaje_mantenimiento,
