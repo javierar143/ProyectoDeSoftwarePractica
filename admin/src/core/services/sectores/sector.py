@@ -27,6 +27,14 @@ def get_by_id(id_sector: int) -> Sector | None:
     """Obtiene un sector por su identificador."""
     return repo_sector.get_by_id(id_sector)
 
+def assert_sector_usable(id_sector: int) -> Sector:
+    """Devuelve el sector si existe y está activo; si no, lanza SectorError."""
+    sector = repo_sector.get_by_id(id_sector)
+    if sector is None:
+        raise SectorError("El sector no existe.")
+    if not sector.isActive:
+        raise SectorError("No se puede usar un sector inactivo.")
+    return sector
 
 def _get_id_rol_jefe() -> int:
     """Obtiene el id del rol Jefe de Servicio o falla si no fue cargado."""
