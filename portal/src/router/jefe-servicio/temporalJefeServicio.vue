@@ -9,6 +9,12 @@
       Esta pantalla es temporal y se eliminará cuando se implemente
       la vista definitiva.
     </p>
+    
+    <nav class="accesos-jefe">
+      <RouterLink to="/jefe-servicio/personal" class="btn-acceso">
+        Gestionar Personal del Sector y Residentes
+      </RouterLink>
+    </nav>
 
     <LogoutButton />
   </main>
