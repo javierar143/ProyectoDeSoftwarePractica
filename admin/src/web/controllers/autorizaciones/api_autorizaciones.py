@@ -4,12 +4,19 @@ from src.core.services.autorizaciones.autorizaciones import (
     RecursoNoEncontradoError,
     ConflictoEstadoError,
 )
+from src.web.decorators.api import authenticate_api_request
 
 api_autorizaciones_controller = Blueprint(
     "api_autorizaciones",
     __name__,
     url_prefix="/api",
 )
+
+
+@api_autorizaciones_controller.before_request
+def require_active_user():
+    """Exige una cuenta activa antes de consultar o modificar estos recursos."""
+    return authenticate_api_request()
 
 
 def obtener_id_usuario_autenticado(data: dict | None = None) -> int:

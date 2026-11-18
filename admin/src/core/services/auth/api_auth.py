@@ -31,6 +31,8 @@ GOOGLE_ALLOWED_ROLES = {
     "Sector Comedor",
 }
 
+ACCOUNT_BLOCKED_CODE = "ACCOUNT_BLOCKED"
+
 
 def _issue_tokens(user_id: int) -> dict[str, str]:
     """Genera y persiste los tokens locales de acceso y renovación."""
@@ -115,7 +117,10 @@ def refresh_access_token(token: str) -> str | None:
         ):
             user = usuario.get_by_id(stored_token.id_user)
 
-            if user is not None and user.isActive:
+            if user is not None and not user.isActive:
+                raise UsuarioBloqueadoError
+
+            if user is not None:
                 access_token = jwt_service.generate_access_token(
                     stored_token.id_user
                 )
@@ -135,8 +140,15 @@ def refresh_access_token(token: str) -> str | None:
 
 def get_authenticated_user(token: str) -> Usuario | None:
     """Obtiene el usuario asociado a un JWT de acceso válido y no revocado."""
+    user, _ = get_authenticated_user_status(token)
+    return user
+
+
+def get_authenticated_user_status(token: str) -> tuple[Usuario | None, str | None]:
+    """Devuelve el usuario y distingue una cuenta bloqueada de un token inválido."""
     payload = jwt_service.decode_access_token(token)
     user = None
+    error_code = None
 
     if payload is not None:
         token_hash = hash_token(token)
@@ -147,13 +159,15 @@ def get_authenticated_user(token: str) -> Usuario | None:
             and stored_token.token_type == "access"
             and stored_token.revoked_at is None
             and stored_token.expires_at > datetime.now(timezone.utc)
+            and str(stored_token.id_user) == payload["sub"]
         ):
             user = usuario.get_by_id(stored_token.id_user)
 
             if user is not None and not user.isActive:
                 user = None
+                error_code = ACCOUNT_BLOCKED_CODE
 
-    return user
+    return user, error_code
 
 
 def logout(access_token: str | None, refresh_token: str | None) -> bool:

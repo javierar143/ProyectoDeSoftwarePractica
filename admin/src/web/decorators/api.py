@@ -16,34 +16,42 @@ ROLES_OPERATIVOS = {
     "Sector Comedor",
 }
 
+ACCOUNT_BLOCKED_MESSAGE = "La cuenta está bloqueada. Contactá al administrador."
+
+
+def authenticate_api_request():
+    """Valida el Bearer token y marca la cuenta inactiva con un código estable."""
+    if request.method == "OPTIONS":
+        return None
+
+    authorization = request.headers.get("Authorization", "")
+    if not authorization.startswith("Bearer ") or not authorization[7:].strip():
+        return jsonify({"error": "Token de autenticación requerido."}), 401
+
+    user, error_code = api_auth.get_authenticated_user_status(
+        authorization[7:].strip()
+    )
+    if error_code == api_auth.ACCOUNT_BLOCKED_CODE:
+        return jsonify({
+            "code": api_auth.ACCOUNT_BLOCKED_CODE,
+            "error": ACCOUNT_BLOCKED_MESSAGE,
+        }), 401
+    if user is None:
+        return jsonify({"error": "Token inválido o expirado."}), 401
+
+    g.user = user
+    g.current_user = user
+    return None
+
 
 def token_required(view):
     """Exige un Bearer token válido y un usuario activo."""
 
     @wraps(view)
     def wrapped(*args, **kwargs):
-        authorization = request.headers.get("Authorization", "")
-
-        if not authorization.startswith("Bearer "):
-            return jsonify({
-                "error": "Token de autenticación requerido."
-            }), 401
-
-        token = authorization[7:].strip()
-
-        if not token:
-            return jsonify({
-                "error": "Token de autenticación requerido."
-            }), 401
-
-        user = api_auth.get_authenticated_user(token)
-
-        if user is None:
-            return jsonify({
-                "error": "Token inválido o expirado."
-            }), 401
-
-        g.user = user
+        response = authenticate_api_request()
+        if response is not None:
+            return response
 
         return view(*args, **kwargs)
 

@@ -10,6 +10,9 @@
       <p class="modal-subtexto">
         Verificá las comidas a entregar y confirmá o cambiá quién retira las viandas.
       </p>
+      <p v-if="resultadoIncierto" class="texto-error-campo" role="alert">
+        No se puede volver a enviar hasta comprobar si la entrega quedó registrada.
+      </p>
 
       <div class="caja-responsable-modal">
         <div class="responsable-cabecera-modal">
@@ -116,7 +119,7 @@
         <button
           type="button"
           class="btn-primario-tactil"
-          :disabled="enviando"
+          :disabled="enviando || resultadoIncierto"
           @click="validarYConfirmar"
         >
           {{ enviando ? 'Registrando entrega...' : 'Sí, confirmar entrega' }}
@@ -139,6 +142,10 @@ const props = defineProps({
     required: true,
   },
   enviando: {
+    type: Boolean,
+    default: false,
+  },
+  resultadoIncierto: {
     type: Boolean,
     default: false,
   },

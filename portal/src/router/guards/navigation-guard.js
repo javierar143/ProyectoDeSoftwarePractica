@@ -1,5 +1,7 @@
 
 import { useAuthStore } from '@/stores/auth'
+import { useMaintenanceStore } from '@/stores/maintenance'
+import { getPublicConfiguration } from '@/modules/system/services/configuration'
 import { getRoleHomeRoute } from '../navigation'
 
 /**
@@ -10,6 +12,39 @@ import { getRoleHomeRoute } from '../navigation'
 export function registerNavigationGuard(router) {
   router.beforeEach(async (to) => {
     const authStore = useAuthStore()
+    const maintenanceStore = useMaintenanceStore()
+
+    if (authStore.accountBlocked) {
+      if (to.name === 'login' && to.query.auth_error === 'account_blocked') {
+        return true
+      }
+
+      return {
+        name: 'login',
+        query: { auth_error: 'account_blocked' },
+      }
+    }
+
+    if (to.name === 'maintenance') return true
+    if (maintenanceStore.isTransitioning) return false
+
+    const leavingMaintenance = router.currentRoute.value.name === 'maintenance'
+
+    try {
+      const configuration = await getPublicConfiguration()
+      if (configuration.modo_mantenimiento) {
+        maintenanceStore.beginTransition(router, to.fullPath)
+        return false
+      }
+      if (leavingMaintenance) maintenanceStore.finishMaintenance()
+    } catch (error) {
+      if (error.response?.status === 503) {
+        maintenanceStore.beginTransition(router, to.fullPath)
+        return false
+      }
+      if (leavingMaintenance) return false
+      // Una falla al consultar configuración no invalida una sesión ni bloquea el acceso.
+    }
 
     // Determina si la ruta requiere autenticación.
     const requiresAuth = to.meta.requiresAuth ?? !to.meta.guestOnly
@@ -22,6 +57,13 @@ export function registerNavigationGuard(router) {
       const sessionRestored = await authStore.restoreSession()
 
       if (!sessionRestored) {
+        if (authStore.accountBlocked) {
+          return {
+            name: 'login',
+            query: { auth_error: 'account_blocked' },
+          }
+        }
+
         // Si el backend respondió 401, restoreSession
         // ya eliminó la sesión local.
         if (!authStore.token) {

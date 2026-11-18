@@ -44,21 +44,10 @@ export async function obtenerConfiguracionHorarios() {
   return data
 }
 
-export async function chequearConexionApi(fechaHoy) {
-  try {
-    await apiClient.get('/deliveries/summary', {
-      params: { fecha: fechaHoy },
-    })
-    return true
-  } catch (err) {
-    return Boolean(err?.status || err?.response?.status)
-  }
-}
-
 export async function cerrarSesionApi() {
   try {
     await apiClient.post('/auth/logout')
   } catch {
-
+    // El cierre de sesión local no depende de la disponibilidad de la API.
   }
 }

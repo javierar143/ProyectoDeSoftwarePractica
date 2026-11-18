@@ -1,11 +1,11 @@
 """Controlador API para la gestión y consulta de cupos por sector."""
 
-from flask import Blueprint, abort, current_app, jsonify, request
+from flask import Blueprint, abort, current_app, g, jsonify, request
 
-from src.core.services.auth import api_auth
 from src.core.services.cupos import cupos
 from src.core.services.personal.personal import get_sector_asignado
 from src.core.services.usuarios.rol import get_by_id
+from src.web.decorators.api import authenticate_api_request
 from src.web.validators.cupos.cupos_validator import (
     validar_entrada_cupo,
     validar_filtros_listado_cupos,
@@ -14,23 +14,14 @@ from src.web.validators.cupos.cupos_validator import (
 bp_cupos = Blueprint("cupos", __name__, url_prefix="/api/quotas")
 
 
+@bp_cupos.before_request
+def require_active_user():
+    return authenticate_api_request()
+
+
 def _autenticar_y_obtener_rol():
-    """Valida el Bearer token con el servicio de Javi y obtiene el rol del usuario."""
-    authorization = request.headers.get("Authorization")
-    if authorization is None or not authorization.startswith("Bearer "):
-        current_app.logger.warning(
-            "Intento de acceso a /api/quotas sin token de autenticación"
-        )
-        abort(401, description="Token de autenticación requerido")
-
-    token = authorization[7:].strip()
-    user = api_auth.get_authenticated_user(token)
-
-    if user is None or not user.isActive:
-        current_app.logger.warning(
-            "Intento de acceso a /api/quotas con token inválido o usuario inactivo"
-        )
-        abort(401, description="Token inválido o expirado")
+    """Obtiene el usuario ya autenticado y su rol operativo."""
+    user = g.user
 
     rol = get_by_id(user.idRol)
     nombre_rol = rol.nombre.strip().lower() if rol and rol.nombre else ""

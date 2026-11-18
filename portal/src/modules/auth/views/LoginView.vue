@@ -1,6 +1,6 @@
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
@@ -25,6 +25,9 @@ const authStore = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 
+const ACCOUNT_BLOCKED_MESSAGE =
+  'La cuenta está bloqueada. Contactá al administrador.'
+
 const email = ref('')
 const password = ref('')
 const emailError = ref('')
@@ -32,11 +35,25 @@ const passwordError = ref('')
 const emailInput = ref(null)
 const apiErrorMessage = ref(null)
 const loading = ref(false)
+const retryLoginOperation = ref(null)
 const googleButton = ref(null)
 const googleMessage = ref('')
 
 const logoutWarning = computed(
   () => route.query.logout === 'incomplete',
+)
+
+watch(
+  () => route.query.auth_error,
+  (authError) => {
+    if (authError === 'account_blocked') {
+      apiErrorMessage.value = {
+        message: ACCOUNT_BLOCKED_MESSAGE,
+        canRetry: false,
+      }
+    }
+  },
+  { immediate: true },
 )
 
 /**
@@ -212,7 +229,8 @@ function handleGoogleCredential(response) {
     return
   }
 
-  executeLogin(() => loginWithGoogle(response.credential))
+  const credential = response.credential
+  executeLogin(() => loginWithGoogle(credential))
 }
 
 onMounted(initializeGoogleLogin)
@@ -229,7 +247,46 @@ async function handleLogin() {
     return
   }
 
-  executeLogin(() => login(email.value.trim(), password.value))
+  const credentials = {
+    email: email.value.trim(),
+    password: password.value,
+  }
+  executeLogin(() => login(credentials.email, credentials.password))
+}
+
+async function retryFailedOperation() {
+  if (loading.value || typeof retryLoginOperation.value?.run !== 'function') return
+  const operation = retryLoginOperation.value
+  if (operation.type === 'login') {
+    await executeLogin(operation.run)
+    return
+  }
+
+  loading.value = true
+  apiErrorMessage.value = null
+  try {
+    await operation.run()
+    retryLoginOperation.value = null
+  } catch (error) {
+    const apiError = normalizeApiError(error)
+    if (apiError.status === 401) authStore.clearSession()
+    apiErrorMessage.value = apiError
+    retryLoginOperation.value = operation.type === 'session' && apiError.canRetry && apiError.status !== 503
+      ? operation
+      : null
+  } finally {
+    loading.value = false
+  }
+}
+
+async function completeAuthenticatedSession() {
+  const user = await getCurrentUser()
+  authStore.setUser(user)
+
+  const roles = await getOperationalRoles()
+  authStore.setOperationalRoles(roles)
+
+  await router.replace(getPostLoginDestination())
 }
 
 /** Comparte la carga de sesión y el manejo de errores entre ambos accesos. */
@@ -239,8 +296,10 @@ async function executeLogin(authenticate) {
   }
 
   apiErrorMessage.value = null
+  retryLoginOperation.value = null
   loading.value = true
   let credentialsAccepted = false
+  let retryOperation = { type: 'login', run: authenticate }
 
   try {
     const data = await authenticate()
@@ -248,19 +307,22 @@ async function executeLogin(authenticate) {
     authStore.setToken(data.access_token)
     credentialsAccepted = true
 
-    const user = await getCurrentUser()
-    authStore.setUser(user)
-
-    const roles = await getOperationalRoles()
-    authStore.setOperationalRoles(roles)
-
-    const destination = getPostLoginDestination()
-
-    await router.replace(destination)
+    retryOperation = { type: 'session', run: completeAuthenticatedSession }
+    await completeAuthenticatedSession()
   } catch (error) {
     const apiError = normalizeApiError(error)
 
-    authStore.clearSession()
+    if (apiError.code === 'ACCOUNT_BLOCKED') {
+      authStore.markAccountBlocked()
+      apiErrorMessage.value = {
+        ...apiError,
+        message: ACCOUNT_BLOCKED_MESSAGE,
+        canRetry: false,
+      }
+      retryLoginOperation.value = null
+    } else if (apiError.status === 401 && credentialsAccepted) {
+      authStore.clearSession()
+    }
 
     if (apiError.status === 401 && credentialsAccepted) {
       apiErrorMessage.value = {
@@ -278,6 +340,10 @@ async function executeLogin(authenticate) {
         apiErrorMessage.value = apiError
       }
     }
+
+    retryLoginOperation.value = retryOperation.type === 'session' && apiError.canRetry && apiError.status !== 503
+      ? retryOperation
+      : null
   } finally {
     loading.value = false
   }
@@ -344,7 +410,7 @@ async function executeLogin(authenticate) {
 
         <ApiErrorMessage
           :error="apiErrorMessage"
-          @retry="handleLogin"
+          @retry="retryFailedOperation"
         />
 
         <button type="submit" :disabled="loading">

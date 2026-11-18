@@ -70,6 +70,11 @@ def index():
     query_args = request.args.to_dict()
     query_args.pop("page", None)
 
+    jefes_por_sector = {
+        sector.idSector: sector_service.get_jefes(sector.idSector)
+        for sector in sectores
+    }
+
     return render_template(
         "sectores/index.html",
         sectores=sectores,
@@ -79,6 +84,7 @@ def index():
         total_paginas=total_paginas,
         query_args=query_args,
         jefes=sector_service.get_todos_los_jefes(),
+        jefes_por_sector=jefes_por_sector,
     )
 
 

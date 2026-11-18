@@ -1,11 +1,11 @@
 """Controlador API para la gestión de pedidos de comidas."""
 
-from flask import Blueprint, abort, current_app, jsonify, request
+from flask import Blueprint, abort, current_app, g, jsonify, request
 
-from src.core.services.auth import api_auth
 from src.core.services.pedidos import pedidos
 from src.core.services.personal.personal import get_sector_asignado
 from src.core.services.usuarios.rol import get_by_id
+from src.web.decorators.api import authenticate_api_request
 from src.web.validators.pedidos.pedidos_validator import (
     validar_actualizacion_pedido,
     validar_creacion_pedido,
@@ -17,6 +17,16 @@ bp_pedidos = Blueprint("pedidos", __name__, url_prefix="/api/requests")
 bp_resumen_pedidos = Blueprint(
     "resumen_pedidos", __name__, url_prefix="/api/summaries"
 )
+
+
+@bp_pedidos.before_request
+def require_active_user():
+    return authenticate_api_request()
+
+
+@bp_resumen_pedidos.before_request
+def require_active_user_for_summary():
+    return authenticate_api_request()
 
 
 def _obtener_id_sector_jefe(user) -> int | None:
@@ -31,24 +41,9 @@ def _obtener_id_sector_jefe(user) -> int | None:
 
 def _autenticar_jefe():
     """
-    Valida el Bearer token con el servicio de Javi, verifica que el usuario
-    tenga rol Jefe de Servicio y obtiene su sector asignado.
+    Verifica que el usuario autenticado tenga rol Jefe y obtiene su sector.
     """
-    authorization = request.headers.get("Authorization")
-    if authorization is None or not authorization.startswith("Bearer "):
-        current_app.logger.warning(
-            "Intento de acceso a /api/requests sin token de autenticación"
-        )
-        abort(401, description="Token de autenticación requerido")
-
-    token = authorization[7:].strip()
-    user = api_auth.get_authenticated_user(token)
-
-    if user is None or not user.isActive:
-        current_app.logger.warning(
-            "Intento de acceso a /api/requests con token inválido o expirado"
-        )
-        abort(401, description="Token inválido o expirado")
+    user = g.user
 
     rol = get_by_id(user.idRol)
     nombre_rol = rol.nombre.strip().lower() if rol and rol.nombre else ""
@@ -135,6 +130,11 @@ def crear_nuevo_pedido():
         current_app.logger.warning(
             f"Datos inválidos al crear pedido en sector ID {id_sector}: {resultado}"
         )
+        if isinstance(resultado, dict):
+            mensaje = "Faltan datos obligatorios" if all(
+                m == "Este campo es obligatorio." for m in resultado.values()
+            ) else "Revisá los campos indicados."
+            return jsonify({"error": mensaje, "field_errors": resultado}), 400
         abort(400, description=str(resultado))
 
     datos = resultado  # type: ignore[assignment]
@@ -231,20 +231,7 @@ def resumen_de_pedidos():
     Endpoint GET /api/summaries/requests para obtener el resumen de pedidos.
     Roles permitidos: Servicio de Alimentación y Jefe de Servicio (limitado a su sector).
     """
-    authorization = request.headers.get("Authorization")
-    if authorization is None or not authorization.startswith("Bearer "):
-        current_app.logger.warning(
-            "Intento de acceso a /api/summaries/requests sin token"
-        )
-        abort(401, description="Token de autenticación requerido")
-
-    token = authorization[7:].strip()
-    user = api_auth.get_authenticated_user(token)
-    if user is None or not user.isActive:
-        current_app.logger.warning(
-            "Intento de acceso a /api/summaries/requests con token inválido"
-        )
-        abort(401, description="Token inválido o expirado")
+    user = g.user
 
     rol = get_by_id(user.idRol)
     nombre_rol = rol.nombre.strip().lower() if rol and rol.nombre else ""

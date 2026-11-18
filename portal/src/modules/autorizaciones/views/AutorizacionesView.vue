@@ -36,8 +36,8 @@
           v-if="mensajeFeedback.puedeReintentar"
           type="button"
           class="btn-reintentar"
-          :disabled="cargando"
-          @click="cargarTodo"
+          :disabled="cargando || guardando || exportandoCsv"
+          @click="reintentarOperacion"
         >
           Reintentar
         </button>
@@ -150,6 +150,7 @@ import DetallePedido from '../components/DetallePedido.vue'
 import ModalConfirmarAutorizacion from '../components/ModalConfirmarAutorizacion.vue'
 import NavegacionPeriodoAutorizaciones from '../components/NavegacionPeriodoAutorizaciones.vue'
 import PanelResumenTotalesAutorizaciones from '../components/PanelResumenTotalesAutorizaciones.vue'
+import { normalizeApiError } from '@/services/api/error-handler'
 import {
   exportarPersonasAutorizadasCsv,
   exportarTotalesAutorizacionesCsv,
@@ -213,6 +214,7 @@ const cargando = ref(false)
 const guardando = ref(false)
 const exportandoCsv = ref(false)
 const mensajeFeedback = ref({ tipo: '', texto: '', puedeReintentar: false })
+const operacionReintento = ref(null)
 
 const sectoresDisponibles = computed(() => {
   if (sectoresCatalogo.value.length > 0) return sectoresCatalogo.value
@@ -278,9 +280,15 @@ function limpiarParametrosVacios(obj) {
   )
 }
 
-function manejarErrorHttp(err, mensajeGenerico) {
+function manejarErrorHttp(err, mensajeGenerico, reintentar = null) {
+  operacionReintento.value = reintentar
   const status = err?.status || err?.response?.status
-  const msg = err?.response?.data?.error || err?.message
+  const normalized = normalizeApiError(err)
+  const msg = status === 503
+    ? (err?.response?.data?.error || err?.message)
+    : (!err?.response || status >= 500)
+      ? normalized.message
+      : (err?.response?.data?.error || err?.message)
   if (status === 503) {
     mensajeFeedback.value = {
       tipo: 'advertencia',
@@ -364,10 +372,31 @@ async function cargarPedidos() {
     pedidos.value = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : []
     registrarSectoresDesdeDatos(pedidos.value, resumenPeriodo.value?.desglose || [])
   } catch (err) {
-    manejarErrorHttp(err, 'No se pudieron cargar los pedidos. Intentá nuevamente.')
+    const params = limpiarParametrosVacios({ ...filtros.value })
+    const retry = err?.response?.status === 503 ? () => cargarTodo() : () => cargarPedidosConParametros(params)
+    manejarErrorHttp(err, 'No se pudieron cargar los pedidos. Intentá nuevamente.', retry)
   } finally {
     cargando.value = false
   }
+}
+
+async function cargarPedidosConParametros(params) {
+  cargando.value = true
+  try {
+    const data = await listarPedidosAutorizacion(params)
+    pedidos.value = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : []
+    registrarSectoresDesdeDatos(pedidos.value, resumenPeriodo.value?.desglose || [])
+    mensajeFeedback.value = { tipo: '', texto: '', puedeReintentar: false }
+    operacionReintento.value = null
+  } catch (err) {
+    const retry = err?.response?.status === 503 ? () => cargarTodo() : () => cargarPedidosConParametros(params)
+    manejarErrorHttp(err, 'No se pudieron cargar los pedidos. Intentá nuevamente.', retry)
+  } finally { cargando.value = false }
+}
+
+async function reintentarOperacion() {
+  const retry = operacionReintento.value
+  if (typeof retry === 'function') await retry()
 }
 
 async function cargarTodo() {
@@ -391,10 +420,25 @@ async function descargarCsv(tipo) {
     if (tipo === 'personas') await exportarPersonasAutorizadasCsv(params)
     else await exportarTotalesAutorizacionesCsv(params)
   } catch (err) {
-    manejarErrorHttp(err, 'No se pudo exportar el archivo CSV.')
+    const params = limpiarParametrosVacios({ ...filtros.value })
+    const retry = err?.response?.status === 503 ? () => cargarTodo() : () => descargarCsvConParametros(tipo, params)
+    manejarErrorHttp(err, 'No se pudo exportar el archivo CSV.', retry)
   } finally {
     exportandoCsv.value = false
   }
+}
+
+async function descargarCsvConParametros(tipo, params) {
+  exportandoCsv.value = true
+  try {
+    if (tipo === 'personas') await exportarPersonasAutorizadasCsv(params)
+    else await exportarTotalesAutorizacionesCsv(params)
+    mensajeFeedback.value = { tipo: '', texto: '', puedeReintentar: false }
+    operacionReintento.value = null
+  } catch (err) {
+    const retry = err?.response?.status === 503 ? () => cargarTodo() : () => descargarCsvConParametros(tipo, params)
+    manejarErrorHttp(err, 'No se pudo exportar el archivo CSV.', retry)
+  } finally { exportandoCsv.value = false }
 }
 
 function cambiarModoVista(nuevoModo) {
@@ -471,7 +515,8 @@ async function abrirDetallePedido(idPedido) {
   try {
     pedidoSeleccionado.value = await obtenerDetalleAutorizacion(idPedido)
   } catch (err) {
-    manejarErrorHttp(err, 'No se pudo obtener el detalle del pedido.')
+    const retry = err?.response?.status === 503 ? () => cargarTodo() : () => abrirDetallePedido(idPedido)
+    manejarErrorHttp(err, 'No se pudo obtener el detalle del pedido.', retry)
   }
 }
 
@@ -480,7 +525,7 @@ function prepararConfirmacion(tipo, payload) {
 }
 
 async function ejecutarOperacionConfirmada() {
-  if (!confirmacionPendiente.value) return
+  if (!confirmacionPendiente.value || guardando.value) return
   const { tipo, payload } = confirmacionPendiente.value
   guardando.value = true
 
@@ -508,8 +553,15 @@ async function ejecutarOperacionConfirmada() {
     pedidoSeleccionado.value = null
     await cargarTodo()
   } catch (err) {
-    confirmacionPendiente.value = null
-    manejarErrorHttp(err, 'Ocurrió un error al guardar la operación. Intentá nuevamente.')
+    const status = err?.response?.status ?? err?.status
+    const puedeReintentar = !err?.response || status === 500
+    if (!puedeReintentar) confirmacionPendiente.value = null
+    const retry = status === 503 ? () => cargarTodo() : (puedeReintentar ? () => ejecutarOperacionConfirmada() : null)
+    manejarErrorHttp(
+      err,
+      'Ocurrió un error al guardar la operación. Intentá nuevamente.',
+      retry,
+    )
     if (err?.isConflict || err?.status === 409 || err?.response?.status === 409) {
       await cargarTodo()
       if (pedidoSeleccionado.value?.idPedido === payload.idPedido) {

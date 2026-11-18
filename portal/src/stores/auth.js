@@ -9,7 +9,6 @@ import {
 } from '@/modules/auth/services/auth'
 
 const TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000
-const TOKEN_REFRESH_RETRY_MS = 30 * 1000
 
 /**
  * Centraliza el estado de autenticación del portal.
@@ -18,6 +17,7 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token'))
   const user = ref(null)
   const operationalRoles = ref(null)
+  const accountBlocked = ref(false)
 
   let refreshTimer = null
   let refreshPromise = null
@@ -109,6 +109,7 @@ export const useAuthStore = defineStore('auth', () => {
    * Guarda el access token y actualiza su renovación programada.
    */
   function setToken(accessToken) {
+    accountBlocked.value = false
     token.value = accessToken
     localStorage.setItem('token', accessToken)
 
@@ -155,6 +156,14 @@ export const useAuthStore = defineStore('auth', () => {
     operationalRoles.value = null
 
     localStorage.removeItem('token')
+  }
+
+  function markAccountBlocked() {
+    if (accountBlocked.value) return false
+
+    accountBlocked.value = true
+    clearSession()
+    return true
   }
 
   /**
@@ -204,6 +213,11 @@ export const useAuthStore = defineStore('auth', () => {
 
         setToken(data.access_token)
       } catch (error) {
+        if (error.response?.data?.code === 'ACCOUNT_BLOCKED') {
+          markAccountBlocked()
+          return
+        }
+
         // Si el refresh token fue rechazado, finaliza la sesión.
         if (error.response?.status === 401) {
           if (token.value === tokenBeingRenewed) {
@@ -213,18 +227,13 @@ export const useAuthStore = defineStore('auth', () => {
           return
         }
 
-        // Ante errores de red o servidor, vuelve a intentar en 30 segundos.
-        if (!error.response || error.response.status >= 500) {
-          if (
-            token.value === tokenBeingRenewed &&
-            operationalRoleKey.value === 'sectorComedor'
-          ) {
-            refreshTimer = setTimeout(() => {
-              refreshTimer = null
-              renewSectorAccessToken()
-            }, TOKEN_REFRESH_RETRY_MS)
-          }
+        // La falta de permisos no demuestra que la sesión haya vencido.
+        if (error.response?.status === 403) {
+          return
+        }
 
+        // El refresh crea un registro de token; no se repite si el resultado es incierto.
+        if (!error.response || error.response.status >= 500) {
           return
         }
 
@@ -280,7 +289,9 @@ export const useAuthStore = defineStore('auth', () => {
       await loadSessionData()
       return true
     } catch (error) {
-      if (error.response?.status === 401) {
+      if (error.response?.data?.code === 'ACCOUNT_BLOCKED') {
+        markAccountBlocked()
+      } else if (error.response?.status === 401) {
         clearSession()
       }
 
@@ -292,6 +303,7 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     user,
     operationalRoles,
+    accountBlocked,
     isAuthenticated,
     operationalRoleKey,
     setToken,
@@ -299,6 +311,7 @@ export const useAuthStore = defineStore('auth', () => {
     setOperationalRoles,
     setSessionExpiredHandler,
     clearSession,
+    markAccountBlocked,
     restoreSession,
     logoutSession,
   }

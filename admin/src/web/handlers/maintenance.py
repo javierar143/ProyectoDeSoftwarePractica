@@ -11,6 +11,9 @@ from src.core.services.usuarios import usuario as usuario_service
 
 def verificar_modo_mantenimiento():
     """Intercepta las peticiones si el sitio se encuentra en mantenimiento."""
+    if request.method == "OPTIONS":
+        return None
+
     try:
         cfg = config_service.obtener_configuracion()
     except Exception:
@@ -28,8 +31,12 @@ def verificar_modo_mantenimiento():
     if request.endpoint and ("auth" in request.endpoint or request.path.startswith("/auth")):
         return None
 
-    # 3. Acceso al panel de configuración
-    if request.endpoint and "config" in request.endpoint:
+    # La lectura pública de configuración permite consultar el estado del servicio.
+    if request.path == "/api/configuration":
+        return None
+
+    # 3. Acceso al panel administrativo de configuración
+    if request.endpoint and request.endpoint.startswith("config."):
         return None
 
     # 4. Verificación de privilegios administrativos
