@@ -5,13 +5,6 @@
     @keydown="segundosInactividad = SEGUNDOS_LIMITE_INACTIVIDAD"
   >
     <div class="kiosko-contenedor">
-      <div v-if="!conexionActiva" class="alerta-kiosko alerta-error" role="alert">
-        <span>⚠ Sin conexión con el servidor. Verificando conexión automáticamente...</span>
-        <button type="button" class="btn-cerrar-alerta" @click="verificarSaludServidor">
-          Reintentar ahora
-        </button>
-      </div>
-
       <header class="kiosko-encabezado">
         <div>
           <span class="badge-turno-activo">
@@ -283,7 +276,6 @@ import { normalizeApiError } from '@/services/api/error-handler'
 import {
   buscarComidasAutorizadas,
   cerrarSesionApi,
-  chequearConexionApi,
   listarSectoresActivos,
   registrarEntrega,
 } from '../services/entregas'
@@ -341,7 +333,6 @@ const alerta = ref({ tipo: '', texto: '' })
 const resumenTurnoRef = ref(null)
 const reintentoConsulta = ref(null)
 const segundosInactividad = ref(SEGUNDOS_LIMITE_INACTIVIDAD)
-const conexionActiva = ref(true)
 
 function esReintentableSinAfectarMantenimiento(error) {
   const status = error?.response?.status ?? error?.status
@@ -349,7 +340,6 @@ function esReintentableSinAfectarMantenimiento(error) {
 }
 
 let timerReloj = null
-let timerHealth = null
 let timerPostConfirmacion = null
 
 const minutosActuales = computed(
@@ -678,10 +668,6 @@ function resetearFlujoKiosko() {
   segundosInactividad.value = SEGUNDOS_LIMITE_INACTIVIDAD
 }
 
-async function verificarSaludServidor() {
-  conexionActiva.value = await chequearConexionApi(fechaHoyIso.value)
-}
-
 async function ejecutarCierreSesion() {
   await cerrarSesionApi()
   localStorage.clear()
@@ -721,12 +707,10 @@ onMounted(async () => {
     }
   }, 1000)
 
-  timerHealth = setInterval(verificarSaludServidor, 15000)
 })
 
 onBeforeUnmount(() => {
   if (timerReloj) clearInterval(timerReloj)
-  if (timerHealth) clearInterval(timerHealth)
   if (timerPostConfirmacion) clearTimeout(timerPostConfirmacion)
 })
 </script>

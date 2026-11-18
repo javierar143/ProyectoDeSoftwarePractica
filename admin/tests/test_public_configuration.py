@@ -5,14 +5,21 @@ import pytest
 from src.core.services import configuracion as config_service
 from src.core.repositories import configuracion as config_repository
 from src.web import create_app
+from src.web.handlers import maintenance
 
 
 @pytest.fixture
 def app():
-    return create_app(
+    app = create_app(
         env="testing",
         test_config={"SQLALCHEMY_ENGINES": {"default": "sqlite://"}},
     )
+    app.add_url_rule(
+        "/test-backoffice",
+        endpoint="test_backoffice",
+        view_func=lambda: "backoffice ok",
+    )
+    return app
 
 
 def test_configuration_endpoint_is_public_during_maintenance(app, monkeypatch):
@@ -62,6 +69,64 @@ def test_maintenance_returns_503_for_regular_api_routes(app, monkeypatch):
 
     assert response.status_code == 503
     assert message.encode() in response.data
+
+
+def test_options_preflight_is_not_blocked_or_consulting_configuration(app, monkeypatch):
+    config_calls = []
+    monkeypatch.setattr(
+        config_service,
+        "obtener_configuracion",
+        lambda: config_calls.append(True),
+    )
+
+    response = app.test_client().options("/api/roles/operational")
+
+    assert response.status_code == 200
+    assert config_calls == []
+
+
+@pytest.mark.parametrize(
+    ("system_admin", "has_user_index"),
+    [(True, False), (False, True)],
+)
+def test_administrators_keep_backoffice_access_during_maintenance(
+    app, monkeypatch, system_admin, has_user_index
+):
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(
+        config_service,
+        "obtener_configuracion",
+        lambda: SimpleNamespace(modo_mantenimiento=True, mensaje_mantenimiento="Mantenimiento"),
+    )
+    monkeypatch.setattr(maintenance, "get_authenticated_user_id", lambda: 42)
+    monkeypatch.setattr(
+        maintenance.usuario_service,
+        "get_by_id",
+        lambda _user_id: SimpleNamespace(isSystemAdmin=system_admin),
+    )
+    monkeypatch.setattr(
+        maintenance.permiso_service,
+        "user_has_permission",
+        lambda _user_id, permission: permission == "user_index" and has_user_index,
+    )
+
+    response = app.test_client().get("/test-backoffice")
+
+    assert response.status_code == 200
+    assert response.text == "backoffice ok"
+
+
+def test_disabled_maintenance_does_not_intercept_api(app, monkeypatch):
+    monkeypatch.setattr(
+        config_service,
+        "obtener_configuracion",
+        lambda: SimpleNamespace(modo_mantenimiento=False, mensaje_mantenimiento=""),
+    )
+
+    response = app.test_client().get("/api/roles/operational")
+
+    assert response.status_code == 401
 
 
 def test_login_validation_exposes_field_error_map(app, monkeypatch):

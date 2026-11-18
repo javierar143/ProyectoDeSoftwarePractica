@@ -1,6 +1,7 @@
 
 import { useAuthStore } from '@/stores/auth'
-import { getPublicConfiguration, saveMaintenanceReturnRoute } from '@/modules/system/services/configuration'
+import { useMaintenanceStore } from '@/stores/maintenance'
+import { getPublicConfiguration } from '@/modules/system/services/configuration'
 import { getRoleHomeRoute } from '../navigation'
 
 /**
@@ -11,20 +12,26 @@ import { getRoleHomeRoute } from '../navigation'
 export function registerNavigationGuard(router) {
   router.beforeEach(async (to) => {
     const authStore = useAuthStore()
+    const maintenanceStore = useMaintenanceStore()
 
     if (to.name === 'maintenance') return true
+    if (maintenanceStore.isTransitioning) return false
+
+    const leavingMaintenance = router.currentRoute.value.name === 'maintenance'
 
     try {
       const configuration = await getPublicConfiguration()
       if (configuration.modo_mantenimiento) {
-        saveMaintenanceReturnRoute(to.fullPath)
-        return { name: 'maintenance', replace: true }
+        maintenanceStore.beginTransition(router, to.fullPath)
+        return false
       }
+      if (leavingMaintenance) maintenanceStore.finishMaintenance()
     } catch (error) {
       if (error.response?.status === 503) {
-        saveMaintenanceReturnRoute(to.fullPath)
-        return { name: 'maintenance', replace: true }
+        maintenanceStore.beginTransition(router, to.fullPath)
+        return false
       }
+      if (leavingMaintenance) return false
       // Una falla al consultar configuración no invalida una sesión ni bloquea el acceso.
     }
 

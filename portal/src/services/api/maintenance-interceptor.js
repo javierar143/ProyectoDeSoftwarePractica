@@ -1,5 +1,3 @@
-import { saveMaintenanceReturnRoute } from '@/modules/system/services/configuration'
-
 /**
  * Registra el tratamiento global de respuestas 503.
  *
@@ -9,16 +7,13 @@ import { saveMaintenanceReturnRoute } from '@/modules/system/services/configurat
  * @param {import('axios').AxiosInstance} apiClient - Cliente HTTP.
  * @param {import('vue-router').Router} router - Router de la aplicación.
  */
-export function registerMaintenanceInterceptor(apiClient, router) {
+export function registerMaintenanceInterceptor(apiClient, router, maintenanceStore) {
   apiClient.interceptors.response.use(
     (response) => response,
     async (error) => {
       if (error.response?.status === 503) {
         const currentRoute = router.currentRoute.value
-        if (currentRoute.name !== 'maintenance') {
-          saveMaintenanceReturnRoute(currentRoute.fullPath)
-          await router.replace({ name: 'maintenance' })
-        }
+        maintenanceStore.beginTransition(router, currentRoute.fullPath)
       }
 
       return Promise.reject(error)

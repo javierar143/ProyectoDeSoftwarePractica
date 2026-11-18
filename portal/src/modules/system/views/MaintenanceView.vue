@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
+import { useMaintenanceStore } from '@/stores/maintenance'
 import { getRoleHomeRoute } from '@/router/navigation'
 import {
   clearMaintenanceReturnRoute,
@@ -15,6 +16,7 @@ const POLL_INTERVAL_MS = 7000
 
 const router = useRouter()
 const authStore = useAuthStore()
+const maintenanceStore = useMaintenanceStore()
 const message = ref(MAINTENANCE_MESSAGE_DEFAULT)
 
 let pollingTimer = null
@@ -44,7 +46,10 @@ async function restoreApplication() {
         ? { query: { redirect: destination } }
         : {}),
     })
-    if (!result) clearMaintenanceReturnRoute()
+    if (!result) {
+      clearMaintenanceReturnRoute()
+      maintenanceStore.finishMaintenance()
+    }
     return
   }
 
@@ -53,7 +58,10 @@ async function restoreApplication() {
   }
 
   const result = await router.replace(destination ? destination : { name: 'access-denied' })
-  if (!result) clearMaintenanceReturnRoute()
+  if (!result) {
+    clearMaintenanceReturnRoute()
+    maintenanceStore.finishMaintenance()
+  }
 }
 
 async function pollServiceStatus() {

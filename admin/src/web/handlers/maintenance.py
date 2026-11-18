@@ -11,6 +11,9 @@ from src.core.services.usuarios import usuario as usuario_service
 
 def verificar_modo_mantenimiento():
     """Intercepta las peticiones si el sitio se encuentra en mantenimiento."""
+    if request.method == "OPTIONS":
+        return None
+
     try:
         cfg = config_service.obtener_configuracion()
     except Exception:
