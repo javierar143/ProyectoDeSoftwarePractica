@@ -11,7 +11,7 @@ api_configuration_controller = Blueprint("api_configuration", __name__, url_pref
 
 @api_configuration_controller.get("/configuration")
 def obtener_configuracion_publica():
-    """Expone solo el estado y mensaje de mantenimiento, también durante el 503."""
+    """Expone configuración pública, también durante el 503 de mantenimiento."""
     try:
         config = config_service.obtener_configuracion()
     except Exception:
@@ -26,11 +26,13 @@ def obtener_configuracion_publica():
             "error": mensaje,
             "modo_mantenimiento": True,
             "mensaje_mantenimiento": mensaje,
+            "google_client_id": current_app.config.get("GOOGLE_CLIENT_ID"),
         }), 503
 
     return jsonify({
         "modo_mantenimiento": bool(config.modo_mantenimiento),
         "mensaje_mantenimiento": config.mensaje_mantenimiento,
+        "google_client_id": current_app.config.get("GOOGLE_CLIENT_ID"),
     }), 200
 
 @config_controller.before_request
