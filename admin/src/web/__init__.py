@@ -2,13 +2,13 @@
 
 from flask import Flask
 from flask_session import Session
-from flask_cors import CORS
 
 from src.core import database
 from src.core.security.jwt_secret import obtener_clave_jwt
 
 from src.web import commands
 from src.web.config import config
+from src.web.cors import configure_cors
 from src.web.controllers.auth import auth_bp
 from src.web.controllers.home import home, home_bp
 from src.web.controllers.auth.api_auth import api_auth_controller
@@ -81,16 +81,7 @@ def create_app(
     if env == "production":
         app.config["JWT_SECRET_KEY"] = obtener_clave_jwt()
 
-    CORS(
-        app,
-        resources={
-            r"/api/*": {
-                "origins": app.config["CORS_ORIGINS"],
-                "allow_headers": ["Content-Type", "Authorization"],
-                "supports_credentials": True,
-            }
-        },
-    )
+    configure_cors(app)
 
     Session(app)
     database.init_app(app)

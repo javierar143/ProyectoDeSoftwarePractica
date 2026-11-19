@@ -31,11 +31,8 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     TESTING = False
     COOKIE_SECURE = True
-    GOOGLE_CLIENT_ID = (
-        os.environ.get("GOOGLE_CLIENT_ID")
-        or "701054035330-m5c4op59s9gkmh24upeocfdrgik1s6q3.apps.googleusercontent.com"
-    )
-    CORS_ORIGINS = ["https://grupo50.proyecto2026.linti.unlp.edu.ar"]
+    GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
+    CORS_ORIGINS = os.environ.get("CORS_ORIGINS")
     SQLALCHEMY_ENGINES = {
         "default": os.environ.get("DATABASE_URL")
     }

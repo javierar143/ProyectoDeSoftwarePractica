@@ -16,6 +16,11 @@ def app():
         env="testing",
         test_config={"SQLALCHEMY_ENGINES": {"default": "sqlite://"}},
     )
+    app.config.update(
+        GOOGLE_CLIENT_ID="public-client-id",
+        SECRET_KEY="private-secret",
+        JWT_SECRET_KEY="private-jwt-secret",
+    )
     app.add_url_rule(
         "/test-backoffice",
         endpoint="test_backoffice",
@@ -38,7 +43,9 @@ def test_configuration_endpoint_is_public_during_maintenance(app, monkeypatch):
     assert response.json == {
         "modo_mantenimiento": True,
         "mensaje_mantenimiento": message,
+        "google_client_id": "public-client-id",
     }
+    assert not {"SECRET_KEY", "JWT_SECRET_KEY", "DATABASE_URL"}.intersection(response.json)
 
 
 def test_public_configuration_returns_503_when_configuration_lookup_fails(app, monkeypatch):
@@ -52,6 +59,7 @@ def test_public_configuration_returns_503_when_configuration_lookup_fails(app, m
 
     assert response.status_code == 503
     assert response.json["modo_mantenimiento"] is True
+    assert response.json["google_client_id"] == "public-client-id"
 
 
 def test_public_configuration_reports_disabled_mode_and_keeps_custom_message(app, monkeypatch):
@@ -67,6 +75,7 @@ def test_public_configuration_reports_disabled_mode_and_keeps_custom_message(app
     assert response.status_code == 200
     assert response.json["modo_mantenimiento"] is False
     assert response.json["mensaje_mantenimiento"] == message
+    assert response.json["google_client_id"] == "public-client-id"
 
 
 def test_maintenance_returns_503_for_regular_api_routes(app, monkeypatch):

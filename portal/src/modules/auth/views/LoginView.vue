@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 import { getRoleHomeRoute } from '@/router/navigation'
 import { normalizeApiError } from '@/services/api/error-handler'
 import ApiErrorMessage from '@/modules/shared/components/ApiErrorMessage.vue'
+import { getPublicConfiguration } from '@/modules/system/services/configuration'
 
 import {
   login,
@@ -18,7 +19,7 @@ import {
 const GOOGLE_SCRIPT_URL = 'https://accounts.google.com/gsi/client'
 const GOOGLE_BUTTON_MIN_WIDTH = 120
 const GOOGLE_BUTTON_MAX_WIDTH = 400
-const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+const googleClientId = ref('')
 let googleScriptPromise = null
 
 const authStore = useAuthStore()
@@ -185,13 +186,16 @@ function loadGoogleIdentityServices() {
 
 /** Configura GIS y dibuja su botón cuando existe un Client ID. */
 async function initializeGoogleLogin() {
-  if (!googleClientId) {
-    googleMessage.value =
-      'El inicio de sesión con Google no está configurado para este entorno.'
-    return
-  }
-
   try {
+    const configuration = await getPublicConfiguration()
+    googleClientId.value = configuration?.google_client_id?.trim() || ''
+
+    if (!googleClientId.value) {
+      googleMessage.value =
+        'El inicio de sesión con Google no está disponible. Podés ingresar con email y contraseña.'
+      return
+    }
+
     const google = await loadGoogleIdentityServices()
     const buttonWidth = Math.min(
       Math.max(
@@ -202,7 +206,7 @@ async function initializeGoogleLogin() {
     )
 
     google.accounts.id.initialize({
-      client_id: googleClientId,
+      client_id: googleClientId.value,
       callback: handleGoogleCredential,
     })
     google.accounts.id.renderButton(googleButton.value, {
