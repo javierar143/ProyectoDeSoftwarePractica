@@ -3,27 +3,27 @@
 {% block title %}Resultados de Importación - Servicio de Alimentación{% endblock %}
 
 {% block content %}
-<div style="max-width: 800px; margin: 0 auto; padding: 2rem;">
+<div class="personal-results-container" style="max-width: 800px; margin: 0 auto; padding: 2rem;">
     <h2>Resultados de la Importación Masiva</h2>
     
-    <div style="display: flex; gap: 1rem; margin-top: 1.5rem; margin-bottom: 2rem;">
+    <div class="personal-import-summary" style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem; margin-bottom: 2rem;">
         <div style="flex: 1; padding: 1.5rem; border-radius: 8px; text-align: center; background-color: #f3f4f6; border: 1px solid #d1d5db;">
             <h3 style="margin: 0; font-size: 2rem; color: #374151;">{{ resultados.total }}</h3>
-            <p style="margin: 0.5rem 0 0 0; color: #6b7280;">Procesados</p>
+            <p style="margin: 0.5rem 0 0 0; color: #374151;">Procesados</p>
         </div>
         <div style="flex: 1; padding: 1.5rem; border-radius: 8px; text-align: center; background-color: #ecfdf5; border: 1px solid #a7f3d0;">
-            <h3 style="margin: 0; font-size: 2rem; color: #059669;">{{ resultados.exitosos }}</h3>
-            <p style="margin: 0.5rem 0 0 0; color: #10b981;">Importados</p>
+            <h3 style="margin: 0; font-size: 2rem; color: #047857;">{{ resultados.exitosos }}</h3>
+            <p style="margin: 0.5rem 0 0 0; color: #047857;">Importados</p>
         </div>
         <div style="flex: 1; padding: 1.5rem; border-radius: 8px; text-align: center; background-color: #fef2f2; border: 1px solid #fecaca;">
-            <h3 style="margin: 0; font-size: 2rem; color: #dc2626;">{{ resultados.fallidos }}</h3>
-            <p style="margin: 0.5rem 0 0 0; color: #ef4444;">Rechazados</p>
+            <h3 style="margin: 0; font-size: 2rem; color: #b91c1c;">{{ resultados.fallidos }}</h3>
+            <p style="margin: 0.5rem 0 0 0; color: #b91c1c;">Rechazados</p>
         </div>
     </div>
 
     {% if resultados.exitosos > 0 %}
     <div style="margin-top: 2rem;">
-        <h3 style="color: #059669;">Detalle de registros importados exitosamente</h3>
+        <h3 style="color: #047857;">Detalle de registros importados exitosamente</h3>
         <ul style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 1.5rem 1.5rem 1.5rem 3rem; color: #065f46;">
             {% for persona in resultados.detalles_exitosos %}
                 <li style="margin-bottom: 0.5rem;">{{ persona }}</li>
@@ -35,6 +35,7 @@
     {% if resultados.fallidos > 0 %}
     <div style="margin-top: 2rem;">
         <h3 style="color: #b91c1c;">Detalle de registros rechazados</h3>
+        <div class="table-wrapper">
         <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
             <thead>
                 <tr style="background-color: #f9fafb;">
@@ -59,6 +60,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
     </div>
     {% endif %}
 

@@ -1,11 +1,15 @@
 """Servicio de lógica de negocio para la administración de cupos por sector."""
 
 from flask import abort
+from sqlalchemy.exc import IntegrityError
 
+from src.core.database import db
 from src.core.models.Cupo import Cupo
 from src.core.repositories.cupos import cupos as repo_cupos
 from src.core.repositories.sectores import sector as repo_sector
 from src.core.services.configuracion import obtener_configuracion
+
+MAX_POR_PAGINA = 25
 
 
 def validar_reglas_negocio_cupo(
@@ -19,33 +23,45 @@ def validar_reglas_negocio_cupo(
     - Que no exista otro cupo vigente para el mismo sector y tipo de comida.
     """
     sector = repo_sector.get_by_id(id_sector)
-    if not sector or not sector.isActive:
+    if not sector or not getattr(sector, "isActive", True):
         abort(400, description="El sector no existe o está inactivo.")
 
     existente = repo_cupos.get_by_sector_y_comida(id_sector, id_tipo_comida)
     if existente and existente.idCupo != id_cupo_actual:
         abort(
-            400,
-            description="Ya existe un cupo vigente para ese sector y tipo de comida.",
+            409,
+            description=(
+                "Ya existe un cupo vigente para ese sector y tipo de comida."
+            ),
         )
 
 
 def create(id_sector: int, id_tipo_comida: int, cant_comensales: int) -> Cupo:
     """Valida las reglas de negocio y coordina la creación de un nuevo cupo vigente."""
+    if cant_comensales <= 0:
+        abort(
+            400, description="La cantidad de comensales debe ser mayor a cero."
+        )
+
     validar_reglas_negocio_cupo(id_sector, id_tipo_comida)
 
     nuevo_cupo = Cupo(
         idSector=id_sector,
         idTipoComida=id_tipo_comida,
         cantComensales=cant_comensales,
-    ) if False else Cupo(
-        idSector=id_sector,
-        idTipoComida=id_tipo_comida,
-        cantComensales=cant_comensales,
         activo=True,
     )
 
-    return repo_cupos.create(nuevo_cupo)
+    try:
+        return repo_cupos.create(nuevo_cupo)
+    except IntegrityError:
+        db.session.rollback()
+        abort(
+            409,
+            description=(
+                "Ya existe un cupo vigente para ese sector y tipo de comida."
+            ),
+        )
 
 
 def get_by_sector_y_comida(id_sector: int, id_tipo_comida: int) -> Cupo | None:
@@ -59,12 +75,13 @@ def listar(
     orden: str = "asc",
     page: int = 1,
 ) -> tuple[list[Cupo], int, int]:
-    """Obtiene la paginación global del sistema y devuelve el listado de cupos."""
+    """Obtiene la paginación global del sistema (máx. 25) y devuelve el listado de cupos."""
     if page < 1:
         page = 1
 
     config = obtener_configuracion()
-    per_page = config.elementos_por_pagina
+    per_page_cfg = getattr(config, "elementos_por_pagina", MAX_POR_PAGINA)
+    per_page = min(max(int(per_page_cfg or MAX_POR_PAGINA), 1), MAX_POR_PAGINA)
 
     items, total = repo_cupos.list_cupos(
         page=page,
@@ -91,6 +108,11 @@ def actualizar(
     cant_comensales: int,
 ) -> Cupo:
     """Actualiza un cupo existente sin alterar retroactivamente pedidos ya registrados."""
+    if cant_comensales <= 0:
+        abort(
+            400, description="La cantidad de comensales debe ser mayor a cero."
+        )
+
     cupo = obtener_por_id(id_cupo)
 
     validar_reglas_negocio_cupo(
@@ -103,7 +125,16 @@ def actualizar(
     cupo.idTipoComida = id_tipo_comida
     cupo.cantComensales = cant_comensales
 
-    return repo_cupos.update(cupo)
+    try:
+        return repo_cupos.update(cupo)
+    except IntegrityError:
+        db.session.rollback()
+        abort(
+            409,
+            description=(
+                "Ya existe un cupo vigente para ese sector y tipo de comida."
+            ),
+        )
 
 
 def eliminar(id_cupo: int) -> Cupo:

@@ -3,7 +3,7 @@
 {% block title %}Importar Personal - Servicio de Alimentación{% endblock %}
 
 {% block content %}
-<div style="max-width: 600px; margin: 0 auto; padding: 2rem; border: 1px solid #ccc; border-radius: 8px;">
+<div class="personal-import-card" style="max-width: 600px; margin: 0 auto; padding: 2rem; border: 1px solid #ccc; border-radius: 8px;">
     <h2>Importación Masiva de Personal</h2>
     <p>Sube un archivo CSV para cargar personal de forma masiva.</p>
     
@@ -19,7 +19,7 @@
             <input type="file" id="archivo_csv" name="archivo_csv" accept=".csv" required style="width: 100%; padding: 0.5rem;">
         </div>
         
-        <div style="display: flex; gap: 1rem;">
+        <div class="personal-import-actions" style="display: flex; flex-wrap: wrap; gap: 1rem;">
             <button type="submit" style="padding: 0.5rem 1rem; background-color: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer;">
                 Procesar Archivo
             </button>

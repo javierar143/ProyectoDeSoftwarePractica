@@ -717,10 +717,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .kiosko-claro-viewport {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  overflow-y: auto;
+  min-height: calc(100vh - 64px);
   background: #f8fafc;
   color: #0f172a;
   padding: 1.15rem 1.5rem;
@@ -735,7 +732,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  min-height: calc(100vh - 2.3rem);
+  min-height: calc(100vh - 96px);
 }
 
 .kiosko-encabezado,

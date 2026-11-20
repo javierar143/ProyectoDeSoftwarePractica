@@ -4,9 +4,9 @@
 
 {% block content %}
 <section>
-    <div style="display: flex; justify-content: space-between; align-items: center;">
+    <div class="personal-page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
         <h2>Gestión de Personal</h2>
-        <div>
+        <div class="personal-page-header-actions" style="display: flex; flex-wrap: wrap; gap: 12px;">
             <a href="{{ url_for('personal_csv.importar_form') }}" style="margin-right: 15px; color: #2563eb; text-decoration: none; font-weight: bold;">
                 + Importar CSV
             </a>
@@ -17,7 +17,7 @@
     </div>
 
     <!-- Formulario de Búsqueda y Filtros Combinables -->
-    <form method="GET" action="{{ url_for('personal.index') }}" style="background: #f4f4f4; padding: 1rem; margin-bottom: 1.5rem; border: 1px solid #ddd; display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end;">
+    <form class="personal-filters" method="GET" action="{{ url_for('personal.index') }}" style="background: #f4f4f4; padding: 1rem; margin-bottom: 1.5rem; border: 1px solid #ddd; display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end;">
         <div>
             <label for="q" style="display: block; font-size: 0.85rem; font-weight: bold;">Nombre / Apellido</label>
             <input type="text" id="q" name="q" value="{{ filtros.q }}" placeholder="Buscar por texto...">
@@ -72,6 +72,7 @@
     </form>
 
     {% if personal %}
+        <div class="table-wrapper">
         <table style="width: 100%; border-collapse: collapse; border: 1px solid #ccc; text-align: left;">
             <caption>Listado de personal del hospital</caption>
             <thead>
@@ -139,7 +140,7 @@
                                 </form>
                             {% else %}
                                 <form action="{{ url_for('personal.activar', id=p.idPersonal) }}" method="POST" style="display: inline;" data-confirm-message="¿Confirmar la reactivación de {{ p.apellido }}, {{ p.nombre }}?">
-                                    <button type="submit" style="background: none; border: none; color: #16a34a; cursor: pointer; text-decoration: underline;">
+                                    <button type="submit" style="background: none; border: none; color: #15803d; cursor: pointer; text-decoration: underline;">
                                         Activar
                                     </button>
                                 </form>
@@ -149,8 +150,9 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
         <!-- Paginador -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+        <div class="personal-pagination" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-top: 1rem;">
             <span>
                 Mostrando página <strong>{{ personal_paginado.page }}</strong> de <strong>{{ personal_paginado.pages }}</strong> (Total: {{ personal_paginado.total }} registros)
             </span>
@@ -173,9 +175,9 @@
     {% endif %}
 
     <!-- Modal de confirmación sin usar confirm() nativo -->
-    <dialog id="modalConfirmacion" style="border: 1px solid #ccc; border-radius: 8px; padding: 1.5rem; max-width: 400px;">
+    <dialog id="modalConfirmacion" class="personal-modal" style="border: 1px solid #ccc; border-radius: 8px; padding: 1.5rem; width: calc(100% - 2rem); max-width: 400px; box-sizing: border-box;">
         <p id="mensajeConfirmacion" style="margin-bottom: 1.5rem; font-weight: bold;"></p>
-        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <div class="personal-modal-actions" style="display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.75rem;">
             <button type="button" id="btnCancelarModal" style="padding: 0.4rem 0.8rem; cursor: pointer;">Cancelar</button>
             <button type="button" id="btnConfirmarModal" style="padding: 0.4rem 0.8rem; background-color: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer;">Confirmar</button>
         </div>

@@ -14,8 +14,10 @@
   },
   "dependencies": {
     "axios": "^1.21.1",
+    "chart.js": "^4.6.1",
     "pinia": "^4.0.3",
     "vue": "^3.5.42",
+    "vue-chartjs": "^5.3.7",
     "vue-router": "^5.3.1"
   },
   "devDependencies": {

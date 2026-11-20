@@ -59,35 +59,39 @@ def test_pedidos_requiere_auth(client):
     assert response.status_code == 401
 
 
-@patch("src.web.controllers.pedidos.api_pedidos.get_by_id")
+@patch("src.core.services.usuarios.permiso.user_has_role_permission")
+@patch("src.core.services.usuarios.rol.get_by_id")
 @patch("src.core.services.auth.api_auth.get_authenticated_user_status")
-def test_pedidos_rechaza_rol_incorrecto(mock_get_user, mock_get_rol, client):
-    """Verifica que un rol distinto a Jefe de Servicio reciba 403."""
-    mock_get_user.return_value = (MockUser(), None)
-    mock_get_rol.return_value = MockRol(nombre="alimentacion")
+def test_pedidos_sin_permiso_403(
+    mock_get_user, mock_get_rol, mock_has_perm, client
+):
+    """Verifica que un usuario sin permiso requests_index reciba 403."""
+    mock_get_user.return_value = (MockUser(id_sector=5), None)
+    mock_get_rol.return_value = MockRol(nombre="Jefe de Servicio")
+    mock_has_perm.return_value = False
 
     response = client.get(
         "/api/requests", headers={"Authorization": "Bearer tokenfalso"}
     )
     assert response.status_code == 403
-    assert "Solo un Jefe de Servicio" in response.get_json()["error"]
-
 
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.obtener_detalle_pedido")
-@patch("src.web.controllers.pedidos.api_pedidos.get_sector_asignado")
-@patch("src.web.controllers.pedidos.api_pedidos.get_by_id")
+@patch("src.core.services.usuarios.permiso.user_has_role_permission")
+@patch("src.core.services.usuarios.rol.get_by_id")
 @patch("src.core.services.auth.api_auth.get_authenticated_user_status")
 def test_obtener_detalle_pedido_ajeno_403(
     mock_get_user,
     mock_get_rol,
-    mock_get_sector,
+    mock_has_perm,
     mock_servicio_detalle,
     client,
 ):
     """Verifica que consultar un pedido de otro sector devuelva 403."""
-    mock_get_user.return_value = (MockUser(), None)
-    mock_get_rol.return_value = MockRol(nombre="jefe")
-    mock_get_sector.return_value = 5
+    mock_get_user.return_value = (MockUser(id_sector=5), None)
+    mock_get_rol.return_value = MockRol(nombre="Jefe de Servicio")
+    mock_has_perm.side_effect = (
+        lambda user_id, permiso: permiso == "requests_index"
+    )
     mock_servicio_detalle.side_effect = lambda *a, **kw: abort(
         403,
         description="No tiene permisos para consultar un pedido de otro sector.",
@@ -98,18 +102,21 @@ def test_obtener_detalle_pedido_ajeno_403(
     )
     assert response.status_code == 403
 
-
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.crear_pedido")
-@patch("src.web.controllers.pedidos.api_pedidos.get_sector_asignado")
-@patch("src.web.controllers.pedidos.api_pedidos.get_by_id")
+@patch("src.core.services.usuarios.permiso.user_has_role_permission")
+@patch("src.core.services.usuarios.rol.get_by_id")
 @patch("src.core.services.auth.api_auth.get_authenticated_user_status")
 def test_crear_pedido_exito(
-    mock_get_user, mock_get_rol, mock_get_sector, mock_crear_pedido, client
+    mock_get_user, mock_get_rol, mock_has_perm, mock_crear_pedido, client
 ):
     """Verifica que se cree un pedido correctamente (201)."""
-    mock_get_user.return_value = (MockUser(), None)
-    mock_get_rol.return_value = MockRol(nombre="jefe")
-    mock_get_sector.return_value = 5
+    usuario = MockUser(id_sector=5)
+    usuario.idSector = 5
+    mock_get_user.return_value = (usuario, None)
+    mock_get_rol.return_value = MockRol(nombre="Jefe de Servicio")
+    mock_has_perm.side_effect = (
+        lambda user_id, permiso: permiso == "requests_new"
+    )
 
     class MockPedido:
         idPedido = 10
@@ -133,17 +140,18 @@ def test_crear_pedido_exito(
     assert response.json["estado"] == "confirmado"
     mock_crear_pedido.assert_called_once()
 
-
-@patch("src.web.controllers.pedidos.api_pedidos.get_sector_asignado")
-@patch("src.web.controllers.pedidos.api_pedidos.get_by_id")
+@patch("src.core.services.usuarios.permiso.user_has_role_permission")
+@patch("src.core.services.usuarios.rol.get_by_id")
 @patch("src.core.services.auth.api_auth.get_authenticated_user_status")
 def test_crear_pedido_faltan_datos(
-    mock_get_user, mock_get_rol, mock_get_sector, client
+    mock_get_user, mock_get_rol, mock_has_perm, client
 ):
     """Verifica que rechace un JSON incompleto con código 400."""
-    mock_get_user.return_value = (MockUser(), None)
-    mock_get_rol.return_value = MockRol(nombre="jefe")
-    mock_get_sector.return_value = 5
+    mock_get_user.return_value = (MockUser(id_sector=5), None)
+    mock_get_rol.return_value = MockRol(nombre="Jefe de Servicio")
+    mock_has_perm.side_effect = (
+        lambda user_id, permiso: permiso == "requests_new"
+    )
 
     response = client.post(
         "/api/requests",
@@ -158,18 +166,19 @@ def test_crear_pedido_faltan_datos(
         "comidas": "Este campo es obligatorio.",
     }
 
-
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.crear_pedido")
-@patch("src.web.controllers.pedidos.api_pedidos.get_sector_asignado")
-@patch("src.web.controllers.pedidos.api_pedidos.get_by_id")
+@patch("src.core.services.usuarios.permiso.user_has_role_permission")
+@patch("src.core.services.usuarios.rol.get_by_id")
 @patch("src.core.services.auth.api_auth.get_authenticated_user_status")
 def test_crear_pedido_persona_inactiva(
-    mock_get_user, mock_get_rol, mock_get_sector, mock_crear_pedido, client
+    mock_get_user, mock_get_rol, mock_has_perm, mock_crear_pedido, client
 ):
     """Verifica que devuelva 400 si una persona está inactiva."""
-    mock_get_user.return_value = (MockUser(), None)
-    mock_get_rol.return_value = MockRol(nombre="jefe")
-    mock_get_sector.return_value = 5
+    mock_get_user.return_value = (MockUser(id_sector=5), None)
+    mock_get_rol.return_value = MockRol(nombre="Jefe de Servicio")
+    mock_has_perm.side_effect = (
+        lambda user_id, permiso: permiso == "requests_new"
+    )
     mock_crear_pedido.side_effect = lambda *a, **kw: abort(
         400, description="La persona con ID 5 no existe o está inactiva."
     )
@@ -187,18 +196,19 @@ def test_crear_pedido_persona_inactiva(
     assert response.status_code == 400
     assert "inactiva" in response.json["error"]
 
-
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.crear_pedido")
-@patch("src.web.controllers.pedidos.api_pedidos.get_sector_asignado")
-@patch("src.web.controllers.pedidos.api_pedidos.get_by_id")
+@patch("src.core.services.usuarios.permiso.user_has_role_permission")
+@patch("src.core.services.usuarios.rol.get_by_id")
 @patch("src.core.services.auth.api_auth.get_authenticated_user_status")
 def test_crear_pedido_duplicado(
-    mock_get_user, mock_get_rol, mock_get_sector, mock_crear_pedido, client
+    mock_get_user, mock_get_rol, mock_has_perm, mock_crear_pedido, client
 ):
     """Verifica que devuelva 409 si hay una solicitud duplicada."""
-    mock_get_user.return_value = (MockUser(), None)
-    mock_get_rol.return_value = MockRol(nombre="jefe")
-    mock_get_sector.return_value = 5
+    mock_get_user.return_value = (MockUser(id_sector=5), None)
+    mock_get_rol.return_value = MockRol(nombre="Jefe de Servicio")
+    mock_has_perm.side_effect = (
+        lambda user_id, permiso: permiso == "requests_new"
+    )
     mock_crear_pedido.side_effect = lambda *a, **kw: abort(
         409,
         description="Ya existe una solicitud para la persona 1 en esa fecha y comida.",
@@ -217,18 +227,19 @@ def test_crear_pedido_duplicado(
     assert response.status_code == 409
     assert "Ya existe una solicitud" in response.json["error"]
 
-
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.actualizar_pedido")
-@patch("src.web.controllers.pedidos.api_pedidos.get_sector_asignado")
-@patch("src.web.controllers.pedidos.api_pedidos.get_by_id")
+@patch("src.core.services.usuarios.permiso.user_has_role_permission")
+@patch("src.core.services.usuarios.rol.get_by_id")
 @patch("src.core.services.auth.api_auth.get_authenticated_user_status")
 def test_actualizar_pedido_exito(
-    mock_get_user, mock_get_rol, mock_get_sector, mock_actualizar, client
+    mock_get_user, mock_get_rol, mock_has_perm, mock_actualizar, client
 ):
     """Verifica que se actualice un pedido correctamente (200)."""
-    mock_get_user.return_value = (MockUser(), None)
-    mock_get_rol.return_value = MockRol(nombre="jefe")
-    mock_get_sector.return_value = 5
+    mock_get_user.return_value = (MockUser(id_sector=5), None)
+    mock_get_rol.return_value = MockRol(nombre="Jefe de Servicio")
+    mock_has_perm.side_effect = (
+        lambda user_id, permiso: permiso == "requests_update"
+    )
 
     class MockPedido:
         idPedido = 10
@@ -246,18 +257,19 @@ def test_actualizar_pedido_exito(
     assert response.json["mensaje"] == "Pedido actualizado exitosamente"
     mock_actualizar.assert_called_once()
 
-
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.actualizar_pedido")
-@patch("src.web.controllers.pedidos.api_pedidos.get_sector_asignado")
-@patch("src.web.controllers.pedidos.api_pedidos.get_by_id")
+@patch("src.core.services.usuarios.permiso.user_has_role_permission")
+@patch("src.core.services.usuarios.rol.get_by_id")
 @patch("src.core.services.auth.api_auth.get_authenticated_user_status")
 def test_actualizar_pedido_no_encontrado(
-    mock_get_user, mock_get_rol, mock_get_sector, mock_actualizar, client
+    mock_get_user, mock_get_rol, mock_has_perm, mock_actualizar, client
 ):
     """Verifica que si el pedido no existe devuelva 404."""
-    mock_get_user.return_value = (MockUser(), None)
-    mock_get_rol.return_value = MockRol(nombre="jefe")
-    mock_get_sector.return_value = 5
+    mock_get_user.return_value = (MockUser(id_sector=5), None)
+    mock_get_rol.return_value = MockRol(nombre="Jefe de Servicio")
+    mock_has_perm.side_effect = (
+        lambda user_id, permiso: permiso == "requests_update"
+    )
     mock_actualizar.side_effect = lambda *a, **kw: abort(
         404, description="El pedido con ID 99 no existe."
     )
@@ -271,18 +283,19 @@ def test_actualizar_pedido_no_encontrado(
     assert response.status_code == 404
     assert "no existe" in response.json["error"]
 
-
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.actualizar_pedido")
-@patch("src.web.controllers.pedidos.api_pedidos.get_sector_asignado")
-@patch("src.web.controllers.pedidos.api_pedidos.get_by_id")
+@patch("src.core.services.usuarios.permiso.user_has_role_permission")
+@patch("src.core.services.usuarios.rol.get_by_id")
 @patch("src.core.services.auth.api_auth.get_authenticated_user_status")
 def test_actualizar_pedido_ya_procesado(
-    mock_get_user, mock_get_rol, mock_get_sector, mock_actualizar, client
+    mock_get_user, mock_get_rol, mock_has_perm, mock_actualizar, client
 ):
     """Verifica que si el pedido ya fue autorizado rechace la edición (409)."""
-    mock_get_user.return_value = (MockUser(), None)
-    mock_get_rol.return_value = MockRol(nombre="jefe")
-    mock_get_sector.return_value = 5
+    mock_get_user.return_value = (MockUser(id_sector=5), None)
+    mock_get_rol.return_value = MockRol(nombre="Jefe de Servicio")
+    mock_has_perm.side_effect = (
+        lambda user_id, permiso: permiso == "requests_update"
+    )
     mock_actualizar.side_effect = lambda *a, **kw: abort(
         409,
         description="No se puede modificar un pedido que ya está autorizado.",
@@ -297,18 +310,19 @@ def test_actualizar_pedido_ya_procesado(
     assert response.status_code == 409
     assert "autorizado" in response.json["error"]
 
-
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.borrar_pedido")
-@patch("src.web.controllers.pedidos.api_pedidos.get_sector_asignado")
-@patch("src.web.controllers.pedidos.api_pedidos.get_by_id")
+@patch("src.core.services.usuarios.permiso.user_has_role_permission")
+@patch("src.core.services.usuarios.rol.get_by_id")
 @patch("src.core.services.auth.api_auth.get_authenticated_user_status")
 def test_eliminar_pedido_exito(
-    mock_get_user, mock_get_rol, mock_get_sector, mock_borrar, client
+    mock_get_user, mock_get_rol, mock_has_perm, mock_borrar, client
 ):
     """Verifica la eliminación (baja lógica) exitosa de un pedido (204)."""
-    mock_get_user.return_value = (MockUser(), None)
-    mock_get_rol.return_value = MockRol(nombre="jefe")
-    mock_get_sector.return_value = 5
+    mock_get_user.return_value = (MockUser(id_sector=5), None)
+    mock_get_rol.return_value = MockRol(nombre="Jefe de Servicio")
+    mock_has_perm.side_effect = (
+        lambda user_id, permiso: permiso == "requests_destroy"
+    )
 
     response = client.delete(
         "/api/requests/10",
@@ -319,18 +333,19 @@ def test_eliminar_pedido_exito(
     assert response.data == b""
     mock_borrar.assert_called_once_with(10, id_sector_jefe=5)
 
-
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.borrar_pedido")
-@patch("src.web.controllers.pedidos.api_pedidos.get_sector_asignado")
-@patch("src.web.controllers.pedidos.api_pedidos.get_by_id")
+@patch("src.core.services.usuarios.permiso.user_has_role_permission")
+@patch("src.core.services.usuarios.rol.get_by_id")
 @patch("src.core.services.auth.api_auth.get_authenticated_user_status")
 def test_eliminar_pedido_no_encontrado(
-    mock_get_user, mock_get_rol, mock_get_sector, mock_borrar, client
+    mock_get_user, mock_get_rol, mock_has_perm, mock_borrar, client
 ):
     """Verifica que devuelva 404 si el pedido a borrar no existe."""
-    mock_get_user.return_value = (MockUser(), None)
-    mock_get_rol.return_value = MockRol(nombre="jefe")
-    mock_get_sector.return_value = 5
+    mock_get_user.return_value = (MockUser(id_sector=5), None)
+    mock_get_rol.return_value = MockRol(nombre="Jefe de Servicio")
+    mock_has_perm.side_effect = (
+        lambda user_id, permiso: permiso == "requests_destroy"
+    )
     mock_borrar.side_effect = lambda *a, **kw: abort(
         404, description="El pedido con ID 99 no existe."
     )
@@ -343,18 +358,19 @@ def test_eliminar_pedido_no_encontrado(
     assert response.status_code == 404
     assert "no existe" in response.json["error"]
 
-
 @patch("src.web.controllers.pedidos.api_pedidos.pedidos.borrar_pedido")
-@patch("src.web.controllers.pedidos.api_pedidos.get_sector_asignado")
-@patch("src.web.controllers.pedidos.api_pedidos.get_by_id")
+@patch("src.core.services.usuarios.permiso.user_has_role_permission")
+@patch("src.core.services.usuarios.rol.get_by_id")
 @patch("src.core.services.auth.api_auth.get_authenticated_user_status")
 def test_eliminar_pedido_ya_procesado(
-    mock_get_user, mock_get_rol, mock_get_sector, mock_borrar, client
+    mock_get_user, mock_get_rol, mock_has_perm, mock_borrar, client
 ):
     """Verifica que rechace borrar un pedido si ya fue procesado (409)."""
-    mock_get_user.return_value = (MockUser(), None)
-    mock_get_rol.return_value = MockRol(nombre="jefe")
-    mock_get_sector.return_value = 5
+    mock_get_user.return_value = (MockUser(id_sector=5), None)
+    mock_get_rol.return_value = MockRol(nombre="Jefe de Servicio")
+    mock_has_perm.side_effect = (
+        lambda user_id, permiso: permiso == "requests_destroy"
+    )
     mock_borrar.side_effect = lambda *a, **kw: abort(
         409,
         description="No se puede eliminar un pedido que ya fue autorizado.",
