@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import LogoutButton from '@/modules/auth/components/LogoutButton.vue'
 import ApiErrorMessage from '@/modules/shared/components/ApiErrorMessage.vue'
 import { normalizeApiError } from '@/services/api/error-handler'
 import {
@@ -210,7 +209,6 @@ onMounted(async () => {
         >
           + Agregar Personal Fijo
         </button>
-        <LogoutButton />
       </div>
     </header>
 
