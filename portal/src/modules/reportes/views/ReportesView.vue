@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import ApiErrorMessage from '@/components/common/ApiErrorMessage.vue'
+import ApiErrorMessage from '@/modules/shared/components/ApiErrorMessage.vue'
 import { normalizeApiError } from '@/services/api/error-handler'
 import FiltrosReportes from '@/modules/reportes/components/FiltrosReportes.vue'
 import IndicadoresKpi from '@/modules/reportes/components/IndicadoresKpi.vue'
