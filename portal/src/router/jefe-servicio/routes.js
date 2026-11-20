@@ -8,8 +8,7 @@ export const jefeServicioRoutes = [
   {
     path: '/inicio/jefe-servicio',
     name: 'inicio-jefe-servicio',
-    // Reemplazar por la vista definitiva del panel o listado de pedidos al terminar
-    component: () => import('./temporalJefeServicio.vue'),
+    component: () => import('@/modules/pedidos/views/PedidosSectorView.vue'),
     meta: {
       requiresAuth: true,
       roles: ['jefeServicio'],
