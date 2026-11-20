@@ -55,6 +55,32 @@ def _calcular_fecha_hasta(
         return fecha_desde + timedelta(days=29)
     return fecha_desde
 
+def _obtener_fechas_periodo(
+    fecha_desde: date,
+    periodicidad: Periodicidad,
+    fecha_hasta: date | None = None,
+) -> list[date]:
+    """Devuelve la lista de fechas del período según periodicidad o fecha_hasta."""
+    if fecha_hasta is not None:
+        if fecha_hasta < fecha_desde:
+            abort(
+                400,
+                description="La fecha_hasta no puede ser anterior a fecha_desde.",
+            )
+        fin = fecha_hasta
+    elif periodicidad == Periodicidad.SEMANAL:
+        fin = fecha_desde + timedelta(days=6)
+    elif periodicidad == Periodicidad.MENSUAL:
+        fin = fecha_desde + timedelta(days=29)
+    else:
+        fin = fecha_desde
+
+    fechas: list[date] = []
+    actual = fecha_desde
+    while actual <= fin:
+        fechas.append(actual)
+        actual += timedelta(days=1)
+    return fechas
 
 def crear_pedido(
     id_jefe: int,
@@ -65,91 +91,105 @@ def crear_pedido(
     fecha_hasta: date | None = None,
 ) -> Pedido:
     """
-    Organiza la creación de un pedido (cabecera) y sus solicitudes (detalle),
-    calculando qué viandas entran en cupo Regular y cuáles por Excepción.
+    Crea un Pedido por cada día del período según la periodicidad (diaria, semanal, mensual)
+    y genera las Solicitudes de cada día calculando cupo Regular o Excepción.
     """
     periodicidad_enum = Periodicidad(periodicidad.lower())
-
-    if repo_pedidos.existe_pedido_en_sector_y_fecha(id_sector, fecha_desde):
-        abort(
-            409,
-            description="Ya existe un pedido registrado para este sector en la fecha indicada.",
-        )
-
-    fecha_fin = _calcular_fecha_hasta(
+    fechas_periodo = _obtener_fechas_periodo(
         fecha_desde, periodicidad_enum, fecha_hasta
     )
 
-    nuevo_pedido = Pedido(
-        idUser=id_jefe,
-        idSector=id_sector,
-        fecha_desde=fecha_desde,
-        fecha_hasta=fecha_fin,
-        periodicidad=periodicidad_enum,
-        estado_general=EstadoPedido.CONFIRMADO,
-        activo=True,
-    )
-
-    solicitudes_a_guardar: list[Solicitud] = []
-
-    for id_tipo_comida_str, lista_personal in comidas.items():
-        id_tipo_comida = int(id_tipo_comida_str)
-
-        cupo = cupos.get_by_sector_y_comida(id_sector, id_tipo_comida)
-        limite_cupo = cupo.cantComensales if cupo else 0
-
-        contador_comida = 0
-        vistos_en_comida: set[int] = set()
-
-        for id_personal in lista_personal:
-            if id_personal in vistos_en_comida:
-                abort(
-                    409,
-                    description=f"La persona {id_personal} está repetida en la misma comida.",
-                )
-            vistos_en_comida.add(id_personal)
-
-            persona = repo_personal.get_by_id(id_personal)
-            if not persona or not persona.isActive:
-                abort(
-                    400,
-                    description=f"La persona con ID {id_personal} no existe o está inactiva.",
-                )
-
-            validar_sector_personal(persona, id_sector)
-
-            if repo_pedidos.existe_solicitud_duplicada(
-                id_personal=id_personal,
-                id_sector=id_sector,
-                fecha=fecha_desde,
-                id_tipo_comida=id_tipo_comida,
-            ):
-                abort(
-                    409,
-                    description=f"Ya existe una solicitud para la persona {id_personal} en esa fecha y comida.",
-                )
-
-            contador_comida += 1
-            if contador_comida <= limite_cupo:
-                condicion = CondicionCupo.REGULAR
-            else:
-                condicion = CondicionCupo.EXCEPCION
-
-            nueva_solicitud = Solicitud(
-                idPersonal=id_personal,
-                idTipoComida=id_tipo_comida,
-                idTipoMenu=persona.idTipoMenu,
-                condicionCupo=condicion,
-                estadoAutorizacion=EstadoAutorizacion.PENDIENTE,
-                fecha_vianda=fecha_desde,
-                activo=True,
+    # Si alguna fecha del período ya tiene pedido para este sector, no se crea ninguno
+    for fecha_dia in fechas_periodo:
+        if repo_pedidos.existe_pedido_en_sector_y_fecha(id_sector, fecha_dia):
+            abort(
+                409,
+                description=f"Ya existe un pedido registrado para este sector en la fecha {fecha_dia.isoformat()}.",
             )
-            solicitudes_a_guardar.append(nueva_solicitud)
 
-    return repo_pedidos.create_pedido_con_solicitudes(
-        nuevo_pedido, solicitudes_a_guardar
+    pedidos_y_solicitudes: list[tuple[Pedido, list[Solicitud]]] = []
+
+    for fecha_dia in fechas_periodo:
+        pedido_dia = Pedido(
+            idUser=id_jefe,
+            idSector=id_sector,
+            fecha_desde=fecha_dia,
+            fecha_hasta=fecha_dia,
+            periodicidad=periodicidad_enum,
+            estado_general=EstadoPedido.CONFIRMADO,
+            activo=True,
+        )
+
+        solicitudes_dia: list[Solicitud] = []
+
+        for id_tipo_comida_str, lista_personal in comidas.items():
+            id_tipo_comida = int(id_tipo_comida_str)
+
+            cupo = cupos.get_by_sector_y_comida(id_sector, id_tipo_comida)
+            limite_cupo = cupo.cantComensales if cupo else 0
+
+            contador_comida = 0
+            vistos_en_comida: set[int] = set()
+
+            for id_personal in lista_personal:
+                if id_personal in vistos_en_comida:
+                    abort(
+                        409,
+                        description=f"La persona {id_personal} está repetida en la misma comida.",
+                    )
+                vistos_en_comida.add(id_personal)
+
+                persona = repo_personal.get_by_id(id_personal)
+                if not persona or not persona.isActive:
+                    abort(
+                        400,
+                        description=f"La persona con ID {id_personal} no existe o está inactiva.",
+                    )
+
+                validar_sector_personal(persona, id_sector)
+
+                if repo_pedidos.existe_solicitud_duplicada(
+                    id_personal=id_personal,
+                    id_sector=id_sector,
+                    fecha=fecha_dia,
+                    id_tipo_comida=id_tipo_comida,
+                ):
+                    abort(
+                        409,
+                        description=f"Ya existe una solicitud para la persona {id_personal} en la fecha {fecha_dia.isoformat()} y comida.",
+                    )
+
+                contador_comida += 1
+                condicion = (
+                    CondicionCupo.REGULAR
+                    if contador_comida <= limite_cupo
+                    else CondicionCupo.EXCEPCION
+                )
+
+                solicitudes_dia.append(
+                    Solicitud(
+                        idPersonal=id_personal,
+                        idTipoComida=id_tipo_comida,
+                        idTipoMenu=persona.idTipoMenu,
+                        condicionCupo=condicion,
+                        estadoAutorizacion=EstadoAutorizacion.PENDIENTE,
+                        fecha_vianda=fecha_dia,
+                        activo=True,
+                    )
+                )
+
+        pedidos_y_solicitudes.append((pedido_dia, solicitudes_dia))
+
+    if len(pedidos_y_solicitudes) == 1:
+        unico_pedido, unicas_solicitudes = pedidos_y_solicitudes[0]
+        return repo_pedidos.create_pedido_con_solicitudes(
+            unico_pedido, unicas_solicitudes
+        )
+
+    pedidos_creados = repo_pedidos.create_multiples_pedidos_con_solicitudes(
+        pedidos_y_solicitudes
     )
-
+    return pedidos_creados[0]
 
 def actualizar_pedido(
     id_pedido: int,
