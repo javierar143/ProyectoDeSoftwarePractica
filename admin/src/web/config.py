@@ -1,5 +1,7 @@
 import os
 
+from src.web.controllers.configuracion.runtime import ProductionConfigMeta
+
 
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "you-will-never-guess")
@@ -28,11 +30,11 @@ class TestingConfig(Config):
     CORS_ORIGINS = ["http://localhost:5173"]
 
 
-class ProductionConfig(Config):
+class ProductionConfig(Config, metaclass=ProductionConfigMeta):
     TESTING = False
     COOKIE_SECURE = True
-    GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
-    CORS_ORIGINS = os.environ.get("CORS_ORIGINS")
+    GOOGLE_CLIENT_ID = None
+    CORS_ORIGINS = None
     SQLALCHEMY_ENGINES = {
         "default": os.environ.get("DATABASE_URL")
     }

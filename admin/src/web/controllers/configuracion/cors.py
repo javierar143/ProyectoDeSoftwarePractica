@@ -7,7 +7,14 @@ def configure_cors(app):
     """Configura los recursos y orígenes permitidos para la API."""
     origins = app.config["CORS_ORIGINS"]
     if isinstance(origins, str):
-        origins = [origin.strip() for origin in origins.split(",") if origin.strip()]
+        origins = origins.split(",")
+    origins = [
+        origin.strip()
+        for origin in origins or []
+        if isinstance(origin, str) and origin.strip()
+    ]
+    if not origins:
+        raise RuntimeError("CORS_ORIGINS debe contener al menos un origen permitido.")
 
     CORS(
         app,
