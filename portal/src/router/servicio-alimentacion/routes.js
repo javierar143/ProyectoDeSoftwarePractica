@@ -25,6 +25,15 @@ export const servicioAlimentacionRoutes = [
       roles: ['jefeServicio'],
     },
   },
+  {
+    path: '/servicio-alimentacion/reportes',
+    name: 'servicio-alimentacion-reportes',
+    component: () => import('@/modules/reportes/views/ReportesView.vue'),
+    meta: {
+      requiresAuth: true,
+      roles: ['servicioAlimentacion'], 
+    },
+  },
 ]
 
 export default servicioAlimentacionRoutes
