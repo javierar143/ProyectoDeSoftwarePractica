@@ -186,16 +186,27 @@ function loadGoogleIdentityServices() {
 
 /** Configura GIS y dibuja su botón cuando existe un Client ID. */
 async function initializeGoogleLogin() {
+  let configuration
+
   try {
-    const configuration = await getPublicConfiguration()
-    googleClientId.value = configuration?.google_client_id?.trim() || ''
+    configuration = await getPublicConfiguration()
+  } catch (error) {
+    // El endpoint devuelve el Client ID también en el 503 por falla de BD.
+    configuration = error?.response?.data
+  }
 
-    if (!googleClientId.value) {
-      googleMessage.value =
-        'El inicio de sesión con Google no está disponible. Podés ingresar con email y contraseña.'
-      return
-    }
+  googleClientId.value =
+    typeof configuration?.google_client_id === 'string'
+      ? configuration.google_client_id.trim()
+      : ''
 
+  if (!googleClientId.value) {
+    googleMessage.value =
+      'El inicio de sesión con Google no está disponible. Podés ingresar con email y contraseña.'
+    return
+  }
+
+  try {
     const google = await loadGoogleIdentityServices()
     const buttonWidth = Math.min(
       Math.max(
