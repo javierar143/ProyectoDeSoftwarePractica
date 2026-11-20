@@ -8,7 +8,6 @@ from src.core.security.jwt_secret import obtener_clave_jwt
 
 from src.web import commands
 from src.web.config import config
-from src.web.cors import configure_cors
 from src.web.controllers.auth import auth_bp
 from src.web.controllers.home import home, home_bp
 from src.web.controllers.auth.api_auth import api_auth_controller
@@ -19,6 +18,7 @@ from src.web.controllers.configuracion.config import (
     api_configuration_controller,
     config_controller,
 )
+from src.web.controllers.configuracion.cors import configure_cors
 from src.web.controllers.cupos.api_cupos import bp_cupos
 from src.web.controllers.pedidos.api_pedidos import (
     bp_pedidos,

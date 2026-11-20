@@ -252,3 +252,86 @@ def test_regla_residente_vs_personal_fijo(mock_get_tipo, mock_pertenece):
 
     assert getattr(exc_info.value, "code", None) == 400
     assert "personal fijo" in str(exc_info.value.description)
+
+@patch("src.core.services.pedidos.pedidos.repo_personal.pertenece_a_sector")
+@patch(
+    "src.core.services.pedidos.pedidos.repo_pedidos.create_multiples_pedidos_con_solicitudes"
+)
+@patch("src.core.services.pedidos.pedidos.repo_pedidos.existe_solicitud_duplicada")
+@patch("src.core.services.pedidos.pedidos.repo_personal.get_by_id")
+@patch("src.core.services.pedidos.pedidos.cupos.get_by_sector_y_comida")
+@patch("src.core.services.pedidos.pedidos.repo_pedidos.existe_pedido_en_sector_y_fecha")
+def test_crear_pedido_semanal_genera_un_pedido_por_dia(
+    mock_existe_pedido,
+    mock_get_cupo,
+    mock_get_personal,
+    mock_existe_duplicado,
+    mock_repo_multiples,
+    mock_pertenece_sector,
+):
+    """Verifica que un pedido semanal genere 7 pedidos diarios con sus solicitudes por fecha."""
+    fecha_inicio = date(2026, 11, 23)
+    mock_existe_pedido.return_value = False
+    mock_get_cupo.return_value = SimpleNamespace(cantComensales=2)
+    mock_existe_duplicado.return_value = False
+    mock_pertenece_sector.return_value = True
+    mock_get_personal.return_value = SimpleNamespace(
+        idPersonal=10,
+        isActive=True,
+        idTipoMenu=1,
+        idTipoPersonal=1,
+        tipo_personal=SimpleNamespace(nombre="Personal Fijo"),
+    )
+    mock_repo_multiples.side_effect = lambda pares: [p for p, _ in pares]
+
+    pedidos.crear_pedido(
+        id_jefe=1,
+        id_sector=1,
+        fecha_desde=fecha_inicio,
+        periodicidad="semanal",
+        comidas={"1": [10]},
+    )
+
+    mock_repo_multiples.assert_called_once()
+    pares = mock_repo_multiples.call_args.args[0]
+    assert len(pares) == 7
+
+    for idx, (pedido_dia, solicitudes_dia) in enumerate(pares):
+        fecha_esperada = fecha_inicio + timedelta(days=idx)
+        assert pedido_dia.fecha_desde == fecha_esperada
+        assert pedido_dia.fecha_hasta == fecha_esperada
+        assert len(solicitudes_dia) == 1
+        assert solicitudes_dia[0].fecha_vianda == fecha_esperada
+        assert solicitudes_dia[0].condicionCupo == CondicionCupo.REGULAR
+
+@patch(
+    "src.core.services.pedidos.pedidos.repo_pedidos.create_multiples_pedidos_con_solicitudes"
+)
+@patch("src.core.services.pedidos.pedidos.repo_pedidos.create_pedido_con_solicitudes")
+@patch("src.core.services.pedidos.pedidos.repo_pedidos.existe_pedido_en_sector_y_fecha")
+def test_crear_pedido_semanal_conflicto_en_dia_intermedio_409(
+    mock_existe_pedido,
+    mock_repo_create_uno,
+    mock_repo_create_multiples,
+):
+    """Verifica que si uno de los días del rango semanal ya tiene pedido, aborte con 409 y no guarde nada."""
+    fecha_inicio = date(2026, 11, 23)
+    fecha_ocupada = fecha_inicio + timedelta(days=2)
+
+    mock_existe_pedido.side_effect = (
+        lambda id_sector, fecha: fecha == fecha_ocupada
+    )
+
+    with pytest.raises(Exception) as exc_info:
+        pedidos.crear_pedido(
+            id_jefe=1,
+            id_sector=1,
+            fecha_desde=fecha_inicio,
+            periodicidad="semanal",
+            comidas={"1": [10]},
+        )
+
+    assert getattr(exc_info.value, "code", None) == 409
+    assert fecha_ocupada.isoformat() in str(exc_info.value.description)
+    mock_repo_create_uno.assert_not_called()
+    mock_repo_create_multiples.assert_not_called()

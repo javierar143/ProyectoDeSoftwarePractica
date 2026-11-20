@@ -232,3 +232,25 @@ def obtener_solicitudes_para_resumen(
         stmt = stmt.where(Solicitud.idTipoMenu == id_tipo_menu)
 
     return list(db.session.execute(stmt).all())
+
+def create_multiples_pedidos_con_solicitudes(
+    pedidos_y_solicitudes: list[tuple[Pedido, list[Solicitud]]],
+) -> list[Pedido]:
+    """
+    Guarda múltiples pedidos diarios (uno por fecha) junto con sus solicitudes
+    en una única transacción.
+    """
+    pedidos_creados: list[Pedido] = []
+
+    for pedido, solicitudes in pedidos_y_solicitudes:
+        db.session.add(pedido)
+        db.session.flush()
+
+        for solicitud in solicitudes:
+            solicitud.idPedido = pedido.idPedido
+            db.session.add(solicitud)
+
+        pedidos_creados.append(pedido)
+
+    db.session.commit()
+    return pedidos_creados

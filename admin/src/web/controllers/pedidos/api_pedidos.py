@@ -3,9 +3,8 @@
 from flask import Blueprint, abort, current_app, g, jsonify, request
 
 from src.core.services.pedidos import pedidos
-from src.core.services.personal.personal import get_sector_asignado
-from src.core.services.usuarios.rol import get_by_id
-from src.web.decorators.api import authenticate_api_request
+from src.core.services.usuarios import permiso as service_permiso
+from src.web.decorators.api import token_required, permission_required, sector_assignment_required
 from src.web.validators.pedidos.pedidos_validator import (
     validar_actualizacion_pedido,
     validar_creacion_pedido,
@@ -18,63 +17,15 @@ bp_resumen_pedidos = Blueprint(
     "resumen_pedidos", __name__, url_prefix="/api/summaries"
 )
 
-
-@bp_pedidos.before_request
-def require_active_user():
-    return authenticate_api_request()
-
-
-@bp_resumen_pedidos.before_request
-def require_active_user_for_summary():
-    return authenticate_api_request()
-
-
-def _obtener_id_sector_jefe(user) -> int | None:
-    """Obtiene el idSector asignado al Jefe desde el servicio de personal o desde su usuario."""
-    id_personal = getattr(user, "idPersonal", None)
-    if id_personal is not None:
-        sector = get_sector_asignado(id_personal)
-        if sector is not None:
-            return getattr(sector, "idSector", sector)
-    return getattr(user, "idSector", None)
-
-
-def _autenticar_jefe():
-    """
-    Verifica que el usuario autenticado tenga rol Jefe y obtiene su sector.
-    """
-    user = g.user
-
-    rol = get_by_id(user.idRol)
-    nombre_rol = rol.nombre.strip().lower() if rol and rol.nombre else ""
-
-    if "jefe" not in nombre_rol:
-        current_app.logger.warning(
-            f"Usuario ID {user.id_user} con rol '{nombre_rol}' intentó gestionar pedidos sin ser Jefe de Servicio"
-        )
-        abort(
-            403,
-            description="Solo un Jefe de Servicio puede gestionar pedidos",
-        )
-
-    id_sector = _obtener_id_sector_jefe(user)
-
-    if id_sector is None:
-        current_app.logger.warning(
-            f"Jefe de Servicio ID {user.id_user} sin sector asignado intentó operar en /api/requests"
-        )
-        abort(
-            403,
-            description="El Jefe de Servicio no tiene un sector asignado",
-        )
-
-    return user, id_sector
-
-
 @bp_pedidos.route("", methods=["GET"])
+@token_required
+@permission_required("requests_index")
+@sector_assignment_required
 def listar_pedidos():
     """Endpoint para listar los pedidos correspondientes al sector del Jefe de Servicio."""
-    _, id_sector = _autenticar_jefe()
+    id_sector = getattr(g, "sector_forzado", None)
+    if id_sector is None:
+        abort(403, description="El usuario no tiene un sector asignado")
 
     es_valido, resultado = validar_filtros_pedidos(request.args)
     if not es_valido:
@@ -108,9 +59,14 @@ def listar_pedidos():
 
 
 @bp_pedidos.route("/<int:request_id>", methods=["GET"])
+@token_required
+@permission_required("requests_index")
+@sector_assignment_required
 def obtener_pedido(request_id: int):
     """Endpoint para obtener el detalle completo de un pedido por su ID."""
-    _, id_sector = _autenticar_jefe()
+    id_sector = getattr(g, "sector_forzado", None)
+    if id_sector is None:
+        abort(403, description="El usuario no tiene un sector asignado")
 
     detalle = pedidos.obtener_detalle_pedido(
         request_id, id_sector_jefe=id_sector
@@ -119,9 +75,16 @@ def obtener_pedido(request_id: int):
 
 
 @bp_pedidos.route("", methods=["POST"])
+@token_required
+@permission_required("requests_new")
+@sector_assignment_required
 def crear_nuevo_pedido():
     """Endpoint para que un Jefe de Servicio registre un nuevo pedido."""
-    user, id_sector = _autenticar_jefe()
+    user = g.user
+
+    id_sector = getattr(g, "sector_forzado", None)
+    if id_sector is None:
+        abort(403, description="El usuario no tiene un sector asignado")
 
     es_valido, resultado = validar_creacion_pedido(
         request.get_json(silent=True)
@@ -170,9 +133,16 @@ def crear_nuevo_pedido():
 
 
 @bp_pedidos.route("/<int:request_id>", methods=["PUT"])
+@token_required
+@permission_required("requests_update")
+@sector_assignment_required
 def actualizar_pedido_existente(request_id: int):
     """Endpoint para editar un pedido si aún no fue autorizado/rechazado."""
-    user, id_sector = _autenticar_jefe()
+    user = g.user
+
+    id_sector = getattr(g, "sector_forzado", None)
+    if id_sector is None:
+        abort(403, description="El usuario no tiene un sector asignado")
 
     es_valido, resultado = validar_actualizacion_pedido(
         request.get_json(silent=True)
@@ -214,9 +184,16 @@ def actualizar_pedido_existente(request_id: int):
 
 
 @bp_pedidos.route("/<int:request_id>", methods=["DELETE"])
+@token_required
+@permission_required("requests_destroy")
+@sector_assignment_required
 def eliminar_pedido_existente(request_id: int):
     """Endpoint para dar de baja lógica un pedido confirmado."""
-    user, id_sector = _autenticar_jefe()
+    user = g.user
+
+    id_sector = getattr(g, "sector_forzado", None)
+    if id_sector is None:
+        abort(403, description="El usuario no tiene un sector asignado")
 
     pedidos.borrar_pedido(request_id, id_sector_jefe=id_sector)
     current_app.logger.info(
@@ -226,27 +203,12 @@ def eliminar_pedido_existente(request_id: int):
 
 
 @bp_resumen_pedidos.route("/requests", methods=["GET"])
+@token_required
+@permission_required("summaries_index")
+@sector_assignment_required
 def resumen_de_pedidos():
-    """
-    Endpoint GET /api/summaries/requests para obtener el resumen de pedidos.
-    Roles permitidos: Servicio de Alimentación y Jefe de Servicio (limitado a su sector).
-    """
+    """Obtiene el resumen de pedidos acotado al sector si no tiene permiso global."""
     user = g.user
-
-    rol = get_by_id(user.idRol)
-    nombre_rol = rol.nombre.strip().lower() if rol and rol.nombre else ""
-
-    es_jefe = "jefe" in nombre_rol
-    es_alimentacion = "alimenta" in nombre_rol
-
-    if not (es_jefe or es_alimentacion):
-        current_app.logger.warning(
-            f"Usuario ID {user.id_user} con rol '{nombre_rol}' intentó consultar resumen de pedidos sin permisos"
-        )
-        abort(
-            403,
-            description="No tiene permisos para consultar el resumen de pedidos",
-        )
 
     es_valido, resultado = validar_filtros_resumen_pedidos(request.args)
     if not es_valido:
@@ -257,22 +219,24 @@ def resumen_de_pedidos():
 
     filtros = resultado  # type: ignore[assignment]
     id_sector_param = filtros["id_sector"]
+    sector_forzado = getattr(g, "sector_forzado", None)
 
-    if es_jefe:
-        sector_jefe = _obtener_id_sector_jefe(user)
-        if sector_jefe is None:
-            abort(
-                403,
-                description="El Jefe de Servicio no tiene un sector asignado",
-            )
-        if id_sector_param is not None and id_sector_param != sector_jefe:
-            abort(
-                403,
-                description="Un Jefe de Servicio solo puede consultar resúmenes de su propio sector",
-            )
-        id_sector_filtro = sector_jefe
-    else:
+    puede_ver_todos = service_permiso.user_has_role_permission(
+        user.id_user,
+        "personal_manage_all_sectors",
+    )
+
+    if puede_ver_todos:
         id_sector_filtro = id_sector_param
+    else:
+        if sector_forzado is None:
+            abort(403, description="El usuario no tiene un sector asignado")
+        if id_sector_param is not None and id_sector_param != sector_forzado:
+            abort(
+                403,
+                description="Solo puede consultar resúmenes de su propio sector",
+            )
+        id_sector_filtro = sector_forzado
 
     resumen = pedidos.obtener_resumen_pedidos(
         id_sector=id_sector_filtro,
