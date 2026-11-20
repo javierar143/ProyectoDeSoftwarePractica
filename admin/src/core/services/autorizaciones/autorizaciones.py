@@ -290,9 +290,32 @@ def generar_csv_personas_autorizadas(filas: list[dict]) -> str:
     return output.getvalue()
 
 
+AGRUPAMIENTOS_RESUMEN_VALIDOS = {
+    "dia",
+    "día",
+    "semana",
+    "mes",
+    "sector",
+    "comida",
+    "tipo_menu",
+    "condicion",
+}
+
+
+def _normalizar_agrupamiento_opcional(agrupamiento: str | None) -> str | None:
+    """Valida y normaliza el parámetro opcional de agrupamiento para resúmenes."""
+    if agrupamiento is None or str(agrupamiento).strip() == "":
+        return None
+    valor = str(agrupamiento).strip().lower()
+    if valor not in AGRUPAMIENTOS_RESUMEN_VALIDOS:
+        raise ValueError(
+            "El parámetro 'agrupamiento' debe ser: dia, semana, mes, sector, comida, tipo_menu o condicion."
+        )
+    return "dia" if valor == "día" else valor
+
 def resumen_autorizaciones_service(filtros: dict):
-    """Obtiene el resumen de autorizaciones (pedidos vs autorizados) en JSON o CSV"""
-    
+    """Obtiene el resumen de autorizaciones (pedidos vs autorizados) en JSON o CSV."""
+
     formato = filtros.get("formato")
     if formato is not None and formato != "csv":
         raise ValueError("El parámetro 'formato' solo admite el valor 'csv'.")
@@ -300,6 +323,7 @@ def resumen_autorizaciones_service(filtros: dict):
     if formato == "csv":
         _validar_formato_y_rango_csv(filtros)
 
+    agrupamiento = _normalizar_agrupamiento_opcional(filtros.get("agrupamiento"))
     filtros_validados = validador.validar_filtros_autorizaciones(filtros)
     filtros_validados = _forzar_sector_jefe_servicio(filtros_validados)
 
@@ -311,6 +335,7 @@ def resumen_autorizaciones_service(filtros: dict):
         id_tipo_menu=filtros_validados.get("tipo_menu"),
         condicion=filtros_validados.get("condicion"),
         estado=filtros_validados.get("estado_enum"),
+        agrupamiento=agrupamiento,
     )
 
     if formato == "csv":
@@ -472,22 +497,54 @@ def _forzar_sector_jefe_servicio(filtros: dict):
     return filtros
 
 
-
-
 def resumen_entregas_generales_service(filtros: dict):
-    """Obtiene el resumen general de entregas (autorizados vs entregados)"""
+    """Obtiene el resumen general de entregas (autorizados vs entregados) en JSON o CSV."""
 
-    filtros = validador.validar_filtros_autorizaciones(filtros)
-    filtros = _forzar_sector_jefe_servicio(filtros)
+    formato = filtros.get("formato")
+    if formato is not None and formato != "csv":
+        raise ValueError("El parámetro 'formato' solo admite el valor 'csv'.")
 
-    return repo_solicitudes.obtener_resumen_entregas_generales(
-        fecha_desde=filtros.get("fecha_desde"),
-        fecha_hasta=filtros.get("fecha_hasta"),
-        id_sector=filtros.get("sector"),
-        id_tipo_comida=filtros.get("tipo_comida"),
-        id_tipo_menu=filtros.get("tipo_menu"),
-        condicion=filtros.get("condicion"),
+    if formato == "csv":
+        _validar_formato_y_rango_csv(filtros)
+
+    agrupamiento = _normalizar_agrupamiento_opcional(filtros.get("agrupamiento"))
+    filtros_validados = validador.validar_filtros_autorizaciones(filtros)
+    filtros_validados = _forzar_sector_jefe_servicio(filtros_validados)
+
+    resumen = repo_solicitudes.obtener_resumen_entregas_generales(
+        fecha_desde=filtros_validados.get("fecha_desde"),
+        fecha_hasta=filtros_validados.get("fecha_hasta"),
+        id_sector=filtros_validados.get("sector"),
+        id_tipo_comida=filtros_validados.get("tipo_comida"),
+        id_tipo_menu=filtros_validados.get("tipo_menu"),
+        condicion=filtros_validados.get("condicion"),
+        agrupamiento=agrupamiento,
     )
+
+    if formato == "csv":
+        output = io.StringIO()
+        columnas = [
+            "sector",
+            "comida",
+            "tipo de menú",
+            "total autorizadas",
+            "total entregadas",
+            "diferencia",
+        ]
+        writer = csv.DictWriter(output, fieldnames=columnas)
+        writer.writeheader()
+        for fila in resumen.get("desglose", []):
+            writer.writerow({
+                "sector": fila["sector"],
+                "comida": fila["comida"],
+                "tipo de menú": fila["tipo_menu"],
+                "total autorizadas": fila["total_autorizado"],
+                "total entregadas": fila["total_entregado"],
+                "diferencia": fila["diferencia"],
+            })
+        return output.getvalue()
+
+    return resumen
 
 def listar_fechas_para_autorizacion(filtros: dict):
     """Lista las fechas que poseen pedidos para marcar en el calendario """

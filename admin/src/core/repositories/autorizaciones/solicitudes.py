@@ -254,6 +254,41 @@ def buscar_comidas_autorizadas(
         })
     return resultados
 
+def _clave_agrupacion(
+    fecha_vianda,
+    id_sector,
+    nombre_sector,
+    id_comida,
+    nombre_comida,
+    id_menu,
+    nombre_menu,
+    condicion_str,
+    agrupamiento: str | None,
+):
+    """Devuelve el par (clave, etiqueta) según el criterio de agrupamiento solicitado."""
+    if not agrupamiento:
+        return None
+    if agrupamiento in ("dia", "día"):
+        clave = fecha_vianda.isoformat()
+        return (clave, clave)
+    if agrupamiento == "semana":
+        iso_year, iso_week, _ = fecha_vianda.isocalendar()
+        clave = f"{iso_year}-W{iso_week:02d}"
+        return (clave, clave)
+    if agrupamiento == "mes":
+        clave = fecha_vianda.strftime("%Y-%m")
+        return (clave, clave)
+    if agrupamiento == "sector":
+        return (f"sector_{id_sector}", nombre_sector or f"Sector #{id_sector}")
+    if agrupamiento == "comida":
+        return (f"comida_{id_comida}", nombre_comida or f"Comida #{id_comida}")
+    if agrupamiento == "tipo_menu":
+        return (f"menu_{id_menu}", nombre_menu or f"Menú #{id_menu}")
+    if agrupamiento == "condicion":
+        return (condicion_str.lower(), condicion_str.capitalize())
+    return None
+
+
 def obtener_resumen_autorizaciones(
     fecha_desde=None,
     fecha_hasta=None,
@@ -262,8 +297,9 @@ def obtener_resumen_autorizaciones(
     id_tipo_menu=None,
     condicion=None,
     estado=None,
+    agrupamiento=None,
 ):
-    """Calcula totales pedidos vs autorizados (general y desglosado por sector, comida y tipo de menú)"""
+    """Calcula totales pedidos vs autorizados (general, desglose y agrupación opcional)."""
 
     stmt = (
         select(Solicitud, Pedido, Sector, TipoComida, TipoMenu)
@@ -300,6 +336,7 @@ def obtener_resumen_autorizaciones(
     residentes_ped = 0
 
     desglose_map = {}
+    agrup_map = {}
 
     for s, p, sec, com, menu in filas:
         es_aut = s.estadoAutorizacion == EstadoAutorizacion.AUTORIZADA
@@ -320,7 +357,14 @@ def obtener_resumen_autorizaciones(
         else:
             regulares_ped += 1
 
-        clave = (sec.idSector, sec.nombre, com.idTipoComida, com.nombre, menu.idTipoMenu, menu.nombre)
+        clave = (
+            sec.idSector,
+            sec.nombre,
+            com.idTipoComida,
+            com.nombre,
+            menu.idTipoMenu,
+            menu.nombre,
+        )
         if clave not in desglose_map:
             desglose_map[clave] = {
                 "idSector": sec.idSector,
@@ -346,9 +390,43 @@ def obtener_resumen_autorizaciones(
             item["cantidad_autorizada"] += 1
         item["diferencia"] = item["cantidad_pedida"] - item["cantidad_autorizada"]
 
+        par_agrup = _clave_agrupacion(
+            s.fecha_vianda,
+            sec.idSector,
+            sec.nombre,
+            com.idTipoComida,
+            com.nombre,
+            menu.idTipoMenu,
+            menu.nombre,
+            val_cond,
+            agrupamiento,
+        )
+        if par_agrup is not None:
+            clave_grp, etiqueta_grp = par_agrup
+            if clave_grp not in agrup_map:
+                agrup_map[clave_grp] = {
+                    "clave": clave_grp,
+                    "etiqueta": etiqueta_grp,
+                    "total_pedido": 0,
+                    "total_autorizado": 0,
+                    "diferencia": 0,
+                }
+            grp = agrup_map[clave_grp]
+            grp["total_pedido"] += 1
+            if es_aut:
+                grp["total_autorizado"] += 1
+            grp["diferencia"] = grp["total_pedido"] - grp["total_autorizado"]
+
     desglose_ordenado = [
         desglose_map[k]
-        for k in sorted(desglose_map.keys(), key=lambda x: (x[1], x[3], x[5]))
+        for k in sorted(
+            desglose_map.keys(),
+            key=lambda x: (x[1], x[3], x[5]),
+        )
+    ]
+
+    agrupaciones_ordenadas = [
+        agrup_map[k] for k in sorted(agrup_map.keys())
     ]
 
     return {
@@ -359,13 +437,33 @@ def obtener_resumen_autorizaciones(
         "total_autorizado": total_autorizado,
         "diferencia": total_pedido - total_autorizado,
         "desglose": desglose_ordenado,
+        "agrupaciones": agrupaciones_ordenadas,
     }
 
 
-def obtener_resumen_entregas_generales(fecha_desde=None, fecha_hasta=None, id_sector=None, id_tipo_comida=None, id_tipo_menu=None):
-    """Calcula totales autorizados vs entregados con su diferencia para resúmenes generales"""
+def obtener_resumen_entregas_generales(
+    fecha_desde=None,
+    fecha_hasta=None,
+    id_sector=None,
+    id_tipo_comida=None,
+    id_tipo_menu=None,
+    condicion=None,
+    agrupamiento=None,
+):
+    """Calcula totales autorizados vs entregados con desglose y agrupación opcional."""
 
-    stmt = select(Solicitud, Pedido).join(Pedido, Solicitud.idPedido == Pedido.idPedido).where(Solicitud.estadoAutorizacion == EstadoAutorizacion.AUTORIZADA)
+    stmt = (
+        select(Solicitud, Pedido, Sector, TipoComida, TipoMenu)
+        .join(Pedido, Solicitud.idPedido == Pedido.idPedido)
+        .join(Sector, Pedido.idSector == Sector.idSector)
+        .join(TipoComida, Solicitud.idTipoComida == TipoComida.idTipoComida)
+        .join(TipoMenu, Solicitud.idTipoMenu == TipoMenu.idTipoMenu)
+        .where(
+            Solicitud.estadoAutorizacion == EstadoAutorizacion.AUTORIZADA,
+            Solicitud.activo.is_(True),
+            Pedido.activo.is_(True),
+        )
+    )
     if fecha_desde:
         stmt = stmt.where(Solicitud.fecha_vianda >= fecha_desde)
     if fecha_hasta:
@@ -376,22 +474,113 @@ def obtener_resumen_entregas_generales(fecha_desde=None, fecha_hasta=None, id_se
         stmt = stmt.where(Solicitud.idTipoComida == id_tipo_comida)
     if id_tipo_menu:
         stmt = stmt.where(Solicitud.idTipoMenu == id_tipo_menu)
+    if condicion and condicion != "todas":
+        try:
+            cond_enum = CondicionCupo[condicion.upper()]
+            stmt = stmt.where(Solicitud.condicionCupo == cond_enum)
+        except KeyError:
+            stmt = stmt.where(Solicitud.condicionCupo == condicion.lower())
 
     filas = db.session.execute(stmt).all()
+    ids_solicitudes = [s.idSolicitud for s, _, _, _, _ in filas]
+
+    ids_entregados = set()
+    if ids_solicitudes:
+        stmt_entregas = select(Entrega.idSolicitud).where(
+            Entrega.idSolicitud.in_(ids_solicitudes)
+        )
+        ids_entregados = set(db.session.execute(stmt_entregas).scalars().all())
+
     total_autorizado = len(filas)
     total_entregado = 0
-    for solicitud, pedido in filas:
-        # De las autorizadas, cuento cuantas tienen un registro de entrega hecho
-        entregada = db.session.scalars(select(Entrega).where(Entrega.idSolicitud == solicitud.idSolicitud)).first() is not None
-        if entregada:
+    desglose_map = {}
+    agrup_map = {}
+
+    for s, p, sec, com, menu in filas:
+        es_entregada = s.idSolicitud in ids_entregados
+        if es_entregada:
             total_entregado += 1
+
+        val_cond = (
+            s.condicionCupo.value
+            if hasattr(s.condicionCupo, "value")
+            else str(s.condicionCupo)
+        )
+
+        clave = (
+            sec.idSector,
+            sec.nombre,
+            com.idTipoComida,
+            com.nombre,
+            menu.idTipoMenu,
+            menu.nombre,
+        )
+        if clave not in desglose_map:
+            desglose_map[clave] = {
+                "idSector": sec.idSector,
+                "sector": sec.nombre,
+                "idTipoComida": com.idTipoComida,
+                "comida": com.nombre,
+                "idTipoMenu": menu.idTipoMenu,
+                "tipo_menu": menu.nombre,
+                "total_autorizado": 0,
+                "total_entregado": 0,
+                "diferencia": 0,
+            }
+
+        item = desglose_map[clave]
+        item["total_autorizado"] += 1
+        if es_entregada:
+            item["total_entregado"] += 1
+        item["diferencia"] = item["total_autorizado"] - item["total_entregado"]
+
+        par_agrup = _clave_agrupacion(
+            s.fecha_vianda,
+            sec.idSector,
+            sec.nombre,
+            com.idTipoComida,
+            com.nombre,
+            menu.idTipoMenu,
+            menu.nombre,
+            val_cond,
+            agrupamiento,
+        )
+        if par_agrup is not None:
+            clave_grp, etiqueta_grp = par_agrup
+            if clave_grp not in agrup_map:
+                agrup_map[clave_grp] = {
+                    "clave": clave_grp,
+                    "etiqueta": etiqueta_grp,
+                    "total_autorizado": 0,
+                    "total_entregado": 0,
+                    "diferencia": 0,
+                }
+            grp = agrup_map[clave_grp]
+            grp["total_autorizado"] += 1
+            if es_entregada:
+                grp["total_entregado"] += 1
+            grp["diferencia"] = grp["total_autorizado"] - grp["total_entregado"]
+
+    desglose_ordenado = [
+        desglose_map[k]
+        for k in sorted(
+            desglose_map.keys(),
+            key=lambda x: (x[1], x[3], x[5]),
+        )
+    ]
+
+    agrupaciones_ordenadas = [
+        agrup_map[k] for k in sorted(agrup_map.keys())
+    ]
 
     return {
         "total_autorizado": total_autorizado,
         "total_entregado": total_entregado,
         "diferencia": total_autorizado - total_entregado,
+        "desglose": desglose_ordenado,
+        "agrupaciones": agrupaciones_ordenadas,
     }
-
+    
 def listar_fechas_autorizacion(
     fecha_desde=None,
     fecha_hasta=None,

@@ -345,6 +345,7 @@ def resumen_authorizations():
         "condicion": request.args.get("condicion"),
         "estado": request.args.get("estado"),
         "formato": formato,
+        "agrupamiento": request.args.get("agrupamiento"),
     }
     try:
         resultado = autorizaciones_service.resumen_autorizaciones_service(filtros)
@@ -363,6 +364,40 @@ def resumen_authorizations():
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         current_app.logger.error(f"Error al obtener resumen de autorizaciones: {str(e)}")
+        return jsonify({"error": "Ocurrió un error interno en el servidor"}), 500
+
+@api_autorizaciones_controller.route("/summaries/deliveries", methods=["GET"])
+def resumen_deliveries():
+    """Obtiene el resumen general de entregas (autorizados vs entregados) en JSON o CSV."""
+
+    formato = request.args.get("formato")
+    filtros = {
+        "fecha_desde": request.args.get("fecha_desde"),
+        "fecha_hasta": request.args.get("fecha_hasta"),
+        "sector": request.args.get("sector", type=int),
+        "tipo_comida": request.args.get("tipo_comida", type=int),
+        "tipo_menu": request.args.get("tipo_menu", type=int),
+        "condicion": request.args.get("condicion"),
+        "agrupamiento": request.args.get("agrupamiento"),
+        "formato": formato,
+    }
+    try:
+        resultado = autorizaciones_service.resumen_entregas_generales_service(filtros)
+        if formato == "csv":
+            return Response(
+                resultado,
+                status=200,
+                mimetype="text/csv; charset=utf-8",
+                headers={
+                    "Content-Disposition": 'attachment; filename="totales_entregas.csv"'
+                },
+            )
+        return jsonify(resultado), 200
+    except ValueError as e:
+        current_app.logger.warning(f"Error de validación en resumen de entregas: {str(e)}")
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        current_app.logger.error(f"Error al obtener resumen de entregas: {str(e)}")
         return jsonify({"error": "Ocurrió un error interno en el servidor"}), 500
 
 @api_autorizaciones_controller.route("/authorization-dates", methods=["GET"])
