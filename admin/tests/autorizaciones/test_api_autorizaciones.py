@@ -29,20 +29,71 @@ def client(monkeypatch):
         db.session.execute(
             text(
                 'DELETE FROM "Entrega" WHERE "idSolicitud" IN '
-                "(10, 11, 20, 21, 30, 31, 40, 41, 42, 50, 51, 60);"
+                "(10, 11, 20, 21, 30, 31, 40, 41, 42, 50, 51, 52, 60);"
             )
         )
         db.session.execute(
             text(
                 'DELETE FROM "Solicitud" WHERE "idSolicitud" IN '
-                "(10, 11, 20, 21, 30, 31, 40, 41, 42, 50, 51, 60);"
+                "(10, 11, 20, 21, 30, 31, 40, 41, 42, 50, 51, 52, 60);"
             )
         )
         db.session.execute(
             text(
                 'DELETE FROM "Pedido" WHERE "idPedido" IN '
-                "(100, 200, 300, 301, 400, 401, 500, 501, 600);"
+                "(100, 200, 300, 301, 400, 401, 500, 501, 502, 600);"
             )
+        )
+
+        # Garantizar los catálogos usados por Pedidos y Solicitudes.
+        db.session.execute(
+            text("""
+                INSERT INTO "TipoPersonal" ("idTipoPersonal", nombre)
+                VALUES (1, 'Fijo')
+                ON CONFLICT ("idTipoPersonal") DO NOTHING;
+            """)
+        )
+        db.session.execute(
+            text("""
+                INSERT INTO "TipoMenu"
+                    ("idTipoMenu", nombre, "isActive", inserted_at, updated_at)
+                VALUES
+                    (1, 'General', true, NOW(), NOW())
+                ON CONFLICT ("idTipoMenu") DO UPDATE SET
+                    nombre = EXCLUDED.nombre,
+                    "isActive" = EXCLUDED."isActive",
+                    updated_at = NOW();
+            """)
+        )
+        db.session.execute(
+            text("""
+                INSERT INTO "TipoComida" ("idTipoComida", nombre)
+                VALUES
+                    (1, 'Desayuno'),
+                    (2, 'Almuerzo')
+                ON CONFLICT ("idTipoComida") DO UPDATE SET
+                    nombre = EXCLUDED.nombre;
+            """)
+        )
+        db.session.execute(
+            text("""
+                INSERT INTO "Sector"
+                    ("idSector", nombre, descripcion, "isActive", inserted_at, updated_at)
+                VALUES
+                    (1, 'Guardia', 'Sector de prueba', true, NOW(), NOW())
+                ON CONFLICT ("idSector") DO UPDATE SET
+                    nombre = EXCLUDED.nombre,
+                    descripcion = EXCLUDED.descripcion,
+                    "isActive" = EXCLUDED."isActive",
+                    updated_at = NOW();
+            """)
+        )
+        db.session.execute(
+            text("""
+                INSERT INTO "Rol" ("idRol", nombre)
+                VALUES (1, 'Administrador')
+                ON CONFLICT ("idRol") DO NOTHING;
+            """)
         )
 
         # Insertar Personal de prueba con todas las columnas NOT NULL del modelo Personal
@@ -434,3 +485,51 @@ def test_get_authorizations_summary(client):
     # Condición inválida en validator -> 400
     res_bad_cond = client.get("/api/summaries/authorizations?condicion=invalida")
     assert res_bad_cond.status_code == 400
+
+
+def test_get_deliveries_summary_general(client):
+    """Verifica el resumen general de entregas en JSON, CSV y validación del rango."""
+    hoy = date.today().isoformat()
+    _insertar_pedido_y_solicitudes(
+        id_pedido=502,
+        estado_pedido="autorizado",
+        solicitudes=[
+            (52, 1, 1, "autorizada"),
+        ],
+    )
+
+    res_entrega = client.post(
+        "/api/deliveries",
+        json={"id_user": 1, "ids_solicitudes": [52], "id_personal": 1},
+    )
+    assert res_entrega.status_code == 201
+
+    res_json = client.get(
+        f"/api/summaries/deliveries"
+        f"?fecha_desde={hoy}&fecha_hasta={hoy}&agrupamiento=dia"
+    )
+    assert res_json.status_code == 200
+    data = res_json.get_json()
+    assert data["total_autorizado"] >= 1
+    assert data["total_entregado"] >= 1
+    assert data["diferencia"] == data["total_autorizado"] - data["total_entregado"]
+    assert isinstance(data["desglose"], list)
+    assert isinstance(data["agrupaciones"], list)
+    assert any(
+        agrupacion["clave"] == hoy
+        for agrupacion in data["agrupaciones"]
+    )
+
+    res_csv = client.get(
+        f"/api/summaries/deliveries"
+        f"?fecha_desde={hoy}&fecha_hasta={hoy}&formato=csv"
+    )
+    assert res_csv.status_code == 200
+    assert res_csv.mimetype == "text/csv"
+    assert "totales_entregas.csv" in res_csv.headers["Content-Disposition"]
+    assert b"sector" in res_csv.data
+
+    res_sin_rango = client.get(
+        "/api/summaries/deliveries?formato=csv"
+    )
+    assert res_sin_rango.status_code == 400
