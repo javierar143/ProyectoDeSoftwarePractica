@@ -176,7 +176,7 @@ const filasPorComida = computed(() => {
   const mapa = new Map()
 
   for (const item of props.resumenAutorizaciones.desglose ?? []) {
-    const clave = item.tipo_comida || `Comida #${item.idTipoComida}`
+    const clave = item.comida || item.tipo_comida || `Comida #${item.idTipoComida}`
     if (!mapa.has(clave)) {
       mapa.set(clave, { comida: clave, pedidas: 0, autorizadas: 0, entregadas: 0 })
     }
@@ -186,7 +186,7 @@ const filasPorComida = computed(() => {
   }
 
   for (const item of props.resumenEntregas.desglose ?? []) {
-    const clave = item.tipo_comida || `Comida #${item.idTipoComida}`
+    const clave = item.comida || item.tipo_comida || `Comida #${item.idTipoComida}`
     if (!mapa.has(clave)) {
       mapa.set(clave, { comida: clave, pedidas: 0, autorizadas: 0, entregadas: 0 })
     }
