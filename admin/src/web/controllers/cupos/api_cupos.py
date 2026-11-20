@@ -3,9 +3,7 @@
 from flask import Blueprint, abort, current_app, g, jsonify, request
 
 from src.core.services.cupos import cupos
-from src.core.services.personal.personal import get_sector_asignado
-from src.core.services.usuarios.rol import get_by_id
-from src.web.decorators.api import authenticate_api_request
+from src.web.decorators.api import token_required, permission_required, sector_assignment_required
 from src.web.validators.cupos.cupos_validator import (
     validar_entrada_cupo,
     validar_filtros_listado_cupos,
@@ -13,46 +11,14 @@ from src.web.validators.cupos.cupos_validator import (
 
 bp_cupos = Blueprint("cupos", __name__, url_prefix="/api/quotas")
 
-
-@bp_cupos.before_request
-def require_active_user():
-    return authenticate_api_request()
-
-
-def _autenticar_y_obtener_rol():
-    """Obtiene el usuario ya autenticado y su rol operativo."""
-    user = g.user
-
-    rol = get_by_id(user.idRol)
-    nombre_rol = rol.nombre.strip().lower() if rol and rol.nombre else ""
-
-    return user, nombre_rol
-
-
-def _obtener_sector_jefe(user) -> int | None:
-    """Obtiene el idSector del Jefe de Servicio desde personal o desde su usuario."""
-    id_personal = getattr(user, "idPersonal", None)
-    if id_personal is not None:
-        sector = get_sector_asignado(id_personal)
-        if sector is not None:
-            return getattr(sector, "idSector", sector)
-    return getattr(user, "idSector", None)
-
-
 @bp_cupos.route("", methods=["GET"])
+@token_required
+@permission_required("quotas_index")
+@sector_assignment_required
 def listar_cupos():
     """Endpoint para listar cupos filtrados por sector y tipo de comida."""
-    user, nombre_rol = _autenticar_y_obtener_rol()
-
-    es_jefe = "jefe" in nombre_rol
-    es_alimentacion = "alimenta" in nombre_rol
-    es_comedor = "comedor" in nombre_rol
-
-    if not (es_jefe or es_alimentacion or es_comedor):
-        current_app.logger.warning(
-            f"Usuario ID {user.id_user} con rol '{nombre_rol}' intentó listar cupos sin permisos"
-        )
-        abort(403, description="No tiene permisos para consultar cupos")
+    user = g.user
+    sector_forzado = getattr(g, "sector_forzado", None)
 
     es_valido, resultado = validar_filtros_listado_cupos(request.args)
     if not es_valido:
@@ -64,22 +30,16 @@ def listar_cupos():
     filtros = resultado  # type: ignore[assignment]
     id_sector_param = filtros["id_sector"]
 
-    if es_jefe:
-        sector_jefe = _obtener_sector_jefe(user)
-        if sector_jefe is None:
+    if sector_forzado is not None:
+        if id_sector_param is not None and id_sector_param != sector_forzado:
             current_app.logger.warning(
-                f"Jefe de Servicio ID {user.id_user} sin sector asignado intentó consultar cupos"
-            )
-            abort(403, description="El usuario no tiene un sector asignado")
-        if id_sector_param is not None and id_sector_param != sector_jefe:
-            current_app.logger.warning(
-                f"Jefe de Servicio ID {user.id_user} (sector {sector_jefe}) intentó consultar cupos del sector {id_sector_param}"
+                f"Usuario ID {user.id_user} (sector {sector_forzado}) intentó consultar cupos del sector {id_sector_param}"
             )
             abort(
                 403,
-                description="Un Jefe de Servicio solo puede consultar cupos de su propio sector",
+                description="Solo puede consultar cupos de su propio sector",
             )
-        id_sector_filtro = sector_jefe
+        id_sector_filtro = sector_forzado
     else:
         id_sector_filtro = id_sector_param
 
@@ -113,32 +73,24 @@ def listar_cupos():
 
 
 @bp_cupos.route("/<int:quota_id>", methods=["GET"])
+@token_required
+@permission_required("quotas_index")
+@sector_assignment_required
 def obtener_cupo(quota_id: int):
     """Endpoint para consultar el detalle de un cupo por su ID."""
-    user, nombre_rol = _autenticar_y_obtener_rol()
-
-    es_jefe = "jefe" in nombre_rol
-    es_alimentacion = "alimenta" in nombre_rol
-    es_comedor = "comedor" in nombre_rol
-
-    if not (es_jefe or es_alimentacion or es_comedor):
-        current_app.logger.warning(
-            f"Usuario ID {user.id_user} sin permisos intentó consultar cupo ID {quota_id}"
-        )
-        abort(403, description="No tiene permisos para consultar cupos")
+    user = g.user
+    sector_forzado = getattr(g, "sector_forzado", None)
 
     cupo = cupos.obtener_por_id(quota_id)
 
-    if es_jefe:
-        sector_jefe = _obtener_sector_jefe(user)
-        if cupo.idSector != sector_jefe:
-            current_app.logger.warning(
-                f"Jefe ID {user.id_user} (sector {sector_jefe}) intentó ver cupo ID {quota_id} del sector {cupo.idSector}"
-            )
-            abort(
-                403,
-                description="No tiene permisos para consultar un cupo de otro sector",
-            )
+    if sector_forzado is not None and cupo.idSector != sector_forzado:
+        current_app.logger.warning(
+            f"Usuario ID {user.id_user} (sector {sector_forzado}) intentó ver cupo ID {quota_id} del sector {cupo.idSector}"
+        )
+        abort(
+            403,
+            description="No tiene permisos para consultar un cupo de otro sector",
+        )
 
     return (
         jsonify(
@@ -155,18 +107,11 @@ def obtener_cupo(quota_id: int):
 
 
 @bp_cupos.route("", methods=["POST"])
+@token_required
+@permission_required("quotas_new")
 def crear_nuevo_cupo():
     """Endpoint para crear un cupo (Exclusivo rol Servicio de Alimentación)."""
-    user, nombre_rol = _autenticar_y_obtener_rol()
-
-    if "alimenta" not in nombre_rol:
-        current_app.logger.warning(
-            f"Usuario ID {user.id_user} con rol '{nombre_rol}' intentó crear un cupo sin permisos"
-        )
-        abort(
-            403,
-            description="Solo el Servicio de Alimentación puede crear cupos",
-        )
+    user = g.user
 
     es_valido, resultado = validar_entrada_cupo(request.get_json(silent=True))
     if not es_valido:
@@ -201,18 +146,11 @@ def crear_nuevo_cupo():
 
 
 @bp_cupos.route("/<int:quota_id>", methods=["PUT"])
+@token_required
+@permission_required("quotas_update")
 def modificar_cupo(quota_id: int):
     """Endpoint para modificar un cupo existente (Exclusivo rol Servicio de Alimentación)."""
-    user, nombre_rol = _autenticar_y_obtener_rol()
-
-    if "alimenta" not in nombre_rol:
-        current_app.logger.warning(
-            f"Usuario ID {user.id_user} con rol '{nombre_rol}' intentó modificar cupo ID {quota_id}"
-        )
-        abort(
-            403,
-            description="Solo el Servicio de Alimentación puede modificar cupos",
-        )
+    user = g.user
 
     es_valido, resultado = validar_entrada_cupo(request.get_json(silent=True))
     if not es_valido:
@@ -248,18 +186,11 @@ def modificar_cupo(quota_id: int):
 
 
 @bp_cupos.route("/<int:quota_id>", methods=["DELETE"])
+@token_required
+@permission_required("quotas_destroy")
 def eliminar_cupo(quota_id: int):
     """Endpoint para dar de baja lógica un cupo (Exclusivo rol Servicio de Alimentación)."""
-    user, nombre_rol = _autenticar_y_obtener_rol()
-
-    if "alimenta" not in nombre_rol:
-        current_app.logger.warning(
-            f"Usuario ID {user.id_user} con rol '{nombre_rol}' intentó eliminar cupo ID {quota_id}"
-        )
-        abort(
-            403,
-            description="Solo el Servicio de Alimentación puede eliminar cupos",
-        )
+    user = g.user
 
     cupo_inactivado = cupos.eliminar(quota_id)
     current_app.logger.info(

@@ -19,6 +19,24 @@ PERMISOS_SECTORES = (
     "sector_index",  # listar y ver detalle de sectores
 )
 
+PERMISOS_PEDIDOS = (
+    "requests_index",
+    "requests_new",
+    "requests_update",
+    "requests_destroy",
+)
+
+PERMISOS_RESUMENES = (
+    "summaries_index",
+)
+
+PERMISOS_CUPOS = (
+    "quotas_index",
+    "quotas_new",
+    "quotas_update",
+    "quotas_destroy",
+)
+
 PERMISOS_PERSONAL = (
     "personal_index",
     "personal_new",
@@ -31,18 +49,23 @@ PERMISOS_PERSONAL = (
 
 PERMISOS_POR_ROL = {
     "Administrador": PERMISOS_USUARIOS + PERMISOS_PERSONAL,
-    "Servicio de Alimentación": PERMISOS_PERSONAL + PERMISOS_SECTORES,
+    "Servicio de Alimentación": PERMISOS_PERSONAL + PERMISOS_SECTORES + PERMISOS_CUPOS + PERMISOS_RESUMENES,
     "Jefe de Servicio": (
         "personal_index",
         "personal_new",
         "personal_update",
         "personal_destroy",
         "personal_import",
+    )+ PERMISOS_PEDIDOS + (
+        "summaries_index",
+        "quotas_index",
     ),
     "Sector Comedor": (
         "personal_index",
         "personal_manage_all_sectors",
-    )+ PERMISOS_SECTORES,
+    )+ PERMISOS_SECTORES + (
+        "quotas_index",
+    ),
 }
 
 
