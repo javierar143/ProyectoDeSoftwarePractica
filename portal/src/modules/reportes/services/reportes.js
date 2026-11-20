@@ -84,3 +84,13 @@ export async function obtenerTiposMenu() {
   const { data } = await apiClient.get('/menu-types')
   return data
 }
+
+/**
+ * Obtiene el listado de sectores (incluyendo inactivos para reportes históricos).
+ */
+export async function obtenerSectores() {
+  const { data } = await apiClient.get('/sectors', {
+    params: { estado: 'todos' },
+  })
+  return Array.isArray(data) ? data : (data.items ?? data.sectores ?? [])
+}
