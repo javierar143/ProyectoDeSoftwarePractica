@@ -9,6 +9,10 @@ import { systemRoutes } from './system/routes'
 
 /**
  * Reúne las rutas declaradas por los distintos módulos del portal.
+ *
+ * Auth y system quedan fuera del layout.
+ * Las rutas operativas se anidan bajo AppLayout para mostrar
+ * top bar + navbar + contenido.
  */
 const routes = [
   {
@@ -16,10 +20,16 @@ const routes = [
     redirect: { name: 'login' },
   },
   ...authRoutes,
-  ...jefeServicioRoutes,
-  ...servicioAlimentacionRoutes,
-  ...sectorComedorRoutes,
   ...systemRoutes,
+  {
+    path: '/',
+    component: () => import('@/layouts/AppLayout.vue'),
+    children: [
+      ...jefeServicioRoutes,
+      ...servicioAlimentacionRoutes,
+      ...sectorComedorRoutes,
+    ],
+  },
 ]
 
 /**
