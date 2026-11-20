@@ -129,9 +129,120 @@ footer {
     margin-top: 30px;
 }
 
-@media (max-width: 600px) {
-	.container {
+@media (max-width: 767px) {
+	.container,
+	.content {
 		padding: 16px;
+	}
+
+	.personal-page-header,
+	.personal-page-header-actions,
+	.personal-filters,
+	.personal-pagination,
+	.personal-import-summary,
+	.personal-import-actions,
+	.personal-modal-actions {
+		align-items: stretch;
+	}
+
+	.personal-page-header,
+	.personal-page-header-actions,
+	.personal-filters,
+	.personal-import-summary,
+	.personal-import-actions,
+	.personal-modal-actions,
+	.personal-pagination {
+		flex-direction: column;
+	}
+
+	.personal-page-header-actions,
+	.personal-import-actions,
+	.personal-modal-actions {
+		display: flex;
+		width: 100%;
+	}
+
+	.personal-page-header-actions a,
+	.personal-import-actions a,
+	.personal-import-actions button,
+	.personal-modal-actions button {
+		width: 100%;
+		text-align: center;
+	}
+
+	.personal-filters {
+		display: flex;
+	}
+
+	.personal-filters > div {
+		width: 100%;
+	}
+
+	.personal-import-summary {
+		display: flex;
+	}
+
+	.personal-import-summary > div {
+		width: 100%;
+	}
+
+	.personal-form-grid {
+		display: grid;
+		grid-template-columns: 1fr;
+	}
+
+	.personal-modal {
+		width: calc(100% - 2rem);
+		max-width: 400px;
+		box-sizing: border-box;
+	}
+
+	.personal-import-card,
+	.personal-results-container {
+		padding: 16px;
+	}
+}
+
+/* ===== Tablet: 768px a 1024px ===== */
+@media (min-width: 768px) and (max-width: 1024px) {
+	.personal-filters {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.personal-form-grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		column-gap: 16px;
+		row-gap: 16px;
+	}
+
+	.personal-form-grid > div {
+		margin-top: 0 !important;
+	}
+
+	.personal-import-summary {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+
+/* ===== Escritorio: 1025px en adelante ===== */
+@media (min-width: 1025px) {
+	.personal-filters {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
+
+	.personal-form-grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		column-gap: 24px;
+		row-gap: 16px;
+	}
+
+	.personal-form-grid > div {
+		margin-top: 0 !important;
 	}
 }
 dt {

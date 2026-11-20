@@ -7,7 +7,7 @@
     <h1>{{ "Editar Personal" if persona else "Registrar Nuevo Personal" }}</h1>
 
     {% if errores %}
-        <section aria-label="Errores de validación" style="color: red; margin-bottom: 1rem;">
+        <section aria-label="Errores de validación" style="color: #b91c1c; margin-bottom: 1rem;">
             <ul>
                 {% for err in errores %}
                     <li>{{ err }}</li>
@@ -16,11 +16,12 @@
         </section>
     {% endif %}
 
-    <section id="erroresCliente" aria-label="Errores de validación en cliente" style="color: red; margin-bottom: 1rem; display: none;">
+    <section id="erroresCliente" aria-label="Errores de validación en cliente" style="color: #b91c1c; margin-bottom: 1rem; display: none;">
         <ul id="listaErroresCliente"></ul>
     </section>
 
     <form id="formPersonal" method="POST" action="{{ url_for('personal.editar', id=persona.idPersonal) if persona else url_for('personal.nuevo') }}">
+        <div class="personal-form-grid">
         <div>
             <label for="dni">DNI *</label><br>
             <input 
@@ -101,6 +102,8 @@
                     </option>
                 {% endfor %}
             </select>
+        </div>
+
         </div>
 
         <div style="margin-top: 1.5rem;">
