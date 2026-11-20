@@ -1,6 +1,6 @@
 """Servicios para la creación, actualización, consulta y eliminación de pedidos."""
 
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from flask import abort
 
 from src.core.models.enums import (
@@ -16,6 +16,75 @@ from src.core.repositories.pedidos import pedidos as repo_pedidos
 from src.core.repositories.personal import personal as repo_personal
 from src.core.services.configuracion import obtener_configuracion
 from src.core.services.cupos import cupos
+
+
+def _obtener_hora_corte() -> time:
+    """Obtiene el horario de corte configurado en Ajustes del sistema (fallback 18:00)."""
+    config = obtener_configuracion()
+    valor = (
+        getattr(config, "horario_corte", None)
+        or getattr(config, "hora_corte", None)
+        or getattr(config, "horaCorte", None)
+    )
+
+    if isinstance(valor, time):
+        return valor
+
+    if isinstance(valor, datetime):
+        return valor.time()
+
+    if isinstance(valor, str) and valor.strip():
+        partes = valor.strip().split(":")
+        try:
+            hora = int(partes[0])
+            minuto = int(partes[1]) if len(partes) > 1 else 0
+            return time(hour=hora, minute=minuto)
+        except ValueError:
+            pass
+
+    return time(hour=18, minute=0)
+
+
+def _esta_fuera_de_corte(fecha_pedido: date, ahora: datetime, hora_corte: time) -> bool:
+    """
+    Indica si fecha_pedido ya pasó o ya superó el horario de corte del día anterior
+    según la hora actual del servidor.
+    """
+    if fecha_pedido < ahora.date():
+        return True
+
+    dia_anterior = fecha_pedido - timedelta(days=1)
+    limite_corte = datetime.combine(dia_anterior, hora_corte)
+    return ahora > limite_corte
+
+
+def _validar_fecha_y_corte(fecha_pedido: date) -> None:
+    """Valida que una fecha de pedido no sea pasada ni haya superado su horario de corte."""
+    ahora = datetime.now()
+    hora_corte = _obtener_hora_corte()
+
+    if fecha_pedido < ahora.date():
+        abort(
+            400,
+            description=(
+                f"No se pueden operar pedidos para una fecha pasada "
+                f"({fecha_pedido.isoformat()})."
+            ),
+        )
+
+    dia_anterior = fecha_pedido - timedelta(days=1)
+    limite_corte = datetime.combine(dia_anterior, hora_corte)
+
+    if ahora > limite_corte:
+        abort(
+            400,
+            description=(
+                f"El horario de corte ({hora_corte.strftime('%H:%M')} del día "
+                f"anterior, {limite_corte.strftime('%d/%m/%Y %H:%M')}) ya venció "
+                f"para la fecha {fecha_pedido.isoformat()}."
+            ),
+        )
+
 
 def validar_sector_personal(persona: Personal, id_sector_jefe: int) -> None:
     """
@@ -55,6 +124,7 @@ def _calcular_fecha_hasta(
         return fecha_desde + timedelta(days=29)
     return fecha_desde
 
+
 def _obtener_fechas_periodo(
     fecha_desde: date,
     periodicidad: Periodicidad,
@@ -82,6 +152,7 @@ def _obtener_fechas_periodo(
         actual += timedelta(days=1)
     return fechas
 
+
 def crear_pedido(
     id_jefe: int,
     id_sector: int,
@@ -98,6 +169,22 @@ def crear_pedido(
     fechas_periodo = _obtener_fechas_periodo(
         fecha_desde, periodicidad_enum, fecha_hasta
     )
+
+    ahora = datetime.now()
+    hora_corte = _obtener_hora_corte()
+    fechas_rechazadas = [
+        fecha_dia.isoformat()
+        for fecha_dia in fechas_periodo
+        if _esta_fuera_de_corte(fecha_dia, ahora, hora_corte)
+    ]
+    if fechas_rechazadas:
+        abort(
+            400,
+            description=(
+                "No se pueden crear pedidos para fechas pasadas o que ya "
+                f"superaron su horario de corte: {', '.join(fechas_rechazadas)}."
+            ),
+        )
 
     # Si alguna fecha del período ya tiene pedido para este sector, no se crea ninguno
     for fecha_dia in fechas_periodo:
@@ -191,6 +278,7 @@ def crear_pedido(
     )
     return pedidos_creados[0]
 
+
 def actualizar_pedido(
     id_pedido: int,
     comidas: dict[int, list[int]],
@@ -200,7 +288,7 @@ def actualizar_pedido(
     fecha_hasta: date | None = None,
 ) -> Pedido:
     """
-    Modifica un pedido existente si sigue en estado CONFIRMADO.
+    Modifica un pedido existente si sigue en estado CONFIRMADO y no superó el corte.
     Desactiva lógicamente las solicitudes anteriores y recalcula cupos (Regular/Excepción).
     """
     pedido = repo_pedidos.get_pedido_by_id(id_pedido)
@@ -213,6 +301,8 @@ def actualizar_pedido(
             description="No tiene permisos para operar sobre un pedido de otro sector.",
         )
 
+    _validar_fecha_y_corte(pedido.fecha_desde)
+
     if pedido.estado_general != EstadoPedido.CONFIRMADO:
         abort(
             409,
@@ -220,6 +310,7 @@ def actualizar_pedido(
         )
 
     if fecha_desde is not None:
+        _validar_fecha_y_corte(fecha_desde)
         pedido.fecha_desde = fecha_desde
     if periodicidad is not None:
         pedido.periodicidad = Periodicidad(periodicidad.lower())
@@ -297,7 +388,10 @@ def actualizar_pedido(
 
 
 def borrar_pedido(id_pedido: int, id_sector_jefe: int | None = None) -> Pedido:
-    """Valida y realiza la baja lógica de un pedido si sigue en estado CONFIRMADO."""
+    """
+    Valida y realiza la baja lógica de un pedido si sigue en estado CONFIRMADO
+    y no superó el horario de corte.
+    """
     pedido = repo_pedidos.get_pedido_by_id(id_pedido)
     if not pedido:
         abort(404, description=f"El pedido con ID {id_pedido} no existe.")
@@ -307,6 +401,8 @@ def borrar_pedido(id_pedido: int, id_sector_jefe: int | None = None) -> Pedido:
             403,
             description="No tiene permisos para operar sobre un pedido de otro sector.",
         )
+
+    _validar_fecha_y_corte(pedido.fecha_desde)
 
     if pedido.estado_general != EstadoPedido.CONFIRMADO:
         abort(
