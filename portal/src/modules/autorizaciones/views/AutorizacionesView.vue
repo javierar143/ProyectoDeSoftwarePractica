@@ -5,23 +5,44 @@
         <h1>Autorización de Pedidos</h1>
         <p>Revisión, autorización nominada y rechazo de pedidos por sector.</p>
       </div>
-      <div class="selector-modo-vista" role="group" aria-label="Modo de vista del período">
-        <button
-          type="button"
-          :class="['btn-modo', modoVista === 'diaria' ? 'activo' : '']"
-          :disabled="cargando"
-          @click="cambiarModoVista('diaria')"
+      <div class="acciones-encabezado">
+        <RouterLink
+          to="/servicio-alimentacion/cupos"
+          class="btn-cupos"
+          aria-label="Administrar cupos por sector y comida"
         >
-          Vista Diaria
-        </button>
-        <button
-          type="button"
-          :class="['btn-modo', modoVista === 'semanal' ? 'activo' : '']"
-          :disabled="cargando"
-          @click="cambiarModoVista('semanal')"
-        >
-          Vista Semanal
-        </button>
+          <svg
+            class="icono-btn"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            aria-hidden="true"
+          >
+            <path stroke-linecap="round" d="M4 6h12M4 10h12M4 14h8" />
+            <circle cx="15" cy="14" r="2.2" />
+          </svg>
+          <span>Cupos</span>
+        </RouterLink>
+
+        <div class="selector-modo-vista" role="group" aria-label="Modo de vista del período">
+          <button
+            type="button"
+            :class="['btn-modo', modoVista === 'diaria' ? 'activo' : '']"
+            :disabled="cargando"
+            @click="cambiarModoVista('diaria')"
+          >
+            Vista Diaria
+          </button>
+          <button
+            type="button"
+            :class="['btn-modo', modoVista === 'semanal' ? 'activo' : '']"
+            :disabled="cargando"
+            @click="cambiarModoVista('semanal')"
+          >
+            Vista Semanal
+          </button>
+        </div>
       </div>
     </header>
 
@@ -606,6 +627,41 @@ onMounted(async () => {
   margin: 0.2rem 0 0;
   font-size: 0.92rem;
   color: #475569;
+}
+
+.acciones-encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.btn-cupos {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 40px;
+  padding: 0.4rem 0.95rem;
+  border: 1px solid #0f766e;
+  border-radius: 10px;
+  background: #f0fdfa;
+  color: #0f766e;
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.btn-cupos:hover {
+  background: #0f766e;
+  color: #ffffff;
+}
+
+.icono-btn {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .selector-modo-vista {
