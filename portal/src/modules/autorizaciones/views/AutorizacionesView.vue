@@ -1,50 +1,29 @@
 <template>
   <main class="autorizaciones-view">
     <header class="encabezado-modulo">
-      <div>
-        <h1>Autorización de Pedidos</h1>
-        <p>Revisión, autorización nominada y rechazo de pedidos por sector.</p>
-      </div>
-      <div class="acciones-encabezado">
-        <RouterLink
-          to="/servicio-alimentacion/cupos"
-          class="btn-cupos"
-          aria-label="Administrar cupos por sector y comida"
-        >
-          <svg
-            class="icono-btn"
-            viewBox="0 0 20 20"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            aria-hidden="true"
-          >
-            <path stroke-linecap="round" d="M4 6h12M4 10h12M4 14h8" />
-            <circle cx="15" cy="14" r="2.2" />
-          </svg>
-          <span>Cupos</span>
-        </RouterLink>
-
-        <div class="selector-modo-vista" role="group" aria-label="Modo de vista del período">
-          <button
-            type="button"
-            :class="['btn-modo', modoVista === 'diaria' ? 'activo' : '']"
-            :disabled="cargando"
-            @click="cambiarModoVista('diaria')"
-          >
-            Vista Diaria
-          </button>
-          <button
-            type="button"
-            :class="['btn-modo', modoVista === 'semanal' ? 'activo' : '']"
-            :disabled="cargando"
-            @click="cambiarModoVista('semanal')"
-          >
-            Vista Semanal
-          </button>
-        </div>
-      </div>
-    </header>
+          <div>
+            <h1>Autorización de Pedidos</h1>
+            <p>Revisión, autorización nominada y rechazo de pedidos por sector.</p>
+          </div>
+          <div class="selector-modo-vista" role="group" aria-label="Modo de vista del período">
+            <button
+              type="button"
+              :class="['btn-modo', modoVista === 'diaria' ? 'activo' : '']"
+              :disabled="cargando"
+              @click="cambiarModoVista('diaria')"
+            >
+              Vista Diaria
+            </button>
+            <button
+              type="button"
+              :class="['btn-modo', modoVista === 'semanal' ? 'activo' : '']"
+              :disabled="cargando"
+              @click="cambiarModoVista('semanal')"
+            >
+              Vista Semanal
+            </button>
+          </div>
+        </header>
 
     <div
       v-if="mensajeFeedback.texto"
@@ -602,9 +581,10 @@ onMounted(async () => {
 <style scoped>
 .autorizaciones-view {
   padding: 1.25rem 1.5rem;
-  max-width: 1320px;
+  max-width: 1280px;
   margin: 0 auto;
-  color: #0f172a;
+  color: #1e293b;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .encabezado-modulo {
@@ -618,50 +598,15 @@ onMounted(async () => {
 
 .encabezado-modulo h1 {
   margin: 0;
-  font-size: 1.65rem;
+  font-size: 1.5rem;
   font-weight: 700;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
 }
 
 .encabezado-modulo p {
   margin: 0.2rem 0 0;
-  font-size: 0.92rem;
-  color: #475569;
-}
-
-.acciones-encabezado {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.65rem;
-}
-
-.btn-cupos {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  min-height: 40px;
-  padding: 0.4rem 0.95rem;
-  border: 1px solid #0f766e;
-  border-radius: 10px;
-  background: #f0fdfa;
-  color: #0f766e;
-  font-size: 0.86rem;
-  font-weight: 600;
-  text-decoration: none;
-  white-space: nowrap;
-  transition: background-color 0.15s, color 0.15s;
-}
-
-.btn-cupos:hover {
-  background: #0f766e;
-  color: #ffffff;
-}
-
-.icono-btn {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
+  font-size: 0.9rem;
+  color: #64748b;
 }
 
 .selector-modo-vista {
@@ -669,44 +614,44 @@ onMounted(async () => {
   gap: 0.25rem;
   background: #f1f5f9;
   padding: 0.25rem;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid #cbd5e1;
 }
 
 .btn-modo {
   border: 1px solid transparent;
   background: transparent;
-  color: #334155;
-  border-radius: 8px;
+  color: #475569;
+  border-radius: 6px;
   min-height: 36px;
   padding: 0.35rem 0.85rem;
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   font-weight: 600;
   cursor: pointer;
 }
 
 .btn-modo.activo {
-  background: #0f766e;
+  background: #2563eb;
   color: #ffffff;
 }
 
 .tabla-contenedor {
   overflow-x: auto;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #ffffff;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .tabla-pedidos {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
 }
 
 .tabla-pedidos th,
 .tabla-pedidos td {
-  padding: 0.7rem 0.9rem;
+  padding: 0.65rem 0.85rem;
   border-bottom: 1px solid #e2e8f0;
   text-align: left;
   vertical-align: middle;
@@ -718,11 +663,11 @@ onMounted(async () => {
 
 .tabla-pedidos th {
   background: #f8fafc;
-  color: #475569;
+  color: #64748b;
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
 }
 
 .fila-pendiente {
@@ -738,23 +683,23 @@ onMounted(async () => {
   display: inline-block;
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 700;
+  font-size: 0.76rem;
+  font-weight: 600;
   background: #f1f5f9;
-  color: #334155;
+  color: #475569;
   border: 1px solid #cbd5e1;
 }
 
-.badge-estado.estado-confirmado { background: #fef3c7; color: #92400e; border-color: #f59e0b; }
-.badge-estado.estado-autorizado { background: #dcfce7; color: #166534; border-color: #86efac; }
-.badge-estado.estado-rechazado { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+.badge-estado.estado-confirmado { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+.badge-estado.estado-autorizado { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+.badge-estado.estado-rechazado { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
 
 .alerta {
   padding: 0.75rem 1rem;
-  border-radius: 10px;
+  border-radius: 8px;
   margin-bottom: 1rem;
   font-weight: 600;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
 }
 
 .alerta-contenido {
@@ -765,39 +710,39 @@ onMounted(async () => {
   flex-wrap: wrap;
 }
 
-.alerta-exito { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
-.alerta-advertencia { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
-.alerta-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.alerta-exito { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.alerta-advertencia { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+.alerta-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
 
 .estado-carga,
 .estado-vacio {
   background: #f8fafc;
   border: 1px dashed #cbd5e1;
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 2rem;
   text-align: center;
-  color: #475569;
+  color: #64748b;
 }
 
 button {
   min-height: 36px;
   padding: 0.38rem 0.8rem;
-  border-radius: 8px;
-  font-size: 0.85rem;
+  border-radius: 7px;
+  font-size: 0.84rem;
   font-weight: 600;
   cursor: pointer;
   border: 1px solid #cbd5e1;
   background: #ffffff;
-  color: #0f172a;
+  color: #1e293b;
 }
 
 .btn-detalle {
-  background: #0f766e;
-  border-color: #0f766e;
+  background: #2563eb;
+  border-color: #2563eb;
   color: #ffffff;
 }
 
 .btn-detalle:hover:not(:disabled) {
-  background: #115e59;
+  background: #1d4ed8;
 }
 </style>

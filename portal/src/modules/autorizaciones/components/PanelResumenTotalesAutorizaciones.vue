@@ -69,9 +69,10 @@ defineProps({
 .panel-resumen-totales {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 1rem 1.1rem;
   margin-bottom: 1.1rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .tarjetas-indicadores {
@@ -83,7 +84,7 @@ defineProps({
 .indicador-box {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 0.75rem 0.9rem;
   display: flex;
   flex-direction: column;
@@ -91,7 +92,7 @@ defineProps({
 }
 
 .ind-label {
-  font-size: 0.76rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: #64748b;
   text-transform: uppercase;
@@ -100,11 +101,11 @@ defineProps({
 .ind-valor {
   font-size: 1.35rem;
   font-weight: 700;
-  color: #0f172a;
+  color: #1e293b;
 }
 
 .texto-verde {
-  color: #0f766e;
+  color: #2563eb;
 }
 
 .tabla-resumen-margin {
@@ -114,19 +115,19 @@ defineProps({
 .tabla-contenedor {
   overflow-x: auto;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 8px;
   background: #ffffff;
 }
 
 .tabla-pedidos {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
 }
 
 .tabla-pedidos th,
 .tabla-pedidos td {
-  padding: 0.7rem 0.9rem;
+  padding: 0.65rem 0.85rem;
   border-bottom: 1px solid #e2e8f0;
   text-align: left;
 }
@@ -137,7 +138,7 @@ defineProps({
 
 .tabla-pedidos th {
   background: #f8fafc;
-  color: #475569;
+  color: #64748b;
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;

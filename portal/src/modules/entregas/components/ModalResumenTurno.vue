@@ -319,7 +319,7 @@ onMounted(() => {
 .modal-kiosko-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 1.4rem;
   max-width: 880px;
   width: 100%;
@@ -327,6 +327,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #1e293b;
 }
 
 .modal-discreto-header {
@@ -339,13 +341,14 @@ onMounted(() => {
 
 .modal-discreto-header h2 {
   margin: 0;
-  font-size: 1.3rem;
+  font-size: 1.25rem;
+  font-weight: 700;
 }
 
 .modal-subtexto {
   margin: 0.2rem 0 0;
-  font-size: 0.9rem;
-  color: #475569;
+  font-size: 0.88rem;
+  color: #64748b;
 }
 
 .acciones-top-discreto {
@@ -353,16 +356,26 @@ onMounted(() => {
   gap: 0.5rem;
 }
 
-.btn-secundario-claro {
-  min-height: 48px;
-  padding: 0.5rem 1.1rem;
-  border-radius: 10px;
-  font-size: 0.92rem;
-  font-weight: 700;
+.btn-secundario-claro,
+.btn-cerrar-sesion {
+  min-height: 42px;
+  padding: 0.45rem 1rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
   cursor: pointer;
+}
+
+.btn-secundario-claro {
   background: #ffffff;
   border: 1px solid #cbd5e1;
-  color: #0f172a;
+  color: #1e293b;
+}
+
+.btn-cerrar-sesion {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
 }
 
 .tabs-modal-discreto {
@@ -371,23 +384,23 @@ onMounted(() => {
   gap: 0.35rem;
   background: #f1f5f9;
   padding: 0.3rem;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid #cbd5e1;
 }
 
 .btn-modo-busq {
-  min-height: 44px;
-  border-radius: 8px;
+  min-height: 40px;
+  border-radius: 6px;
   border: none;
   background: transparent;
-  color: #334155;
-  font-size: 0.88rem;
-  font-weight: 700;
+  color: #475569;
+  font-size: 0.86rem;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .btn-modo-busq.activo {
-  background: #0f766e;
+  background: #2563eb;
   color: #ffffff;
 }
 
@@ -416,13 +429,13 @@ onMounted(() => {
 }
 
 .kpi-numero {
-  font-size: 1.55rem;
-  font-weight: 800;
-  color: #0f172a;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
 }
 
 .texto-verde-inst {
-  color: #0f766e;
+  color: #15803d;
 }
 
 .texto-ambar-inst {
@@ -438,23 +451,23 @@ onMounted(() => {
   margin-left: 0.45rem;
   padding: 0.12rem 0.45rem;
   font-size: 0.7rem;
-  font-weight: 700;
+  font-weight: 600;
   border-radius: 999px;
   background: #fef2f2;
-  border: 1px solid #fca5a5;
+  border: 1px solid #fecaca;
   color: #b91c1c;
 }
 
 .tabla-contenedor-claro {
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 8px;
   overflow-x: auto;
 }
 
 .tabla-clara {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
 }
 
 .tabla-clara th,
@@ -466,7 +479,7 @@ onMounted(() => {
 
 .tabla-clara th {
   background: #f8fafc;
-  color: #475569;
+  color: #64748b;
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -475,22 +488,22 @@ onMounted(() => {
 .sub-dni-inline {
   margin-left: 0.35rem;
   color: #64748b;
-  font-weight: 600;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
 .dato-num {
   font-variant-numeric: tabular-nums;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .caja-estado-vacio {
   background: #f8fafc;
   border: 1px dashed #cbd5e1;
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 2rem 1.5rem;
   text-align: center;
-  color: #475569;
+  color: #64748b;
 }
 
 @media (max-width: 767px) {

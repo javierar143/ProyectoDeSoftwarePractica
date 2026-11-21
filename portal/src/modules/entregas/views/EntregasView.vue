@@ -719,10 +719,10 @@ onBeforeUnmount(() => {
 .kiosko-claro-viewport {
   min-height: calc(100vh - 64px);
   background: #f8fafc;
-  color: #0f172a;
+  color: #1e293b;
   padding: 1.15rem 1.5rem;
   box-sizing: border-box;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   user-select: none;
 }
 
@@ -739,9 +739,9 @@ onBeforeUnmount(() => {
 .tarjeta-kiosko {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 1rem 1.25rem;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .kiosko-encabezado {
@@ -755,7 +755,7 @@ onBeforeUnmount(() => {
 .badge-turno-activo {
   font-size: 0.76rem;
   font-weight: 700;
-  color: #0f766e;
+  color: #2563eb;
   letter-spacing: 0.05em;
 }
 
@@ -767,12 +767,13 @@ onBeforeUnmount(() => {
 
 .titulo-y-reloj h1 {
   margin: 0;
-  font-size: 1.75rem;
-  font-weight: 800;
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .reloj-kiosko {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 600;
   color: #64748b;
 }
@@ -801,47 +802,52 @@ onBeforeUnmount(() => {
 
 .btn-segmento,
 .btn-modo-busq {
-  min-height: 48px;
+  min-height: 44px;
   padding: 0.4rem 0.9rem;
   border-radius: 8px;
   border: none;
   background: transparent;
   color: #334155;
-  font-size: 0.9rem;
-  font-weight: 700;
+  font-size: 0.88rem;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .btn-segmento.activo,
 .btn-modo-busq.activo {
-  background: #0f766e;
+  background: #2563eb;
   color: #ffffff;
 }
 
 .btn-panel-discreto,
 .btn-cerrar-alerta {
-  min-height: 48px;
+  min-height: 44px;
   padding: 0.45rem 0.95rem;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid #cbd5e1;
   background: #ffffff;
-  color: #0f172a;
-  font-weight: 700;
+  color: #1e293b;
+  font-weight: 600;
   cursor: pointer;
+}
+
+.btn-panel-discreto:hover,
+.btn-cerrar-alerta:hover {
+  background: #f8fafc;
 }
 
 .alerta-kiosko {
   padding: 0.85rem 1.15rem;
-  border-radius: 12px;
+  border-radius: 10px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-weight: 700;
+  font-weight: 600;
 }
 
-.alerta-exito { background: #dcfce7; border: 1px solid #86efac; color: #166534; }
-.alerta-advertencia { background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; }
-.alerta-error { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; }
+.alerta-exito { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+.alerta-advertencia { background: #fffbeb; border: 1px solid #fde68a; color: #b45309; }
+.alerta-error { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
 
 .kiosko-layout-grid {
   display: grid;
@@ -867,13 +873,14 @@ onBeforeUnmount(() => {
 .buscador-header h2,
 .bandeja-encabezado h2 {
   margin: 0;
-  font-size: 1.12rem;
+  font-size: 1.08rem;
+  font-weight: 700;
 }
 
 .label-estandar {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #334155;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
 }
 
 .barra-input-boton {
@@ -883,23 +890,29 @@ onBeforeUnmount(() => {
 
 .input-claro-tactil {
   flex: 1;
-  min-height: 48px;
+  min-height: 44px;
   padding: 0.45rem 0.8rem;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid #cbd5e1;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
+  color: #1e293b;
 }
 
 .btn-primario-tactil,
 .btn-incluir-chico {
-  min-height: 48px;
+  min-height: 44px;
   padding: 0.45rem 1rem;
-  border-radius: 10px;
-  border: 1px solid #0f766e;
-  background: #0f766e;
+  border-radius: 8px;
+  border: 1px solid #2563eb;
+  background: #2563eb;
   color: #ffffff;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
+}
+
+.btn-primario-tactil:hover:not(:disabled),
+.btn-incluir-chico:hover:not(:disabled) {
+  background: #1d4ed8;
 }
 
 .lista-resultados-clara {
@@ -913,7 +926,7 @@ onBeforeUnmount(() => {
 .fila-persona-resultado {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 0.7rem 0.9rem;
   display: flex;
   justify-content: space-between;
@@ -922,7 +935,7 @@ onBeforeUnmount(() => {
 
 .res-detalle {
   display: block;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: #64748b;
 }
 
@@ -931,13 +944,13 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   align-items: center;
   padding-bottom: 0.65rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .subtitulo-bandeja {
   margin: 0.2rem 0 0;
-  font-size: 0.88rem;
-  color: #475569;
+  font-size: 0.85rem;
+  color: #64748b;
 }
 
 .bandeja-acciones-top {
@@ -947,21 +960,22 @@ onBeforeUnmount(() => {
 }
 
 .chip-inactividad {
-  background: #f1f5f9;
-  border: 1px solid #cbd5e1;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
   padding: 0.35rem 0.7rem;
   border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 600;
 }
 
 .bandeja-vacia {
   background: #f8fafc;
   border: 1px dashed #cbd5e1;
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 2.5rem 1.5rem;
   text-align: center;
-  color: #475569;
+  color: #64748b;
 }
 
 .bandeja-pie-confirmacion {
@@ -974,26 +988,35 @@ onBeforeUnmount(() => {
   gap: 0.85rem;
 }
 
+.resumen-previo-pie {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
 .resumen-previo-pie strong {
   display: block;
   font-size: 1.15rem;
-  color: #0f766e;
+  color: #2563eb;
 }
 
 .btn-confirmar-entrega-kiosko {
   flex: 1;
-  min-height: 58px;
-  border-radius: 12px;
-  font-size: 1.05rem;
-  font-weight: 800;
+  min-height: 54px;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700;
   border: 1px solid #cbd5e1;
   cursor: pointer;
 }
 
 .btn-confirmar-entrega-kiosko.activo {
-  background: #0f766e;
-  border-color: #0f766e;
+  background: #2563eb;
+  border-color: #2563eb;
   color: #ffffff;
+}
+
+.btn-confirmar-entrega-kiosko.activo:hover:not(:disabled) {
+  background: #1d4ed8;
 }
 
 .btn-confirmar-entrega-kiosko.deshabilitado {

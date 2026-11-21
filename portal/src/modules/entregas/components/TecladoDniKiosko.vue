@@ -157,7 +157,7 @@ function emitirBusqueda() {
 .visor-dni-claro {
   background: #f8fafc;
   border: 2px solid #cbd5e1;
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 0.75rem 1rem;
   display: flex;
   flex-direction: column;
@@ -165,8 +165,8 @@ function emitirBusqueda() {
 }
 
 .visor-dni-claro.visor-invalido {
-  border-color: #dc2626;
-  background: #fff5f5;
+  border-color: #b91c1c;
+  background: #fef2f2;
 }
 
 .visor-fila-sup {
@@ -174,21 +174,22 @@ function emitirBusqueda() {
   justify-content: space-between;
   align-items: center;
   font-size: 0.78rem;
-  font-weight: 700;
-  color: #475569;
+  font-weight: 600;
+  color: #64748b;
 }
 
 .contador-digitos {
-  color: #0f766e;
+  color: #2563eb;
+  font-weight: 700;
 }
 
 .visor-input-grande {
   width: 100%;
   border: none;
   background: transparent;
-  color: #0f172a;
+  color: #1e293b;
   font-size: 2rem;
-  font-weight: 800;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.03em;
   outline: none;
@@ -196,14 +197,14 @@ function emitirBusqueda() {
 
 .visor-input-grande::placeholder {
   color: #94a3b8;
-  font-weight: 600;
-  font-size: 1.35rem;
+  font-weight: 500;
+  font-size: 1.3rem;
 }
 
 .texto-error-campo {
   color: #b91c1c;
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .teclado-tactil-grid {
@@ -213,41 +214,46 @@ function emitirBusqueda() {
 }
 
 .tecla-tactil {
-  min-height: 58px;
-  border-radius: 10px;
+  min-height: 56px;
+  border-radius: 8px;
   border: 1px solid #cbd5e1;
   background: #ffffff;
-  color: #0f172a;
-  font-size: 1.35rem;
+  color: #1e293b;
+  font-size: 1.3rem;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .tecla-tactil:active:not(:disabled) {
-  background: #f0fdfa;
-  border-color: #0f766e;
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
 }
 
 .tecla-tactil.tecla-auxiliar {
   background: #f8fafc;
   color: #475569;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
 }
 
 .btn-primario-grande {
-  min-height: 56px;
-  border-radius: 10px;
-  border: 1px solid #0f766e;
-  background: #0f766e;
+  min-height: 52px;
+  border-radius: 8px;
+  border: 1px solid #2563eb;
+  background: #2563eb;
   color: #ffffff;
-  font-size: 1.05rem;
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
 }
 
+.btn-primario-grande:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
 .btn-primario-grande:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 </style>

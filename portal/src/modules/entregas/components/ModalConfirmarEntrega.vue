@@ -241,7 +241,7 @@ function validarYConfirmar() {
 .modal-kiosko-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 1.4rem;
   max-width: 640px;
   width: 100%;
@@ -249,23 +249,26 @@ function validarYConfirmar() {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #1e293b;
 }
 
 .modal-kiosko-card h2 {
   margin: 0;
-  font-size: 1.3rem;
+  font-size: 1.25rem;
+  font-weight: 700;
 }
 
 .modal-subtexto {
   margin: 0.2rem 0 0;
-  font-size: 0.9rem;
-  color: #475569;
+  font-size: 0.88rem;
+  color: #64748b;
 }
 
 .caja-responsable-modal {
   background: #f8fafc;
   border: 1px solid #cbd5e1;
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 0.95rem 1.1rem;
   display: flex;
   flex-direction: column;
@@ -282,15 +285,15 @@ function validarYConfirmar() {
 
 .etiqueta-resp-modal {
   display: block;
-  font-size: 0.76rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
-  color: #0f766e;
+  color: #2563eb;
 }
 
 .valor-resp-modal {
-  font-size: 0.98rem;
-  color: #0f172a;
+  font-size: 0.96rem;
+  color: #1e293b;
 }
 
 .selector-dos-opciones {
@@ -299,43 +302,43 @@ function validarYConfirmar() {
   gap: 0.35rem;
   background: #f1f5f9;
   padding: 0.3rem;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid #cbd5e1;
 }
 
 .btn-modo-busq {
-  min-height: 44px;
+  min-height: 40px;
   padding: 0.35rem 0.75rem;
-  border-radius: 8px;
+  border-radius: 6px;
   border: none;
   background: transparent;
-  color: #334155;
-  font-size: 0.85rem;
-  font-weight: 700;
+  color: #475569;
+  font-size: 0.84rem;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .btn-modo-busq.activo {
-  background: #0f766e;
+  background: #2563eb;
   color: #ffffff;
 }
 
 .label-estandar {
   display: block;
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #334155;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
   margin-bottom: 0.25rem;
 }
 
 .input-claro-tactil {
-  min-height: 48px;
+  min-height: 42px;
   padding: 0.45rem 0.8rem;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid #cbd5e1;
   background: #ffffff;
-  color: #0f172a;
-  font-size: 0.95rem;
+  color: #1e293b;
+  font-size: 0.92rem;
   width: 100%;
   box-sizing: border-box;
 }
@@ -348,8 +351,8 @@ function validarYConfirmar() {
 
 .texto-error-campo {
   color: #b91c1c;
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .lista-confirmacion-clara {
@@ -366,7 +369,7 @@ function validarYConfirmar() {
 .lista-confirmacion-clara li {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 0.7rem 0.95rem;
   display: flex;
   justify-content: space-between;
@@ -376,7 +379,7 @@ function validarYConfirmar() {
 
 .res-detalle {
   display: block;
-  font-size: 0.83rem;
+  font-size: 0.8rem;
   color: #64748b;
   margin-top: 0.15rem;
 }
@@ -388,21 +391,23 @@ function validarYConfirmar() {
 }
 
 .chip-comida-conf {
-  background: #ccfbf1;
-  color: #0f766e;
-  padding: 0.25rem 0.6rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  padding: 0.22rem 0.6rem;
   border-radius: 6px;
-  font-weight: 700;
-  font-size: 0.82rem;
+  font-weight: 600;
+  font-size: 0.8rem;
 }
 
 .chip-menu-conf {
-  background: #e2e8f0;
-  color: #334155;
-  padding: 0.25rem 0.6rem;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  padding: 0.22rem 0.6rem;
   border-radius: 6px;
   font-weight: 600;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
 }
 
 .modal-acciones-pie {
@@ -413,24 +418,28 @@ function validarYConfirmar() {
 
 .btn-secundario-claro,
 .btn-primario-tactil {
-  min-height: 50px;
-  padding: 0.5rem 1.15rem;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  font-weight: 700;
+  min-height: 44px;
+  padding: 0.45rem 1.1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .btn-secundario-claro {
   background: #ffffff;
   border: 1px solid #cbd5e1;
-  color: #0f172a;
+  color: #1e293b;
 }
 
 .btn-primario-tactil {
-  background: #0f766e;
-  border: 1px solid #0f766e;
+  background: #2563eb;
+  border: 1px solid #2563eb;
   color: #ffffff;
+}
+
+.btn-primario-tactil:hover:not(:disabled) {
+  background: #1d4ed8;
 }
 
 @media (max-width: 767px) {

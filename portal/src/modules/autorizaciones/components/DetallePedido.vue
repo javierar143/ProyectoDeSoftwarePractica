@@ -462,11 +462,12 @@ function solicitarRechazo() {
   justify-content: center;
   padding: 1rem;
   z-index: 50;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .modal-panel {
   background: #ffffff;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid #e2e8f0;
   box-shadow: 0 22px 48px rgba(15, 23, 42, 0.22);
   width: 100%;
@@ -477,6 +478,7 @@ function solicitarRechazo() {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  color: #1e293b;
 }
 
 .modal-header {
@@ -498,7 +500,7 @@ function solicitarRechazo() {
 .header-titulo-fila h2 {
   margin: 0;
   font-size: 1.35rem;
-  color: #0f172a;
+  color: #1e293b;
 }
 
 .estado-pill {
@@ -512,20 +514,20 @@ function solicitarRechazo() {
 }
 
 .estado-pill.estado-autorizado {
-  background: #dcfce7;
-  color: #166534;
-  border-color: #86efac;
+  background: #f0fdf4;
+  color: #15803d;
+  border-color: #bbf7d0;
 }
 
 .estado-pill.estado-rechazado {
-  background: #fee2e2;
-  color: #991b1b;
-  border-color: #fca5a5;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
 }
 
 .lectura-pill {
-  background: #fef3c7;
-  color: #92400e;
+  background: #fffbeb;
+  color: #b45309;
   border: 1px solid #fde68a;
   border-radius: 999px;
   padding: 0.18rem 0.65rem;
@@ -536,19 +538,19 @@ function solicitarRechazo() {
 .origen-pedido {
   margin: 0.35rem 0 0;
   font-size: 0.9rem;
-  color: #0f172a;
+  color: #1e293b;
 }
 
 .subtitulo {
   margin: 0.2rem 0 0;
-  color: #475569;
+  color: #64748b;
   font-size: 0.86rem;
 }
 
 .aviso-solo-lectura {
   background: #fffbeb;
-  border: 1px solid #fcd34d;
-  color: #92400e;
+  border: 1px solid #fde68a;
+  color: #b45309;
   border-radius: 8px;
   padding: 0.65rem 0.85rem;
   font-size: 0.86rem;
@@ -575,17 +577,17 @@ function solicitarRechazo() {
 
 .stat-box strong {
   font-size: 1.2rem;
-  color: #0f172a;
+  color: #1e293b;
 }
 
 .stat-box.destacado {
-  background: #f0fdfa;
-  border-color: #0f766e;
-  color: #115e59;
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
 }
 
 .stat-box.destacado strong {
-  color: #0f766e;
+  color: #2563eb;
 }
 
 .desglose-box,
@@ -633,8 +635,8 @@ function solicitarRechazo() {
 
 .btn-accion.btn-regulares {
   background: #ffffff;
-  border-color: #94a3b8;
-  color: #0f172a;
+  border-color: #cbd5e1;
+  color: #1e293b;
 }
 
 .btn-accion.btn-regulares:hover:not(:disabled) {
@@ -642,23 +644,23 @@ function solicitarRechazo() {
 }
 
 .btn-accion.btn-todo {
-  background: #ecfdf5;
-  border-color: #6ee7b7;
-  color: #065f46;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #15803d;
 }
 
 .btn-accion.btn-todo:hover:not(:disabled) {
-  background: #d1fae5;
+  background: #dcfce7;
 }
 
 .btn-accion.btn-ninguna {
-  background: #fff1f2;
-  border-color: #fda4af;
-  color: #9f1239;
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
 }
 
 .btn-accion.btn-ninguna:hover:not(:disabled) {
-  background: #ffe4e6;
+  background: #fee2e2;
 }
 
 .lista-solicitudes {
@@ -675,8 +677,8 @@ function solicitarRechazo() {
 
 .tabla-sol th {
   background: #f8fafc;
-  color: #475569;
-  font-size: 0.76rem;
+  color: #64748b;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   padding: 0.65rem 0.75rem;
@@ -702,12 +704,12 @@ function solicitarRechazo() {
 .dato-mono {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  color: #475569;
+  color: #64748b;
 }
 
 .nombre-principal {
   font-weight: 600;
-  color: #0f172a;
+  color: #1e293b;
 }
 
 .menu-badge {
@@ -730,15 +732,15 @@ function solicitarRechazo() {
 }
 
 .tag-cond.regular {
-  background: #e0f2fe;
-  color: #075985;
-  border: 1px solid #bae6fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
 }
 
 .tag-cond.excepcion {
-  background: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fde68a;
+  background: #f5f3ff;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
 }
 
 .btn-toggle-autorizacion {
@@ -754,13 +756,13 @@ function solicitarRechazo() {
 }
 
 .btn-toggle-autorizacion.autorizada {
-  background: #dcfce7;
-  border-color: #86efac;
-  color: #166534;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #15803d;
 }
 
 .btn-toggle-autorizacion.autorizada:hover:not(:disabled) {
-  background: #bbf7d0;
+  background: #dcfce7;
 }
 
 .btn-toggle-autorizacion.no-autorizada {
@@ -770,9 +772,9 @@ function solicitarRechazo() {
 }
 
 .btn-toggle-autorizacion.no-autorizada:hover:not(:disabled) {
-  background: #fee2e2;
-  border-color: #fca5a5;
-  color: #991b1b;
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
 }
 
 .icono-estado {
@@ -808,7 +810,7 @@ function solicitarRechazo() {
 
 .fila-rechazo input:focus {
   outline: none;
-  border-color: #0f766e;
+  border-color: #2563eb;
 }
 
 .error-campo {
@@ -835,7 +837,7 @@ button {
   cursor: pointer;
   border: 1px solid #cbd5e1;
   background: #f8fafc;
-  color: #0f172a;
+  color: #1e293b;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
@@ -854,13 +856,13 @@ button {
 }
 
 .btn-confirmar {
-  background: #0f766e;
-  border-color: #0f766e;
+  background: #2563eb;
+  border-color: #2563eb;
   color: #ffffff;
 }
 
 .btn-confirmar:hover:not(:disabled) {
-  background: #115e59;
+  background: #1d4ed8;
 }
 
 .btn-rechazar {
