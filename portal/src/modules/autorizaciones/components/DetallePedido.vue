@@ -238,13 +238,6 @@ const props = defineProps({
 
 const emit = defineEmits(['cerrar', 'confirmar-autorizacion', 'confirmar-rechazo'])
 
-const PERSONAL_POR_ID = {
-  1: 'Soyadmin, Juan',
-  2: 'Detal, Fulano',
-  3: 'Perez, Mengano',
-  4: 'Gomez, Pascuala',
-  5: 'Gonzalez, Agus',
-}
 
 const COMIDAS_POR_ID = {
   1: 'Desayuno',
@@ -320,14 +313,6 @@ const nombreSector = computed(() => {
   return idSector ? `Sector #${idSector}` : 'Sin sector'
 })
 
-function resolverNombrePersonal(sol) {
-  if (sol?.nombrePersonal) return sol.nombrePersonal
-  const id = Number(sol?.idPersonal)
-  if (Number.isInteger(id) && PERSONAL_POR_ID[id]) {
-    return PERSONAL_POR_ID[id]
-  }
-  return id ? `Personal #${id}` : 'Sin asignar'
-}
 
 function resolverNombreComida(sol) {
   if (sol?.nombreTipoComida) return sol.nombreTipoComida
