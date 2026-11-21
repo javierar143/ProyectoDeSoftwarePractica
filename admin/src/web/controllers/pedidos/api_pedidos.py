@@ -102,12 +102,13 @@ def crear_nuevo_pedido():
 
     datos = resultado  # type: ignore[assignment]
 
-    kwargs_extra = (
-        {"fecha_hasta": datos["fecha_hasta"]}
-        if datos.get("fecha_hasta") is not None
-        else {}
-    )
-    nuevo_pedido = pedidos.crear_pedido(
+    kwargs_extra = {}
+    if datos.get("fecha_hasta") is not None:
+        kwargs_extra["fecha_hasta"] = datos["fecha_hasta"]
+    if datos.get("dias_excluidos") is not None:
+        kwargs_extra["dias_excluidos"] = datos["dias_excluidos"]
+
+    resultado_servicio = pedidos.crear_pedido(
         id_jefe=user.id_user,
         id_sector=id_sector,
         fecha_desde=datos["fecha_desde"],
@@ -115,6 +116,12 @@ def crear_nuevo_pedido():
         comidas=datos["comidas"],
         **kwargs_extra,
     )
+
+    if isinstance(resultado_servicio, tuple):
+        cuerpo_respuesta, codigo_estado = resultado_servicio
+        return jsonify(cuerpo_respuesta), codigo_estado
+
+    nuevo_pedido = resultado_servicio
 
     current_app.logger.info(
         f"Pedido creado exitosamente ID {nuevo_pedido.idPedido} para sector ID {id_sector} por Jefe ID {user.id_user}"

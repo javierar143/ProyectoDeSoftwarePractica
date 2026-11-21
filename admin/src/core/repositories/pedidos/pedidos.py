@@ -35,6 +35,17 @@ def get_pedido_by_id(id_pedido: int) -> Pedido | None:
         return pedido
     return None
 
+def get_pedido_en_sector_y_fecha(
+    id_sector: int, fecha: date
+) -> Pedido | None:
+    """Devuelve el pedido activo no rechazado para un sector y fecha, si existe."""
+    stmt = select(Pedido).where(
+        Pedido.idSector == id_sector,
+        Pedido.fecha_desde == fecha,
+        Pedido.activo.is_(True),
+        Pedido.estado_general != EstadoPedido.RECHAZADO,
+    )
+    return db.session.scalar(stmt)
 
 def limpiar_solicitudes_de_pedido(id_pedido: int) -> None:
     """

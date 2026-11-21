@@ -160,7 +160,8 @@ def crear_pedido(
     periodicidad: str,
     comidas: dict[int, list[int]],
     fecha_hasta: date | None = None,
-) -> Pedido:
+    dias_excluidos: list[date] | None = None,
+) -> Pedido | tuple[dict, int]:
     """
     Crea un Pedido por cada día del período según la periodicidad (diaria, semanal, mensual)
     y genera las Solicitudes de cada día calculando cupo Regular o Excepción.
@@ -169,6 +170,16 @@ def crear_pedido(
     fechas_periodo = _obtener_fechas_periodo(
         fecha_desde, periodicidad_enum, fecha_hasta
     )
+
+    excluidos_set = set(dias_excluidos or [])
+    if excluidos_set:
+        fechas_periodo = [f for f in fechas_periodo if f not in excluidos_set]
+
+    if not fechas_periodo:
+        abort(
+            400,
+            description="Debe quedar al menos un día activo en el período.",
+        )
 
     ahora = datetime.now()
     hora_corte = _obtener_hora_corte()
@@ -186,13 +197,33 @@ def crear_pedido(
             ),
         )
 
-    # Si alguna fecha del período ya tiene pedido para este sector, no se crea ninguno
+    # Si alguna fecha activa del período ya tiene pedido para este sector,
+    # informamos todas las fechas en conflicto con su requestId para editar.
+    fechas_conflicto: list[dict[str, int | str]] = []
     for fecha_dia in fechas_periodo:
-        if repo_pedidos.existe_pedido_en_sector_y_fecha(id_sector, fecha_dia):
-            abort(
-                409,
-                description=f"Ya existe un pedido registrado para este sector en la fecha {fecha_dia.isoformat()}.",
+        pedido_existente = repo_pedidos.get_pedido_en_sector_y_fecha(
+            id_sector, fecha_dia
+        )
+        if pedido_existente is not None:
+            fechas_conflicto.append(
+                {
+                    "fecha": fecha_dia.isoformat(),
+                    "requestId": pedido_existente.idPedido,
+                }
             )
+
+    if fechas_conflicto:
+        fechas_str = ", ".join(
+            f"{item['fecha'].split('-')[2]}/{item['fecha'].split('-')[1]}/{item['fecha'].split('-')[0]}"
+            for item in fechas_conflicto
+        )
+        return (
+            {
+                "error": f"Ya existe un pedido registrado para este sector en: {fechas_str}.",
+                "fechas_conflicto": fechas_conflicto,
+            },
+            409,
+        )
 
     pedidos_y_solicitudes: list[tuple[Pedido, list[Solicitud]]] = []
 
