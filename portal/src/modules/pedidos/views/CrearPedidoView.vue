@@ -50,6 +50,14 @@ function formatearFecha(isoStr) {
   return `${partes[2]}/${partes[1]}/${partes[0]}`
 }
 
+function formatearFechasEnTexto(texto) {
+  if (!texto) return ''
+  return String(texto).replace(
+    /\b(\d{4})-(\d{2})-(\d{2})\b/g,
+    (_, anio, mes, dia) => `${dia}/${mes}/${anio}`,
+  )
+}
+
 const comidas = ref([...COMIDAS_BASE])
 const fechaMinimaPermitida = ref(hoyLocalIso())
 const horarioCorte = ref('18:00 del día anterior')
@@ -506,12 +514,15 @@ async function enviarPedido() {
       fechasConflicto.value = Array.isArray(data.fechas_conflicto)
         ? data.fechas_conflicto
         : []
+      const mensajeCrudo =
+        data.error ||
+        data.description ||
+        data.message ||
+        'Ya existe un pedido para este sector en alguna de las fechas indicadas.'
       apiErrorMessage.value = {
         ...normalizado,
-        message:
-          data.error ||
-          data.message ||
-          'Ya existe un pedido para este sector en alguna de las fechas indicadas.',
+        isConflict: false,
+        message: formatearFechasEnTexto(mensajeCrudo),
         canRetry: false,
       }
       return

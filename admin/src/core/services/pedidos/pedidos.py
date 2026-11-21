@@ -237,13 +237,15 @@ def crear_pedido(
 
                 if repo_pedidos.existe_solicitud_duplicada(
                     id_personal=id_personal,
-                    id_sector=id_sector,
                     fecha=fecha_dia,
                     id_tipo_comida=id_tipo_comida,
                 ):
                     abort(
                         409,
-                        description=f"Ya existe una solicitud para la persona {id_personal} en la fecha {fecha_dia.isoformat()} y comida.",
+                        description=(
+                            f"La persona con ID {id_personal} ya tiene una solicitud "
+                            f"activa para esa comida en la fecha {fecha_dia.isoformat()}."
+                        ),
                     )
 
                 contador_comida += 1
@@ -277,7 +279,6 @@ def crear_pedido(
         pedidos_y_solicitudes
     )
     return pedidos_creados[0]
-
 
 def actualizar_pedido(
     id_pedido: int,
