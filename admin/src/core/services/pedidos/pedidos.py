@@ -302,14 +302,14 @@ def crear_pedido(
 
     if len(pedidos_y_solicitudes) == 1:
         unico_pedido, unicas_solicitudes = pedidos_y_solicitudes[0]
-        return repo_pedidos.create_pedido_con_solicitudes(
+        pedido_creado = repo_pedidos.create_pedido_con_solicitudes(
             unico_pedido, unicas_solicitudes
         )
+        return [pedido_creado]
 
-    pedidos_creados = repo_pedidos.create_multiples_pedidos_con_solicitudes(
+    return repo_pedidos.create_multiples_pedidos_con_solicitudes(
         pedidos_y_solicitudes
     )
-    return pedidos_creados[0]
 
 def actualizar_pedido(
     id_pedido: int,

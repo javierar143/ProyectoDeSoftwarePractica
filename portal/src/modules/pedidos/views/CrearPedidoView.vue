@@ -43,6 +43,13 @@ function sumarDiasIso(isoStr, dias) {
   return `${anio}-${mes}-${dia}`
 }
 
+function calcularFechaHasta(inicioIso, tipoPeriodicidad) {
+  if (!inicioIso) return ''
+  if (tipoPeriodicidad === 'semanal') return sumarDiasIso(inicioIso, 6)
+  if (tipoPeriodicidad === 'mensual') return sumarDiasIso(inicioIso, 29)
+  return inicioIso
+}
+
 function formatearFecha(isoStr) {
   if (!isoStr) return '—'
   const partes = String(isoStr).slice(0, 10).split('-')
@@ -62,8 +69,8 @@ const comidas = ref([...COMIDAS_BASE])
 const fechaMinimaPermitida = ref(hoyLocalIso())
 const horarioCorte = ref('18:00 del día anterior')
 
-const fechaDesde = ref(sumarDiasIso(hoyLocalIso(), 1))
-const fechaHasta = ref(sumarDiasIso(hoyLocalIso(), 1))
+const fechaDesde = ref(hoyLocalIso())
+const fechaHasta = ref(hoyLocalIso())
 const periodicidad = ref('diaria')
 const diasExcluidos = ref([])
 
@@ -120,8 +127,12 @@ const textoPeriodo = computed(() => {
   return `${formatearFecha(fechaDesde.value)} – ${formatearFecha(fin)}`
 })
 
-watch(fechaDesde, () => {
+watch(fechaDesde, (nuevaFecha) => {
   fechaDesdeError.value = ''
+  diasExcluidos.value = []
+  if (!nuevaFecha) return
+
+  fechaHasta.value = calcularFechaHasta(nuevaFecha, periodicidad.value)
 })
 
 watch(fechaHasta, () => {
@@ -137,14 +148,7 @@ function seleccionarPeriodicidad(nuevaPeriodicidad) {
   diasExcluidos.value = []
   diasError.value = ''
   const base = fechaDesde.value || fechaMinimaPermitida.value
-
-  if (nuevaPeriodicidad === 'diaria') {
-    fechaHasta.value = base
-  } else if (nuevaPeriodicidad === 'semanal') {
-    fechaHasta.value = sumarDiasIso(base, 6)
-  } else if (nuevaPeriodicidad === 'mensual') {
-    fechaHasta.value = sumarDiasIso(base, 29)
-  }
+  fechaHasta.value = calcularFechaHasta(base, nuevaPeriodicidad)
 }
 
 function alternarDia(diaIso) {
@@ -568,7 +572,10 @@ async function enviarPedido() {
             <RouterLink
               v-if="item.requestId"
               class="enlace-accion"
-              :to="`/jefe-servicio/pedidos/${item.requestId}/editar`"
+              :to="{
+                path: '/inicio/jefe-servicio',
+                query: { pedidoId: item.requestId, editar: '1' },
+              }"
             >
               Editar pedido #{{ item.requestId }}
             </RouterLink>

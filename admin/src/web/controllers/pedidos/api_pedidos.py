@@ -121,18 +121,33 @@ def crear_nuevo_pedido():
         cuerpo_respuesta, codigo_estado = resultado_servicio
         return jsonify(cuerpo_respuesta), codigo_estado
 
-    nuevo_pedido = resultado_servicio
+    pedidos_creados = (
+        resultado_servicio
+        if isinstance(resultado_servicio, list)
+        else [resultado_servicio]
+    )
+    primer_pedido = pedidos_creados[0]
 
     current_app.logger.info(
-        f"Pedido creado exitosamente ID {nuevo_pedido.idPedido} para sector ID {id_sector} por Jefe ID {user.id_user}"
+        f"Pedido creado exitosamente ID {primer_pedido.idPedido} para sector ID {id_sector} por Jefe ID {user.id_user}"
     )
+
+    pedidos_detallados = [
+        pedidos.obtener_detalle_pedido(p.idPedido, id_sector_jefe=id_sector)
+        for p in pedidos_creados
+    ]
+    todas_las_solicitudes = [
+        sol for det in pedidos_detallados for sol in det["solicitudes"]
+    ]
 
     return (
         jsonify(
             {
                 "mensaje": "Pedido creado exitosamente",
-                "idPedido": nuevo_pedido.idPedido,
-                "estado": nuevo_pedido.estado_general.value,
+                "idPedido": primer_pedido.idPedido,
+                "estado": primer_pedido.estado_general.value,
+                "pedidos": pedidos_detallados,
+                "solicitudes": todas_las_solicitudes,
             }
         ),
         201,
