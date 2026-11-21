@@ -96,10 +96,29 @@ def validar_creacion_pedido(
     if not comidas_ok:
         return False, {"comidas": comidas_res}
 
+    dias_excluidos: list[date] = []
+    if data.get("dias_excluidos") is not None:
+        if not isinstance(data["dias_excluidos"], list):
+            return False, {
+                "dias_excluidos": "Debe ser una lista de fechas (YYYY-MM-DD)."
+            }
+        for dia_raw in data["dias_excluidos"]:
+            if isinstance(dia_raw, bool):
+                return False, {
+                    "dias_excluidos": "Formato de fecha inválido. Use YYYY-MM-DD."
+                }
+            try:
+                dias_excluidos.append(date.fromisoformat(str(dia_raw)))
+            except (ValueError, TypeError):
+                return False, {
+                    "dias_excluidos": "Formato de fecha inválido. Use YYYY-MM-DD."
+                }
+
     return True, {
         "fecha_desde": fecha_desde,
         "fecha_hasta": fecha_hasta,
         "periodicidad": periodicidad_str,
+        "dias_excluidos": dias_excluidos,
         "comidas": comidas_res,
     }
 

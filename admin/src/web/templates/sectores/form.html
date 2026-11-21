@@ -34,7 +34,7 @@
     <legend>Jefes de Servicio</legend>
     {% if jefes_para_select %}
         <label for="jefes">Asignar Jefes de Servicio</label>
-        <select id="jefes" name="jefes" multiple size="6">
+        <select id="jefes" name="jefes" multiple size="6" required>
             {% for jefe in jefes_para_select %}
                 <option value="{{ jefe.id_user }}"
                     {% if jefe.id_user in jefes_seleccionados %}selected{% endif %}>
@@ -43,7 +43,7 @@
             {% endfor %}
         </select>
         <small class="text-muted">
-            Ctrl/Cmd para varios. Sacá la selección a un jefe para desasignarlo.
+            Obligatorio: elegí al menos uno. Ctrl/Cmd para varios.
         </small>
     {% else %}
         <p class="text-muted">No hay Jefes de Servicio disponibles.</p>

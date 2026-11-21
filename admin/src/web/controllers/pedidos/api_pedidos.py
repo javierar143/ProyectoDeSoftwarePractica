@@ -102,12 +102,13 @@ def crear_nuevo_pedido():
 
     datos = resultado  # type: ignore[assignment]
 
-    kwargs_extra = (
-        {"fecha_hasta": datos["fecha_hasta"]}
-        if datos.get("fecha_hasta") is not None
-        else {}
-    )
-    nuevo_pedido = pedidos.crear_pedido(
+    kwargs_extra = {}
+    if datos.get("fecha_hasta") is not None:
+        kwargs_extra["fecha_hasta"] = datos["fecha_hasta"]
+    if datos.get("dias_excluidos") is not None:
+        kwargs_extra["dias_excluidos"] = datos["dias_excluidos"]
+
+    resultado_servicio = pedidos.crear_pedido(
         id_jefe=user.id_user,
         id_sector=id_sector,
         fecha_desde=datos["fecha_desde"],
@@ -116,16 +117,37 @@ def crear_nuevo_pedido():
         **kwargs_extra,
     )
 
-    current_app.logger.info(
-        f"Pedido creado exitosamente ID {nuevo_pedido.idPedido} para sector ID {id_sector} por Jefe ID {user.id_user}"
+    if isinstance(resultado_servicio, tuple):
+        cuerpo_respuesta, codigo_estado = resultado_servicio
+        return jsonify(cuerpo_respuesta), codigo_estado
+
+    pedidos_creados = (
+        resultado_servicio
+        if isinstance(resultado_servicio, list)
+        else [resultado_servicio]
     )
+    primer_pedido = pedidos_creados[0]
+
+    current_app.logger.info(
+        f"Pedido creado exitosamente ID {primer_pedido.idPedido} para sector ID {id_sector} por Jefe ID {user.id_user}"
+    )
+
+    pedidos_detallados = [
+        pedidos.obtener_detalle_pedido(p.idPedido, id_sector_jefe=id_sector)
+        for p in pedidos_creados
+    ]
+    todas_las_solicitudes = [
+        sol for det in pedidos_detallados for sol in det["solicitudes"]
+    ]
 
     return (
         jsonify(
             {
                 "mensaje": "Pedido creado exitosamente",
-                "idPedido": nuevo_pedido.idPedido,
-                "estado": nuevo_pedido.estado_general.value,
+                "idPedido": primer_pedido.idPedido,
+                "estado": primer_pedido.estado_general.value,
+                "pedidos": pedidos_detallados,
+                "solicitudes": todas_las_solicitudes,
             }
         ),
         201,

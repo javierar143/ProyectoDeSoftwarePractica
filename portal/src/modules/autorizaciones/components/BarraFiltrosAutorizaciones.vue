@@ -347,11 +347,12 @@ function ejecutarExportacion(tipo) {
 
 <style scoped>
 .barra-filtros {
-  background: #f8fafc;
+  background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 0.95rem 1.1rem;
   margin-bottom: 1.1rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
@@ -370,7 +371,7 @@ function ejecutarExportacion(tipo) {
   gap: 0.25rem;
   font-size: 0.8rem;
   font-weight: 600;
-  color: #334155;
+  color: #64748b;
   flex: 1 1 145px;
   min-width: 135px;
 }
@@ -397,22 +398,22 @@ function ejecutarExportacion(tipo) {
   height: 36px;
   padding: 0.3rem 1.85rem 0.3rem 0.55rem;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 7px;
   background: #ffffff;
-  color: #0f172a;
+  color: #1e293b;
   font-size: 0.83rem;
   box-sizing: border-box;
 }
 
 .caja-fecha-nativa input[type='text'].input-invalido {
-  border-color: #dc2626;
-  background: #fff5f5;
+  border-color: #b91c1c;
+  background: #fef2f2;
 }
 
 .icono-cal-nativo {
   position: absolute;
   right: 8px;
-  color: #475569;
+  color: #64748b;
   display: inline-flex;
   align-items: center;
   pointer-events: none;
@@ -432,9 +433,9 @@ function ejecutarExportacion(tipo) {
   height: 36px;
   padding: 0.3rem 0.5rem;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 7px;
   background: #ffffff;
-  color: #0f172a;
+  color: #1e293b;
   font-size: 0.83rem;
   width: 100%;
   box-sizing: border-box;
@@ -465,37 +466,37 @@ function ejecutarExportacion(tipo) {
 button {
   min-height: 36px;
   padding: 0.38rem 0.8rem;
-  border-radius: 8px;
-  font-size: 0.85rem;
+  border-radius: 7px;
+  font-size: 0.84rem;
   font-weight: 600;
   cursor: pointer;
   border: 1px solid #cbd5e1;
   background: #ffffff;
-  color: #0f172a;
+  color: #1e293b;
 }
 
 button:hover:not(:disabled) {
-  background: #f1f5f9;
+  background: #f8fafc;
 }
 
 .btn-primario {
-  background: #0f766e;
-  border-color: #0f766e;
+  background: #2563eb;
+  border-color: #2563eb;
   color: #ffffff;
 }
 
 .btn-primario:hover:not(:disabled) {
-  background: #115e59;
+  background: #1d4ed8;
 }
 
 .btn-csv {
-  background: #f0fdfa;
-  border-color: #0f766e;
-  color: #0f766e;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
 }
 
 .btn-csv:hover:not(:disabled) {
-  background: #ccfbf1;
+  background: #dbeafe;
 }
 
 button:disabled {

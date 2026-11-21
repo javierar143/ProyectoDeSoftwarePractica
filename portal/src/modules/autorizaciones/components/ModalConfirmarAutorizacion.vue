@@ -88,6 +88,7 @@ defineEmits(['cancelar', 'confirmar'])
   justify-content: center;
   padding: 1rem;
   z-index: 60;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .modal-confirmacion-box {
@@ -97,6 +98,7 @@ defineEmits(['cancelar', 'confirmar'])
   max-width: 490px;
   width: 100%;
   box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
+  color: #1e293b;
 }
 
 .modal-confirmacion-box h3 {
@@ -109,7 +111,7 @@ defineEmits(['cancelar', 'confirmar'])
 
 .sub-resumen {
   font-size: 0.85rem;
-  color: #475569;
+  color: #64748b;
 }
 
 .lista-resumen-sol {
@@ -137,7 +139,7 @@ defineEmits(['cancelar', 'confirmar'])
 .lista-resumen-sol li.item-aut {
   background: #f0fdf4;
   border-color: #bbf7d0;
-  color: #14532d;
+  color: #15803d;
 }
 
 .lista-resumen-sol li.item-no-aut {
@@ -161,19 +163,23 @@ defineEmits(['cancelar', 'confirmar'])
 button {
   min-height: 36px;
   padding: 0.38rem 0.8rem;
-  border-radius: 8px;
-  font-size: 0.85rem;
+  border-radius: 7px;
+  font-size: 0.84rem;
   font-weight: 600;
   cursor: pointer;
   border: 1px solid #cbd5e1;
   background: #ffffff;
-  color: #0f172a;
+  color: #1e293b;
 }
 
 .btn-ejecutar {
-  background: #0f766e;
-  border-color: #0f766e;
+  background: #2563eb;
+  border-color: #2563eb;
   color: #ffffff;
+}
+
+.btn-ejecutar:hover:not(:disabled) {
+  background: #1d4ed8;
 }
 
 button:disabled {

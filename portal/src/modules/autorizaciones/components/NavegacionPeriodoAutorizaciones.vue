@@ -87,10 +87,10 @@ function formatearDiaCorto(isoDate) {
 .navegacion-periodo {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 0.9rem 1.1rem;
   margin-bottom: 1rem;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -112,15 +112,15 @@ function formatearDiaCorto(isoDate) {
 }
 
 .rango-activo-texto {
-  font-size: 0.88rem;
-  color: #334155;
+  font-size: 0.86rem;
+  color: #475569;
 }
 
 .calendario-dias {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid #e2e8f0;
   padding-top: 0.7rem;
 }
 
@@ -129,7 +129,7 @@ function formatearDiaCorto(isoDate) {
   font-weight: 700;
   color: #64748b;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
 }
 
 .calendario-pills {
@@ -146,17 +146,17 @@ function formatearDiaCorto(isoDate) {
 button {
   min-height: 36px;
   padding: 0.38rem 0.8rem;
-  border-radius: 8px;
-  font-size: 0.85rem;
+  border-radius: 7px;
+  font-size: 0.84rem;
   font-weight: 600;
   cursor: pointer;
   border: 1px solid #cbd5e1;
   background: #ffffff;
-  color: #0f172a;
+  color: #1e293b;
 }
 
 button:hover:not(:disabled) {
-  background: #f1f5f9;
+  background: #f8fafc;
 }
 
 button:disabled {
@@ -173,17 +173,16 @@ button:disabled {
 }
 
 .btn-dia-cal.con-pedidos {
-  border-color: #0f766e;
-  background: #ccfbf1;
-  color: #0f766e;
-  font-weight: 700;
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 600;
 }
 
 .btn-dia-cal.con-pedidos.seleccionado {
-  background: #115e59;
-  border-color: #042f2e;
+  background: #2563eb;
+  border-color: #1d4ed8;
   color: #ffffff;
-  box-shadow: inset 0 0 0 1px #99f6e4;
 }
 
 .punto-pedido {

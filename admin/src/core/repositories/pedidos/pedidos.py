@@ -35,6 +35,17 @@ def get_pedido_by_id(id_pedido: int) -> Pedido | None:
         return pedido
     return None
 
+def get_pedido_en_sector_y_fecha(
+    id_sector: int, fecha: date
+) -> Pedido | None:
+    """Devuelve el pedido activo no rechazado para un sector y fecha, si existe."""
+    stmt = select(Pedido).where(
+        Pedido.idSector == id_sector,
+        Pedido.fecha_desde == fecha,
+        Pedido.activo.is_(True),
+        Pedido.estado_general != EstadoPedido.RECHAZADO,
+    )
+    return db.session.scalar(stmt)
 
 def limpiar_solicitudes_de_pedido(id_pedido: int) -> None:
     """
@@ -119,14 +130,14 @@ def existe_pedido_en_sector_y_fecha(
 
 def existe_solicitud_duplicada(
     id_personal: int,
-    id_sector: int,
     fecha: date,
     id_tipo_comida: int,
+    id_sector: int | None = None,
     excluir_id_pedido: int | None = None,
 ) -> bool:
     """
-    Verifica si la persona ya tiene esa comida solicitada activa en ese sector y fecha
-    dentro de un pedido activo no rechazado.
+    Verifica si la persona ya tiene esa comida solicitada activa en esa fecha
+    dentro de un pedido activo no rechazado (en el mismo sector o en otro).
     """
     stmt = (
         select(Solicitud)
@@ -136,11 +147,12 @@ def existe_solicitud_duplicada(
             Solicitud.fecha_vianda == fecha,
             Solicitud.idTipoComida == id_tipo_comida,
             Solicitud.activo.is_(True),
-            Pedido.idSector == id_sector,
             Pedido.activo.is_(True),
             Pedido.estado_general != EstadoPedido.RECHAZADO,
         )
     )
+    if id_sector is not None:
+        stmt = stmt.where(Pedido.idSector == id_sector)
     if excluir_id_pedido is not None:
         stmt = stmt.where(Pedido.idPedido != excluir_id_pedido)
 

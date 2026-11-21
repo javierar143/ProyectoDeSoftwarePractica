@@ -1,44 +1,28 @@
-# portal
+# Portal — Grupo 50
 
-This template should help get you started developing with Vue 3 in Vite.
+Frontend Vue 3 (Vite) para los roles operativos del sistema de comidas hospitalarias:
 
-## Recommended IDE Setup
+- **Jefe de Servicio**
+- **Servicio de Alimentación**
+- **Sector Comedor**
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+El portal **no** administra sectores ni usuarios. Consume la API del admin Flask (`/api/...`) con JWT.
 
-## Recommended Browser Setup
+La gestión de sectores, usuarios y configuración sigue en la app **admin** (Flask).
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+---
 
-## Customize configuration
+## Requisitos
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+- Node.js `^22.18` o `>=24.12` (ver `package.json` → `engines`)
+- npm
+- Admin Flask corriendo en local (por defecto `http://localhost:5000`)
+- PostgreSQL del proyecto levantado (`g50-postgres`)
 
-## Project Setup
+---
 
-```sh
+## Setup rápido
+
+```bash
+cd portal
 npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
-npm run dev
-```
-
-### Compile and Minify for Production
-
-```sh
-npm run build
-```
-
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
-npm run lint
-```
