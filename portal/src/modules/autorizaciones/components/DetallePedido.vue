@@ -313,6 +313,12 @@ const nombreSector = computed(() => {
   return idSector ? `Sector #${idSector}` : 'Sin sector'
 })
 
+function resolverNombrePersonal(sol) {
+  if (sol?.nombrePersonal) return sol.nombrePersonal
+  if (sol?.apellido && sol?.nombre) return `${sol.apellido}, ${sol.nombre}`
+  const id = Number(sol?.idPersonal)
+  return id ? `Personal #${id}` : 'Sin asignar'
+}
 
 function resolverNombreComida(sol) {
   if (sol?.nombreTipoComida) return sol.nombreTipoComida
