@@ -61,11 +61,13 @@ def get_todos_los_jefes() -> list[Usuario]:
 
 def _validar_jefes(ids_jefes: list[int], id_sector: int | None, sector_activo: bool) -> list[Usuario]:
     """Verifica que cada usuario exista, sea Jefe de Servicio y no pertenezca a otro sector."""
-    if ids_jefes:
-        if id_sector is not None:
-            assert_sector_usable(id_sector)
-        elif not sector_activo:
-            raise SectorError("No se pueden asignar Jefes de Servicio a un sector inactivo.")
+    if not ids_jefes:
+        raise SectorError("Debés asignar al menos un Jefe de Servicio al sector.")
+
+    if id_sector is not None:
+        assert_sector_usable(id_sector)
+    elif not sector_activo:
+        raise SectorError("No se pueden asignar Jefes de Servicio a un sector inactivo.")
 
     id_rol_jefe = _get_id_rol_jefe()
     jefes = []

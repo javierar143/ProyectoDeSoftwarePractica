@@ -46,3 +46,8 @@ def test_assert_sector_usable_inactivo():
     ):
         with pytest.raises(SectorError, match="inactivo"):
             sector_service.assert_sector_usable(2)
+
+def test_validar_jefes_requiere_al_menos_uno():
+    """Sin jefes, la validación debe fallar."""
+    with pytest.raises(SectorError, match="al menos un Jefe"):
+        sector_service._validar_jefes([], id_sector=None, sector_activo=True)
