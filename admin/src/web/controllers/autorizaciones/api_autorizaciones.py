@@ -5,6 +5,9 @@ from src.core.services.autorizaciones.autorizaciones import (
     ConflictoEstadoError,
 )
 from src.web.decorators.api import authenticate_api_request
+from src.core.database import db
+from src.core.models.Personal import Personal
+
 
 api_autorizaciones_controller = Blueprint(
     "api_autorizaciones",
@@ -66,6 +69,12 @@ def detalle_autorizacion(request_id: int):
     """Obtiene el detalle de un pedido con cantidades pedidas y autorizadas por separado."""
     try:
         detalle = autorizaciones_service.obtener_detalle_pedido_autorizacion(request_id)
+        for sol in detalle.get("solicitudes", []):
+            id_pers = sol.get("idPersonal")
+            if id_pers and not sol.get("nombrePersonal"):
+                persona = db.session.get(Personal, id_pers)
+                if persona:
+                    sol["nombrePersonal"] = f"{persona.apellido}, {persona.nombre}"
         return jsonify(detalle), 200
     except RecursoNoEncontradoError as e:
         current_app.logger.warning(f"Pedido no encontrado ({request_id}): {str(e)}")
