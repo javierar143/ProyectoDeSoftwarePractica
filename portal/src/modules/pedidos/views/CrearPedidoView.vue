@@ -695,7 +695,7 @@ async function enviarPedido() {
                   :disabled="loading || loadingDatos || personalSectorDisponibles.length === 0"
                   @change="apiErrorMessage = null"
                 >
-                  <option value="">Seleccionar personal del sector...</option>
+                  <option value="" disabled>Seleccionar personal del sector...</option>
                   <option
                     v-for="persona in personalSectorDisponibles"
                     :key="persona.idPersonal"
@@ -812,7 +812,7 @@ async function enviarPedido() {
                         :disabled="loading"
                         @click="alternarComidaPersona(fila, comida.idTipoComida)"
                       >
-                        <span v-if="fila.comidas[comida.idTipoComida]">
+                        <span v-if="fila.comidas[comida.idTipoComida]" aria-hidden="true">
                           {{ esExcepcionEstimada(idx, comida.idTipoComida) ? 'EXC' : '✓' }}
                         </span>
                       </button>
