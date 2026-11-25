@@ -5,6 +5,10 @@ from flask import Flask
 from src.core import database
 from src.core.seeds.sectores import SECTORES_INICIALES
 from src.core.services.sectores import sector as sector_service
+from src.core.seeds.permisos import load_permisos
+from src.core.seeds.asignaciones_jefes import (
+    load_asignaciones_jefes_sector,
+)
 
 
 def register_commands(app: Flask) -> None:
@@ -27,3 +31,27 @@ def register_commands(app: Flask) -> None:
         """Carga exclusivamente los sectores iniciales que aún no existan."""
         creados = sector_service.seed(SECTORES_INICIALES)
         print(f"Sectores creados: {creados}")
+
+    @app.cli.command("seed-permisos")
+    def seed_permisos():
+        """Completa los permisos y sus asociaciones faltantes por rol."""
+        load_permisos()
+        print("Permisos y asociaciones por rol actualizados correctamente.")
+
+    @app.cli.command("seed-asignaciones-jefes")
+    def seed_asignaciones_jefes():
+        """Completa los sectores faltantes de los Jefes de Servicio."""
+        resultado = load_asignaciones_jefes_sector()
+
+        print(
+            "Asignaciones completadas: "
+            f"{resultado['asignados']}"
+        )
+        print(
+            "Usuarios sin sector de origen: "
+            f"{resultado['sin_sector_origen']}"
+        )
+        print(
+            "Usuarios que requieren revisión: "
+            f"{resultado['requieren_revision']}"
+        )
